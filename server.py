@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from config import MAX_CONCURRENT_CALLS
+from config import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME
 from sheets.client import open_spreadsheet_by_url
 from sheets.personas import load_personas
 from sheets.results import save_reviews
@@ -31,14 +31,22 @@ async def index():
 
 
 @app.post("/api/personas")
-async def api_load_personas(sheets_url: str = Form(...), worksheet_name: str = Form("personas")):
+async def api_load_personas():
+    if not SHEETS_URL:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
     try:
-        spreadsheet = open_spreadsheet_by_url(sheets_url)
-        personas = load_personas(spreadsheet, worksheet_name)
+        spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
+        personas = load_personas(spreadsheet, WORKSHEET_NAME)
         return {
             "ok": True,
             "personas": [
-                {"persona_id": p.persona_id, "persona_name": p.persona_name}
+                {
+                    "persona_id": p.persona_id,
+                    "persona_name": p.persona_name,
+                    "panel_gender": p.panel_gender,
+                    "persona_season": p.persona_season,
+                    "panel_potential": p.panel_potential,
+                }
                 for p in personas
             ],
         }
@@ -48,13 +56,14 @@ async def api_load_personas(sheets_url: str = Form(...), worksheet_name: str = F
 
 @app.post("/api/review")
 async def api_review(
-    sheets_url: str = Form(...),
-    worksheet_name: str = Form("personas"),
-    provider: str = Form("Claude"),
-    model: str = Form("claude-sonnet-4-20250514"),
+    provider: str = Form("OpenAI"),
+    model: str = Form("gpt-4o"),
     text_content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
 ):
+    if not SHEETS_URL:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
+
     file_bytes = None
     filename = None
     if file:
@@ -63,8 +72,8 @@ async def api_review(
     text_content = text_content or ""
 
     try:
-        spreadsheet = open_spreadsheet_by_url(sheets_url)
-        personas = load_personas(spreadsheet, worksheet_name)
+        spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
+        personas = load_personas(spreadsheet, WORKSHEET_NAME)
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
@@ -161,11 +170,12 @@ async def api_review(
 
 @app.post("/api/save")
 async def api_save(
-    sheets_url: str = Form(...),
     reviews_json: str = Form(...),
 ):
+    if not SHEETS_URL:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
     try:
-        spreadsheet = open_spreadsheet_by_url(sheets_url)
+        spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
         data = json.loads(reviews_json)
         reviews = []
         for r in data:

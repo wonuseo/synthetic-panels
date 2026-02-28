@@ -64,6 +64,25 @@
     .persona-badge.ok { color: #00b894; }
     .persona-badge.err { color: #d63031; border-color: #d6303144; background: #d6303108; }
 
+    .persona-list {
+      margin-top: 10px; max-height: 200px; overflow-y: auto;
+      border: 1px solid #dfe6e9; border-radius: 8px; background: #fafafa;
+    }
+    .persona-list-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; border-bottom: 1px solid #f0f0f0; font-size: .85rem;
+    }
+    .persona-list-item:last-child { border-bottom: none; }
+    .persona-list-item .p-name { font-weight: 600; flex: 1; }
+    .persona-list-item .p-tag {
+      font-size: .75rem; padding: 2px 7px; border-radius: 10px;
+      background: #e8f5e9; color: #2e7d32;
+    }
+    .provider-warning {
+      margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+      background: #fff3e0; border: 1px solid #ffb74d; color: #e65100; font-size: .85rem;
+    }
+
     /* ── Primary button ── */
     .btn-primary {
       width: 100%; margin-top: 22px; padding: 14px; font-size: 1rem; font-weight: 600;
@@ -236,20 +255,16 @@
       <div class="card">
         <h2>⚙️ Settings</h2>
 
-        <label for="sheets-url">Google Sheets URL</label>
-        <input type="text" id="sheets-url" placeholder="https://docs.google.com/spreadsheets/d/..." />
-
-        <label for="worksheet-name">Personas Worksheet Name</label>
-        <input type="text" id="worksheet-name" value="personas" />
-
-        <button class="btn-secondary" style="margin-top:12px;width:100%" id="btn-load-personas">페르소나 로드</button>
+        <button class="btn-secondary" style="margin-top:4px;width:100%" id="btn-load-personas">페르소나 로드</button>
         <div id="persona-status"></div>
+        <div id="persona-list-wrap" class="hidden"></div>
 
         <label for="provider" style="margin-top:20px">LLM Provider</label>
         <select id="provider">
-          <option value="Claude">Claude</option>
-          <option value="OpenAI">OpenAI</option>
+          <option value="OpenAI" selected>OpenAI</option>
+          <option value="Claude" disabled>Claude (미지원)</option>
         </select>
+        <div id="provider-warning" class="provider-warning hidden">Claude는 현재 지원되지 않습니다. OpenAI를 선택해 주세요.</div>
 
         <label for="model">Model</label>
         <select id="model"></select>
@@ -290,40 +305,44 @@
 
 <script>
 /* ── State ── */
-const CLAUDE_MODELS = ['claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'];
 const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini'];
 
 let selectedFile = null;
 let personasLoaded = false;
 const $textContent = document.getElementById('text-content');
 let lastReviews = [];
-let lastSheetsUrl = '';
 
 /* ── DOM refs ── */
-const $dropZone    = document.getElementById('drop-zone');
-const $fileInput   = document.getElementById('file-input');
-const $preview     = document.getElementById('preview');
-const $btnRun      = document.getElementById('btn-run');
-const $progress    = document.getElementById('progress-area');
-const $progressFill= document.getElementById('progress-fill');
-const $progressText= document.getElementById('progress-text');
-const $sheetsUrl   = document.getElementById('sheets-url');
-const $wsName      = document.getElementById('worksheet-name');
-const $btnLoad     = document.getElementById('btn-load-personas');
-const $pStatus     = document.getElementById('persona-status');
-const $provider    = document.getElementById('provider');
-const $model       = document.getElementById('model');
-const $pageUpload  = document.getElementById('page-upload');
-const $pageResults = document.getElementById('page-results');
-const $btnBack     = document.getElementById('btn-back');
-const $btnSave     = document.getElementById('btn-save');
+const $dropZone       = document.getElementById('drop-zone');
+const $fileInput      = document.getElementById('file-input');
+const $preview        = document.getElementById('preview');
+const $btnRun         = document.getElementById('btn-run');
+const $progress       = document.getElementById('progress-area');
+const $progressFill   = document.getElementById('progress-fill');
+const $progressText   = document.getElementById('progress-text');
+const $btnLoad        = document.getElementById('btn-load-personas');
+const $pStatus        = document.getElementById('persona-status');
+const $pListWrap      = document.getElementById('persona-list-wrap');
+const $provider       = document.getElementById('provider');
+const $providerWarn   = document.getElementById('provider-warning');
+const $model          = document.getElementById('model');
+const $pageUpload     = document.getElementById('page-upload');
+const $pageResults    = document.getElementById('page-results');
+const $btnBack        = document.getElementById('btn-back');
+const $btnSave        = document.getElementById('btn-save');
 
 /* ── Model selector ── */
 function updateModels() {
-  const models = $provider.value === 'Claude' ? CLAUDE_MODELS : OPENAI_MODELS;
-  $model.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+  $model.innerHTML = OPENAI_MODELS.map(m => `<option value="${m}">${m}</option>`).join('');
 }
-$provider.addEventListener('change', updateModels);
+$provider.addEventListener('change', () => {
+  if ($provider.value === 'Claude') {
+    $providerWarn.classList.remove('hidden');
+  } else {
+    $providerWarn.classList.add('hidden');
+  }
+  updateModels();
+});
 updateModels();
 
 /* ── File upload ── */
@@ -358,18 +377,24 @@ $textContent.addEventListener('input', updateRunBtn);
 
 /* ── Load personas ── */
 $btnLoad.addEventListener('click', async () => {
-  const url = $sheetsUrl.value.trim();
-  if (!url) { $pStatus.innerHTML = '<div class="persona-badge err">URL을 입력하세요.</div>'; return; }
   $pStatus.innerHTML = '<div class="persona-badge" style="color:#636e72">로딩 중...</div>';
-  const fd = new FormData();
-  fd.append('sheets_url', url);
-  fd.append('worksheet_name', $wsName.value);
+  $pListWrap.classList.add('hidden');
+  $pListWrap.innerHTML = '';
   try {
-    const res = await fetch('/api/personas', { method: 'POST', body: fd });
+    const res = await fetch('/api/personas', { method: 'POST' });
     const data = await res.json();
     if (data.ok) {
       personasLoaded = true;
       $pStatus.innerHTML = `<div class="persona-badge ok">✅ ${data.personas.length}명 로드 완료</div>`;
+      $pListWrap.classList.remove('hidden');
+      $pListWrap.innerHTML = `<div class="persona-list">${
+        data.personas.map(p => `
+          <div class="persona-list-item">
+            <span class="p-name">${esc(p.persona_name)}</span>
+            ${p.panel_gender ? `<span class="p-tag">${esc(p.panel_gender)}</span>` : ''}
+            ${p.persona_season ? `<span class="p-tag">${esc(p.persona_season)}</span>` : ''}
+          </div>`).join('')
+      }</div>`;
     } else {
       personasLoaded = false;
       $pStatus.innerHTML = `<div class="persona-badge err">❌ ${data.error}</div>`;
@@ -393,11 +418,8 @@ $btnRun.addEventListener('click', async () => {
   const fd = new FormData();
   if (selectedFile) fd.append('file', selectedFile);
   if (textVal) fd.append('text_content', textVal);
-  fd.append('sheets_url', $sheetsUrl.value.trim());
-  fd.append('worksheet_name', $wsName.value);
   fd.append('provider', $provider.value);
   fd.append('model', $model.value);
-  lastSheetsUrl = $sheetsUrl.value.trim();
 
   try {
     const res = await fetch('/api/review', { method: 'POST', body: fd });
@@ -455,7 +477,6 @@ $btnSave.addEventListener('click', async () => {
   $btnSave.disabled = true;
   $btnSave.textContent = '저장 중...';
   const fd = new FormData();
-  fd.append('sheets_url', lastSheetsUrl);
   fd.append('reviews_json', JSON.stringify(lastReviews));
   try {
     const res = await fetch('/api/save', { method: 'POST', body: fd });
