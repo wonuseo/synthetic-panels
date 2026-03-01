@@ -59,16 +59,18 @@ class Review:
 
             data = json.loads(text)
 
-            # Support both flat and nested (Korean category keys) structures
-            base = data.get("기본 평가", data)
-            ba   = data.get("브랜드 태도", data)
-            pv   = data.get("지각된 가치", data)
-            bf   = data.get("브랜드 적합성", data)
-            ae   = data.get("광고 효과성", data)
-            etc  = data.get("기타 정량", data)
-            pi   = data.get("구매 의향", data)
-            pp   = data.get("구매 확률", data)
-            qc   = data.get("정성적 코멘트", data)
+            # Normalize section keys (lowercase + strip spaces) for flexible matching.
+            # Final fallback is data itself to support flat JSON responses.
+            _norm = {"".join(k.lower().split()): v for k, v in data.items() if isinstance(v, dict)}
+            base = _norm.get("기본평가") or data
+            ba   = _norm.get("브랜드태도") or data
+            pv   = _norm.get("지각된가치") or data
+            bf   = _norm.get("브랜드적합성") or data
+            ae   = _norm.get("광고효과성") or data
+            etc  = _norm.get("기타정량") or data
+            pi   = _norm.get("구매의향") or data
+            pp   = _norm.get("구매확률") or data
+            qc   = _norm.get("정성적코멘트") or data
 
             positives = base.get("key_positives", [])
             if isinstance(positives, list):
@@ -78,10 +80,8 @@ class Review:
             if isinstance(concerns, list):
                 concerns = "; ".join(concerns)
 
-            # Parse QA fields if present
-            # Try "QA 검증" first, then "QA 검증 항목" (matches the prompt section header),
-            # then fall back to the root dict for flat JSON responses.
-            qa_fields = data.get("QA 검증") or data.get("QA 검증 항목") or data
+            # Parse QA fields if present — normalized lookup, fallback to data for flat JSON.
+            qa_fields = _norm.get("qa검증") or _norm.get("qa검증항목") or data
             qa_result = None
             if any(qa_fields.get(f) for f in (
                 "qa_rep_brand_attitude", "qa_rep_value_perception", "qa_rep_purchase_intent",
