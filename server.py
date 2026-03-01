@@ -12,20 +12,20 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
-from config import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE
-from sheets.client import open_spreadsheet_by_url
-from sheets.personas import load_personas
-from sheets.results import save_reviews, save_synthesis
-from llm.claude import call_claude, synthesize_claude
-from llm.openai_client import call_openai, synthesize_openai
-from llm.parse import extract_json_or_none
-from models.review import Review
-from models.qa import QAResult
+from app.core import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE
+from app.sheets.client import open_spreadsheet_by_url
+from app.sheets.personas import load_personas
+from app.sheets.results import save_reviews, save_synthesis
+from app.llm.claude import call_claude, synthesize_claude
+from app.llm.openai_client import call_openai, synthesize_openai
+from app.llm.parse import extract_json_or_none
+from app.models.review import Review
+from app.models.qa import QAResult
 
 app = FastAPI(title="Synthetic Panels")
 
-STATIC_DIR = Path(__file__).parent / "frontend"
-TEMPLATES_DIR = Path(__file__).parent / "templates"
+STATIC_DIR = Path(__file__).parent / "static"
+TEMPLATES_DIR = Path(__file__).parent / "static"
 _VERSION_FILE = Path(__file__).parent / "VERSION"
 APP_VERSION = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "dev"
 _mtime = _VERSION_FILE.stat().st_mtime if _VERSION_FILE.exists() else None
@@ -43,7 +43,7 @@ async def index(request: Request):
 @app.get("/api/funnel-config")
 async def api_funnel_config():
     """프론트엔드용 퍼널 설정 반환"""
-    from config.funnel import get_funnel_groups
+    from app.core.funnel import get_funnel_groups
     return {"ok": True, "funnels": get_funnel_groups()}
 
 
