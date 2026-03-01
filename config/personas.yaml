@@ -40,17 +40,17 @@ fields:
 # LLM에 전달되는 페르소나 프로필 텍스트 템플릿
 # Python str.format(**fields) 방식으로 렌더링됩니다.
 profile_template: |
-  Name: {persona_name}
-  Gender: {panel_gender}
-  Sex: {panel_sex}
-  Preferred Season: {persona_season}
-  Cost Per Click (Budget Tier): {panel_cpc}
-  Potential Value: {panel_potential}
-  Room Preference: {panel_room_pref}
-  Bed Preference: {panel_bed_pref}
-  Activity Preferences: {panel_activity_pref_1}, {panel_activity_pref_2}, {panel_activity_pref_3}
-  Cuisine Preferences: {panel_cuisine_1}, {panel_cuisine_2}
-  Key Success Factors: {persona_ksf}
-  Marketing Skepticism Level: {panel_skepticism}
-  Preferred Competitor Brand(s): {panel_competitor_pref}
-  Past Friction / Complaints: {panel_past_friction}
+  이름: {persona_name}
+  성별: {panel_gender}
+  성: {panel_sex}
+  선호 시즌: {persona_season}
+  예산 등급(CPC): {panel_cpc}
+  잠재 가치: {panel_potential}
+  선호 객실: {panel_room_pref}
+  선호 침대: {panel_bed_pref}
+  선호 활동: {panel_activity_pref_1}, {panel_activity_pref_2}, {panel_activity_pref_3}
+  선호 음식: {panel_cuisine_1}, {panel_cuisine_2}
+  핵심 성공 요인(KSF): {persona_ksf}
+  마케팅 회의도: {panel_skepticism}
+  선호 경쟁 브랜드: {panel_competitor_pref}
+  과거 마찰/불만: {panel_past_friction}

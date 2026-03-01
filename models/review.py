@@ -15,15 +15,30 @@ class Review:
     review_summary: str = ""
     # Brand Attitude (1-7)
     like_dislike: int = 0
-    positive_negative: int = 0
-    good_bad: int = 0
     favorable_unfavorable: int = 0
+    # Perceived Value (1-7)
+    value_for_money: int = 0
+    price_fairness: int = 0
+    # Brand Fit (1-7)
+    brand_self_congruity: int = 0
+    brand_image_fit: int = 0
+    # Ad Effectiveness (1-7)
+    message_clarity: int = 0
+    attention_grabbing: int = 0
+    # Other quantitative
+    info_sufficiency: int = 0
+    competitive_preference: str = ""
     # Purchase Intention (1-7)
     likelihood_high: int = 0
     probability_consider_high: int = 0
     willingness_high: int = 0
     # Purchase Probability (0-10)
     purchase_probability_juster: int = 0
+    # Qualitative Comments
+    perceived_message: str = ""
+    emotional_response: str = ""
+    purchase_trigger_barrier: str = ""
+    recommendation_context: str = ""
     raw_response: str = ""
     error: Optional[str] = None
 
@@ -43,8 +58,13 @@ class Review:
             # Support both flat and nested (Korean category keys) structures
             base = data.get("기본 평가", data)
             ba   = data.get("브랜드 태도", data)
+            pv   = data.get("지각된 가치", data)
+            bf   = data.get("브랜드 적합성", data)
+            ae   = data.get("광고 효과성", data)
+            etc  = data.get("기타 정량", data)
             pi   = data.get("구매 의향", data)
             pp   = data.get("구매 확률", data)
+            qc   = data.get("정성적 코멘트", data)
 
             positives = base.get("key_positives", [])
             if isinstance(positives, list):
@@ -65,15 +85,30 @@ class Review:
                 review_summary=str(base.get("review_summary", "")),
                 # Brand Attitude
                 like_dislike=int(ba.get("like_dislike", 0)),
-                positive_negative=int(ba.get("positive_negative", 0)),
-                good_bad=int(ba.get("good_bad", 0)),
                 favorable_unfavorable=int(ba.get("favorable_unfavorable", 0)),
+                # Perceived Value
+                value_for_money=int(pv.get("value_for_money", 0)),
+                price_fairness=int(pv.get("price_fairness", 0)),
+                # Brand Fit
+                brand_self_congruity=int(bf.get("brand_self_congruity", 0)),
+                brand_image_fit=int(bf.get("brand_image_fit", 0)),
+                # Ad Effectiveness
+                message_clarity=int(ae.get("message_clarity", 0)),
+                attention_grabbing=int(ae.get("attention_grabbing", 0)),
+                # Other quantitative
+                info_sufficiency=int(etc.get("info_sufficiency", 0)),
+                competitive_preference=str(etc.get("competitive_preference", "")),
                 # Purchase Intention
                 likelihood_high=int(pi.get("likelihood_high", 0)),
                 probability_consider_high=int(pi.get("probability_consider_high", 0)),
                 willingness_high=int(pi.get("willingness_high", 0)),
                 # Purchase Probability
                 purchase_probability_juster=int(pp.get("purchase_probability_juster", 0)),
+                # Qualitative Comments
+                perceived_message=str(qc.get("perceived_message", "")),
+                emotional_response=str(qc.get("emotional_response", "")),
+                purchase_trigger_barrier=str(qc.get("purchase_trigger_barrier", "")),
+                recommendation_context=str(qc.get("recommendation_context", "")),
                 raw_response=response_text,
             )
         except (json.JSONDecodeError, KeyError, ValueError):
@@ -100,12 +135,22 @@ class Review:
             self.recommendation,
             self.review_summary,
             self.like_dislike,
-            self.positive_negative,
-            self.good_bad,
             self.favorable_unfavorable,
+            self.value_for_money,
+            self.price_fairness,
+            self.brand_self_congruity,
+            self.brand_image_fit,
+            self.message_clarity,
+            self.attention_grabbing,
+            self.info_sufficiency,
+            self.competitive_preference,
             self.likelihood_high,
             self.probability_consider_high,
             self.willingness_high,
             self.purchase_probability_juster,
+            self.perceived_message,
+            self.emotional_response,
+            self.purchase_trigger_barrier,
+            self.recommendation_context,
             self.error or "",
         ]

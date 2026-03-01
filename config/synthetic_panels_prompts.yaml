@@ -20,7 +20,7 @@ individual_review:
     5. appeal_score and purchase scores must honestly reflect your persona's fit. A persona who prefers a competitor brand or has a tight budget should score LOW (1-4 range) unless the promotion genuinely addresses their core needs.
     6. Avoid sycophantic language. Do not praise the promotion simply because it is a luxury brand.
 
-    IMPORTANT: All text responses (first_impression, key_positives, key_concerns, recommendation, review_summary) MUST be written in Korean (한국어).
+    IMPORTANT: All text responses (first_impression, key_positives, key_concerns, recommendation, review_summary, and all qualitative comments) MUST be written in Korean (한국어).
 
   # 리뷰 요청 본문 — {material_description} 자리에 자료 설명이 삽입됩니다.
   user_base: |
@@ -40,9 +40,23 @@ individual_review:
 
     --- 브랜드 태도 (Brand Attitude, 1-7 척도: 1=매우 부정적, 4=보통, 7=매우 긍정적) ---
     - "like_dislike": integer 1-7, 이 브랜드/프로모션이 싫다(1) ~ 좋다(7)
-    - "positive_negative": integer 1-7, 이 브랜드/프로모션에 대해 부정적(1) ~ 긍정적(7)
-    - "good_bad": integer 1-7, 이 브랜드/프로모션이 나쁘다(1) ~ 좋다(7)
     - "favorable_unfavorable": integer 1-7, 이 브랜드/프로모션이 비호의적(1) ~ 호의적(7)
+
+    --- 지각된 가치 (Perceived Value, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다) ---
+    - "value_for_money": integer 1-7, 가격 대비 가치가 있다
+    - "price_fairness": integer 1-7, 가격이 적정하다
+
+    --- 브랜드 적합성 (Brand Fit, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다) ---
+    - "brand_self_congruity": integer 1-7, 나 같은 사람을 위한 것이다
+    - "brand_image_fit": integer 1-7, 프로모션 이미지가 브랜드에 어울린다
+
+    --- 광고 효과성 (Ad Effectiveness, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다) ---
+    - "message_clarity": integer 1-7, 무엇을 제공하는지 명확하게 이해된다
+    - "attention_grabbing": integer 1-7, 시선을 끈다
+
+    --- 기타 정량 ---
+    - "info_sufficiency": integer 1-7, 구매 결정에 충분한 정보가 제공되었다
+    - "competitive_preference": string, 경쟁 브랜드 대비 이 프로모션의 장단점 비교 (한국어)
 
     --- 구매 의향 (Purchase Intention, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다) ---
     - "likelihood_high": integer 1-7, 이 프로모션을 구매할 가능성이 높다
@@ -53,6 +67,12 @@ individual_review:
     - "purchase_probability_juster": integer 0-10, 향후 이 프로모션을 실제로 구매할 확률
       (0=전혀 가능성 없음, 1=거의 가능성 없음, 2=매우 낮은 가능성, 3=낮은 가능성, 4=약간의 가능성, 5=반반, 6=꽤 있는 가능성, 7=높은 가능성, 8=매우 높은 가능성, 9=거의 확실, 10=확실)
 
+    --- 정성적 코멘트 (Qualitative Comments) ---
+    - "perceived_message": string, 이 프로모션이 나에게 전달하는 핵심 메시지는 무엇인가? (한국어)
+    - "emotional_response": string, 이 프로모션을 보고 든 솔직한 감정과 느낌 (한국어)
+    - "purchase_trigger_barrier": string, 구매를 결정하게 만들려면 무엇이 추가/변경되어야 하는가? (한국어)
+    - "recommendation_context": string, 주변에 이 프로모션을 추천한다면 누구에게 어떻게 설명하겠는가? 추천하지 않겠다면 그 이유 (한국어)
+
     Respond ONLY with the JSON object, no additional text.
 
   # 자료 유형별 설명 문구
@@ -60,4 +80,3 @@ individual_review:
     image: "The attached image/document shows the visual promotion material."
     text_prefix: "The following is the text content of the promotion:"
     default: "Please review the provided promotion material."
-
