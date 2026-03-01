@@ -654,7 +654,8 @@ function renderTargetDeepDive(valid) {
 
   let html = '<div class="card target-deep-dive"><h2>🔍 타겟 세그먼트 심층 분석</h2>';
   html += `<div class="target-persona-header"><span style="font-size:1.4rem">${emoji}</span><span style="font-size:1.05rem;font-weight:700">${esc(r.persona_name)}</span><span class="score-badge ${cls}">${r.appeal_score}/10</span><span class="rec-text">핵심 타겟 세그먼트 · 최고 관심도</span></div>`;
-  if (r.first_impression) html += `<div class="impression" style="margin:14px 0 12px">"${esc(r.first_impression)}"</div>`;
+  if (r.first_impression) html += `<div class="impression" style="margin:14px 0 8px">"${esc(r.first_impression)}"</div>`;
+  if (r.review_summary) html += `<div class="review-summary" style="margin-bottom:14px"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>`;
   if (positives.length || concerns.length) {
     html += `<div class="pos-neg" style="margin-bottom:14px"><div><h5>✅ 긍정 요소</h5><ul>${positives.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><h5>⚠️ 우려 사항</h5><ul>${concerns.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div>`;
   }
@@ -669,7 +670,6 @@ function renderTargetDeepDive(valid) {
       html += `</div>`;
     }
   }
-  if (r.review_summary) html += `<div class="review-summary" style="margin-top:12px"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>`;
   html += '</div>';
   return html;
 }
