@@ -1,6 +1,7 @@
 import time
 import random
 import logging
+from typing import Optional, List
 
 import anthropic
 from anthropic import (
@@ -26,7 +27,7 @@ from llm.prompt import (
 logger = logging.getLogger(__name__)
 
 # ── 싱글턴 클라이언트 (커넥션 풀 재사용) ─────────────────────────
-_client: anthropic.Anthropic | None = None
+_client: Optional[anthropic.Anthropic] = None
 
 
 def _get_client() -> anthropic.Anthropic:
@@ -110,8 +111,8 @@ def _call_with_retry(api_fn, *, max_retries: int = 5, **retry_kw):
 # ── 공개 API ──────────────────────────────────────────────────────
 def call_claude(
     persona: Persona,
-    file_bytes: bytes | None,
-    filename: str | None,
+    file_bytes: Optional[bytes],
+    filename: Optional[str],
     model: str = "claude-sonnet-4-20250514",
     text_content: str = "",
 ) -> Review:
@@ -147,7 +148,7 @@ def call_claude(
         )
 
 
-def synthesize_claude(reviews_data: list[dict], model: str = "claude-sonnet-4-20250514") -> str:
+def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20250514") -> str:
     client = _get_client()
 
     try:

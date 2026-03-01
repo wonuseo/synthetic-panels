@@ -210,7 +210,7 @@ async def api_save(
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
 
-def _parse_synthesis(raw: str) -> dict | None:
+def _parse_synthesis(raw: str) -> Optional[dict]:
     if not raw:
         return None
     try:

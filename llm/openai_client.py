@@ -1,6 +1,7 @@
 import time
 import random
 import logging
+from typing import Optional, List
 
 import openai
 from openai import (
@@ -26,7 +27,7 @@ from llm.prompt import (
 logger = logging.getLogger(__name__)
 
 # ── 싱글턴 클라이언트 (커넥션 풀 재사용) ─────────────────────────
-_client: openai.OpenAI | None = None
+_client: Optional[openai.OpenAI] = None
 
 
 def _get_client() -> openai.OpenAI:
@@ -122,8 +123,8 @@ def _call_with_retry(api_fn, *, max_retries: int = 5, **retry_kw):
 # ── 공개 API ──────────────────────────────────────────────────────
 def call_openai(
     persona: Persona,
-    file_bytes: bytes | None,
-    filename: str | None,
+    file_bytes: Optional[bytes],
+    filename: Optional[str],
     model: str = "gpt-4o",
     text_content: str = "",
 ) -> Review:
@@ -161,7 +162,7 @@ def call_openai(
         )
 
 
-def synthesize_openai(reviews_data: list[dict], model: str = "gpt-4o") -> str:
+def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o") -> str:
     client = _get_client()
 
     try:

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 import yaml
 
 from models.persona import Persona
@@ -36,7 +37,7 @@ def build_user_prompt(has_image: bool = True, text_content: str = "") -> str:
 SYNTHESIS_SYSTEM_PROMPT: str = _synthesis["system"]
 
 
-def build_synthesis_prompt(reviews_data: list[dict]) -> str:
+def build_synthesis_prompt(reviews_data: List[dict]) -> str:
     _defaults = {
         "like_dislike": "-", "positive_negative": "-",
         "good_bad": "-", "favorable_unfavorable": "-",

@@ -1,4 +1,5 @@
 import gspread
+from typing import List
 from models.review import Review
 
 RESULTS_HEADERS = [
@@ -25,7 +26,7 @@ RESULTS_HEADERS = [
 
 def save_reviews(
     spreadsheet: gspread.Spreadsheet,
-    reviews: list[Review],
+    reviews: List[Review],
     run_id: str,
     worksheet_name: str = "results",
 ) -> None:

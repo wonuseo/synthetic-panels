@@ -1,6 +1,7 @@
 import base64
 import io
 from pathlib import Path
+from typing import List
 from PIL import Image
 from pdf2image import convert_from_bytes
 
@@ -23,7 +24,7 @@ def _detect_media_type(filename: str) -> str:
     }.get(ext, "application/octet-stream")
 
 
-def prepare_for_claude(file_bytes: bytes, filename: str) -> list[dict]:
+def prepare_for_claude(file_bytes: bytes, filename: str) -> List[dict]:
     media_type = _detect_media_type(filename)
 
     if media_type == "application/pdf":
@@ -53,7 +54,7 @@ def prepare_for_claude(file_bytes: bytes, filename: str) -> list[dict]:
     ]
 
 
-def prepare_for_openai(file_bytes: bytes, filename: str) -> list[dict]:
+def prepare_for_openai(file_bytes: bytes, filename: str) -> List[dict]:
     media_type = _detect_media_type(filename)
 
     if media_type == "application/pdf":
