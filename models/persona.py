@@ -1,5 +1,18 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import Optional
+import yaml
+
+_config_dir = Path(__file__).parent.parent / "config"
+
+
+def _load_persona_config() -> dict:
+    with open(_config_dir / "personas.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+_persona_config = _load_persona_config()
+_profile_template: str = _persona_config["profile_template"]
 
 
 @dataclass
@@ -41,16 +54,4 @@ class Persona:
         )
 
     def to_profile_text(self) -> str:
-        return (
-            f"Name: {self.persona_name}\n"
-            f"Gender: {self.panel_gender}\n"
-            f"Sex: {self.panel_sex}\n"
-            f"Preferred Season: {self.persona_season}\n"
-            f"Cost Per Click (Budget Tier): {self.panel_cpc}\n"
-            f"Potential Value: {self.panel_potential}\n"
-            f"Room Preference: {self.panel_room_pref}\n"
-            f"Bed Preference: {self.panel_bed_pref}\n"
-            f"Activity Preferences: {self.panel_activity_pref_1}, {self.panel_activity_pref_2}, {self.panel_activity_pref_3}\n"
-            f"Cuisine Preferences: {self.panel_cuisine_1}, {self.panel_cuisine_2}\n"
-            f"Key Success Factors: {self.persona_ksf}"
-        )
+        return _profile_template.format(**asdict(self)).strip()

@@ -1,97 +1,60 @@
+from pathlib import Path
+import yaml
+
 from models.persona import Persona
 
-SYSTEM_PROMPT_TEMPLATE = """You are a synthetic consumer panel member. You must evaluate a hotel/resort marketing promotion material strictly from the perspective of the following persona profile.
+_config_dir = Path(__file__).parent.parent / "config"
 
-=== YOUR PERSONA PROFILE ===
-{profile}
-===========================
 
-Evaluate the promotion material based on your persona's preferences, budget, interests, and key success factors. Be authentic to your persona — your review should reflect what someone with these specific characteristics would actually think and feel about this promotion.
+def _load_prompts() -> dict:
+    with open(_config_dir / "prompts.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
-IMPORTANT: All text responses (first_impression, key_positives, key_concerns, recommendation, review_summary) MUST be written in Korean (한국어)."""
 
-USER_PROMPT_BASE = """Please review the following hotel/resort marketing promotion material from your persona's perspective.
-
-{material_description}
-
-Provide your review as a JSON object with the following fields:
-
---- 기본 평가 ---
-- "appeal_score": integer 1-10, 이 프로모션이 당신에게 얼마나 매력적인지
-- "first_impression": string, 첫인상을 1-2문장으로 (한국어)
-- "key_positives": list of strings, 매력적인 요소들과 이유 (한국어)
-- "key_concerns": list of strings, 우려 사항이나 거부감 요소들 (한국어)
-- "recommendation": string, 다음 중 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"
-- "review_summary": string, 종합 평가를 간단한 문단으로 (한국어)
-
---- 브랜드 태도 (Brand Attitude, 1-7 척도: 1=매우 부정적, 4=보통, 7=매우 긍정적) ---
-- "like_dislike": integer 1-7, 이 브랜드/프로모션이 싫다(1) ~ 좋다(7)
-- "positive_negative": integer 1-7, 이 브랜드/프로모션에 대해 부정적(1) ~ 긍정적(7)
-- "good_bad": integer 1-7, 이 브랜드/프로모션이 나쁘다(1) ~ 좋다(7)
-- "favorable_unfavorable": integer 1-7, 이 브랜드/프로모션이 비호의적(1) ~ 호의적(7)
-
---- 구매 의향 (Purchase Intention, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다) ---
-- "likelihood_high": integer 1-7, 이 프로모션을 구매할 가능성이 높다
-- "probability_consider_high": integer 1-7, 이 프로모션을 고려할 확률이 높다
-- "willingness_high": integer 1-7, 이 프로모션을 구매할 의향이 높다
-
---- 구매 확률 (Purchase Probability, Juster Scale 0-10) ---
-- "purchase_probability_juster": integer 0-10, 향후 이 프로모션을 실제로 구매할 확률
-  (0=전혀 가능성 없음, 1=거의 가능성 없음, 2=매우 낮은 가능성, 3=낮은 가능성, 4=약간의 가능성, 5=반반, 6=꽤 있는 가능성, 7=높은 가능성, 8=매우 높은 가능성, 9=거의 확실, 10=확실)
-
-Respond ONLY with the JSON object, no additional text."""
+_prompts = _load_prompts()
+_individual = _prompts["individual_review"]
+_synthesis = _prompts["synthesis"]
 
 
 def build_system_prompt(persona: Persona) -> str:
-    return SYSTEM_PROMPT_TEMPLATE.format(profile=persona.to_profile_text())
+    return _individual["system"].format(profile=persona.to_profile_text())
 
 
 def build_user_prompt(has_image: bool = True, text_content: str = "") -> str:
+    sources = _individual["material_sources"]
     parts = []
     if has_image:
-        parts.append("The attached image/document shows the visual promotion material.")
+        parts.append(sources["image"])
     if text_content:
-        parts.append(f"The following is the text content of the promotion:\n\n{text_content}")
+        parts.append(f"{sources['text_prefix']}\n\n{text_content}")
     if not parts:
-        parts.append("Please review the provided promotion material.")
+        parts.append(sources["default"])
     material_description = "\n\n".join(parts)
-    return USER_PROMPT_BASE.format(material_description=material_description)
+    return _individual["user_base"].format(material_description=material_description)
 
 
-SYNTHESIS_SYSTEM_PROMPT = """You are a senior marketing analyst. You will be given individual reviews of a hotel/resort marketing promotion from multiple consumer personas. Your job is to synthesize all reviews into a single consolidated analysis.
-
-IMPORTANT: All text responses MUST be written in Korean (한국어)."""
-
-SYNTHESIS_USER_PROMPT_TEMPLATE = """Below are individual reviews from {count} consumer personas evaluating a hotel/resort marketing promotion.
-
-{reviews_text}
-
-Please synthesize these reviews into a consolidated analysis. Respond as a JSON object:
-- "overall_score": float (average appeal score, 1 decimal place)
-- "executive_summary": string, 2-3문장의 핵심 요약 (한국어)
-- "consensus_positives": list of strings, 여러 페르소나가 공통적으로 긍정적으로 평가한 요소들 (한국어)
-- "consensus_concerns": list of strings, 여러 페르소나가 공통적으로 우려한 사항들 (한국어)
-- "segment_insights": list of strings, 페르소나 세그먼트 간 주목할 만한 차이점 (한국어)
-- "actionable_recommendations": list of strings, 프로모션 개선을 위한 구체적 제안 (한국어)
-- "avg_brand_attitude": float (브랜드 태도 4개 항목 전체 평균, 1 decimal place)
-- "avg_purchase_intention": float (구매 의향 3개 항목 전체 평균, 1 decimal place)
-- "avg_purchase_probability": float (Juster 구매확률 전체 평균, 1 decimal place)
-
-Respond ONLY with the JSON object, no additional text."""
+SYNTHESIS_SYSTEM_PROMPT: str = _synthesis["system"]
 
 
 def build_synthesis_prompt(reviews_data: list[dict]) -> str:
+    _defaults = {
+        "like_dislike": "-", "positive_negative": "-",
+        "good_bad": "-", "favorable_unfavorable": "-",
+        "likelihood_high": "-", "probability_consider_high": "-",
+        "willingness_high": "-", "purchase_probability_juster": "-",
+    }
     parts = []
     for r in reviews_data:
+        data = {**_defaults, **r}
         parts.append(
-            f"--- {r['persona_name']} (매력도: {r['appeal_score']}/10, {r['recommendation']}) ---\n"
-            f"첫인상: {r['first_impression']}\n"
-            f"긍정 요소: {r['key_positives']}\n"
-            f"우려 사항: {r['key_concerns']}\n"
-            f"종합 평가: {r['review_summary']}\n"
-            f"브랜드 태도: 호감({r.get('like_dislike', '-')}), 긍부정({r.get('positive_negative', '-')}), 좋나쁨({r.get('good_bad', '-')}), 호의({r.get('favorable_unfavorable', '-')})\n"
-            f"구매 의향: 가능성({r.get('likelihood_high', '-')}), 고려확률({r.get('probability_consider_high', '-')}), 의향({r.get('willingness_high', '-')})\n"
-            f"구매 확률(Juster): {r.get('purchase_probability_juster', '-')}/10\n"
+            f"--- {data['persona_name']} (매력도: {data['appeal_score']}/10, {data['recommendation']}) ---\n"
+            f"첫인상: {data['first_impression']}\n"
+            f"긍정 요소: {data['key_positives']}\n"
+            f"우려 사항: {data['key_concerns']}\n"
+            f"종합 평가: {data['review_summary']}\n"
+            f"브랜드 태도: 호감({data['like_dislike']}), 긍부정({data['positive_negative']}), 좋나쁨({data['good_bad']}), 호의({data['favorable_unfavorable']})\n"
+            f"구매 의향: 가능성({data['likelihood_high']}), 고려확률({data['probability_consider_high']}), 의향({data['willingness_high']})\n"
+            f"구매 확률(Juster): {data['purchase_probability_juster']}/10\n"
         )
     reviews_text = "\n".join(parts)
-    return SYNTHESIS_USER_PROMPT_TEMPLATE.format(count=len(reviews_data), reviews_text=reviews_text)
+    return _synthesis["user_template"].format(count=len(reviews_data), reviews_text=reviews_text)

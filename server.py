@@ -6,9 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
+from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
 from config import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME
@@ -21,13 +22,16 @@ from models.review import Review
 
 app = FastAPI(title="Synthetic Panels")
 
-STATIC_DIR = Path(__file__).parent / "static"
+STATIC_DIR = Path(__file__).parent / "frontend"
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @app.get("/")
-async def index():
-    return FileResponse(str(STATIC_DIR / "index.html"))
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.post("/api/personas")
