@@ -81,6 +81,45 @@ def get_results_headers() -> list[str]:
     )
 
 
+def get_field_scales() -> dict[str, tuple[int, int]]:
+    """개별 항목별 유효 스케일 범위를 dict로 반환.
+
+    반환 형태: {"like_dislike": (1, 7), "appeal_score": (1, 10), ...}
+    scale이 없는(정성적) 항목은 제외된다.
+    """
+    cfg = load_funnel_config()
+    scales: dict[str, tuple[int, int]] = {}
+    for funnel_name in _FUNNEL_ORDER:
+        funnel = cfg["funnels"].get(funnel_name, {})
+        items = funnel.get("individual_items", {})
+        for item in items.get("quantitative", []):
+            scale_str = item.get("scale", "")
+            if scale_str and "-" in scale_str:
+                lo, hi = scale_str.split("-", 1)
+                scales[item["key"]] = (int(lo), int(hi))
+        # QA 항목 (모두 1-7)
+        for item in funnel.get("qa_items", []):
+            scales[item["key"]] = (1, 7)
+    return scales
+
+
+def get_field_scales_cached() -> dict[str, tuple[int, int]]:
+    """get_field_scales의 캐시된 버전."""
+    return _FIELD_SCALES_CACHE
+
+
+# 모듈 로드 시 한 번만 계산
+_FIELD_SCALES_CACHE: dict[str, tuple[int, int]] = {}
+
+
+def _init_scales_cache():
+    global _FIELD_SCALES_CACHE
+    _FIELD_SCALES_CACHE = get_field_scales()
+
+
+_init_scales_cache()
+
+
 def get_funnel_groups() -> dict:
     """프론트엔드용: {funnel_name: {label, items: [{key, label, scale, type}]}} 형태"""
     cfg = load_funnel_config()

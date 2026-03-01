@@ -1,9 +1,87 @@
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 import json
+import re
+import logging
 
-from config.funnel import get_individual_keys, get_qa_keys
+from config.funnel import get_individual_keys, get_qa_keys, get_field_scales_cached
+from llm.parse import extract_json
 from models.qa import QAResult
+
+logger = logging.getLogger(__name__)
+
+# 숫자 추출용 정규식: 텍스트에서 첫 번째 숫자(정수 또는 소수) 추출
+_NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+# 허용되는 recommendation 값
+_VALID_RECOMMENDATIONS = {"매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"}
+
+
+def _safe_int(value, lo: int = 0, hi: int = 10) -> int:
+    """다양한 LLM 출력 형태를 안전하게 int로 변환하고, 스케일 범위에 클램핑한다.
+
+    지원하는 형태:
+    - int/float: 그대로 변환
+    - "5": 문자열 숫자
+    - "5/7": 분수 표기 → 앞쪽 숫자
+    - "약 4", "대략 3": 한국어 접두어 + 숫자
+    - "5점", "5점 (높음)": 숫자 + 한국어 접미어
+    - None, "", 비숫자 문자열: 0 반환
+    """
+    if value is None:
+        return 0
+
+    # 이미 숫자 타입
+    if isinstance(value, (int, float)):
+        n = int(round(value))
+        if n == 0:
+            return 0
+        return max(lo, min(hi, n))
+
+    # 문자열 처리
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return 0
+        match = _NUM_RE.search(value)
+        if match:
+            n = int(round(float(match.group())))
+            if n == 0:
+                return 0
+            return max(lo, min(hi, n))
+        return 0
+
+    # list 등 예상치 못한 타입
+    return 0
+
+
+def _safe_str(value) -> str:
+    """다양한 LLM 출력 형태를 안전하게 str로 변환한다."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return "; ".join(str(v) for v in value)
+    return str(value).strip()
+
+
+def _validate_recommendation(value) -> str:
+    """recommendation 필드를 유효한 값으로 정규화한다."""
+    s = _safe_str(value)
+    if not s:
+        return "보통"
+    if s in _VALID_RECOMMENDATIONS:
+        return s
+    # 공백 제거 후 매칭 시도 (예: "관심있음" → "관심 있음")
+    s_nospace = s.replace(" ", "")
+    for valid in _VALID_RECOMMENDATIONS:
+        valid_nospace = valid.replace(" ", "")
+        if s_nospace == valid_nospace:
+            return valid
+    # 부분 매칭 시도 (긴 쪽에서 짧은 쪽 포함 여부)
+    for valid in _VALID_RECOMMENDATIONS:
+        if len(s) >= 2 and (valid in s or s in valid):
+            return valid
+    return s
 
 
 @dataclass
@@ -47,101 +125,89 @@ class Review:
     # QA Result
     qa_result: Optional[QAResult] = None
 
+    # dataclass 필드별 타입 캐스터 (flat JSON → Review 필드 매핑)
+    _INT_FIELDS = {
+        "appeal_score", "like_dislike", "favorable_unfavorable",
+        "value_for_money", "price_fairness", "brand_self_congruity",
+        "brand_image_fit", "message_clarity", "attention_grabbing",
+        "info_sufficiency", "likelihood_high", "probability_consider_high",
+        "willingness_high", "purchase_probability_juster",
+    }
+    _STR_FIELDS = {
+        "first_impression", "key_positives", "key_concerns",
+        "recommendation", "review_summary", "competitive_preference",
+        "perceived_message", "emotional_response",
+        "purchase_trigger_barrier", "recommendation_context",
+    }
+    _QA_FIELDS = {
+        "qa_rep_brand_attitude", "qa_rep_value_perception", "qa_rep_purchase_intent",
+        "qa_trap_budget_sensitivity", "qa_trap_competitor_loyalty", "qa_trap_skepticism_check",
+    }
+
     @classmethod
     def from_llm_response(cls, persona_id: str, persona_name: str, response_text: str) -> "Review":
         try:
-            # Try to extract JSON from the response
-            text = response_text.strip()
-            # Handle markdown code blocks
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0].strip()
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0].strip()
+            data = extract_json(response_text)
 
-            data = json.loads(text)
+            # 스케일 맵 로드
+            scales = get_field_scales_cached()
 
-            # Normalize section keys (lowercase + strip spaces) for flexible matching.
-            # Final fallback is data itself to support flat JSON responses.
-            _norm = {"".join(k.lower().split()): v for k, v in data.items() if isinstance(v, dict)}
-            base = _norm.get("기본평가") or data
-            ba   = _norm.get("브랜드태도") or data
-            pv   = _norm.get("지각된가치") or data
-            bf   = _norm.get("브랜드적합성") or data
-            ae   = _norm.get("광고효과성") or data
-            etc  = _norm.get("기타정량") or data
-            pi   = _norm.get("구매의향") or data
-            pp   = _norm.get("구매확률") or data
-            qc   = _norm.get("정성적코멘트") or data
+            kwargs: dict = {"persona_id": persona_id, "persona_name": persona_name, "raw_response": response_text}
 
-            positives = base.get("key_positives", [])
-            if isinstance(positives, list):
-                positives = "; ".join(positives)
+            # 필드 존재 여부 추적
+            missing_int = []
+            missing_str = []
 
-            concerns = base.get("key_concerns", [])
-            if isinstance(concerns, list):
-                concerns = "; ".join(concerns)
+            for key in cls._INT_FIELDS:
+                if key not in data:
+                    missing_int.append(key)
+                lo, hi = scales.get(key, (0, 10))
+                kwargs[key] = _safe_int(data.get(key), lo, hi)
 
-            # Parse QA fields if present — normalized lookup, fallback to data for flat JSON.
-            qa_fields = _norm.get("qa검증") or _norm.get("qa검증항목") or data
-            qa_result = None
-            if any(qa_fields.get(f) for f in (
-                "qa_rep_brand_attitude", "qa_rep_value_perception", "qa_rep_purchase_intent",
-                "qa_trap_budget_sensitivity", "qa_trap_competitor_loyalty", "qa_trap_skepticism_check",
-            )):
-                qa_result = QAResult(
-                    qa_rep_brand_attitude=int(qa_fields.get("qa_rep_brand_attitude", 0)),
-                    qa_rep_value_perception=int(qa_fields.get("qa_rep_value_perception", 0)),
-                    qa_rep_purchase_intent=int(qa_fields.get("qa_rep_purchase_intent", 0)),
-                    qa_trap_budget_sensitivity=int(qa_fields.get("qa_trap_budget_sensitivity", 0)),
-                    qa_trap_competitor_loyalty=int(qa_fields.get("qa_trap_competitor_loyalty", 0)),
-                    qa_trap_skepticism_check=int(qa_fields.get("qa_trap_skepticism_check", 0)),
+            for key in cls._STR_FIELDS:
+                if key not in data:
+                    missing_str.append(key)
+                if key == "recommendation":
+                    kwargs[key] = _validate_recommendation(data.get(key))
+                else:
+                    kwargs[key] = _safe_str(data.get(key))
+
+            # 누락 필드 경고 로깅
+            if missing_int:
+                logger.warning(
+                    "[%s] 누락된 정량 필드: %s", persona_name, ", ".join(missing_int)
+                )
+            if missing_str:
+                logger.warning(
+                    "[%s] 누락된 정성 필드: %s", persona_name, ", ".join(missing_str)
                 )
 
-            return cls(
-                persona_id=persona_id,
-                persona_name=persona_name,
-                appeal_score=int(base.get("appeal_score", 0)),
-                first_impression=str(base.get("first_impression", "")),
-                key_positives=str(positives),
-                key_concerns=str(concerns),
-                recommendation=str(base.get("recommendation", "")),
-                review_summary=str(base.get("review_summary", "")),
-                # Brand Attitude
-                like_dislike=int(ba.get("like_dislike", 0)),
-                favorable_unfavorable=int(ba.get("favorable_unfavorable", 0)),
-                # Perceived Value
-                value_for_money=int(pv.get("value_for_money", 0)),
-                price_fairness=int(pv.get("price_fairness", 0)),
-                # Brand Fit
-                brand_self_congruity=int(bf.get("brand_self_congruity", 0)),
-                brand_image_fit=int(bf.get("brand_image_fit", 0)),
-                # Ad Effectiveness
-                message_clarity=int(ae.get("message_clarity", 0)),
-                attention_grabbing=int(ae.get("attention_grabbing", 0)),
-                # Other quantitative
-                info_sufficiency=int(etc.get("info_sufficiency", 0)),
-                competitive_preference=str(etc.get("competitive_preference", "")),
-                # Purchase Intention
-                likelihood_high=int(pi.get("likelihood_high", 0)),
-                probability_consider_high=int(pi.get("probability_consider_high", 0)),
-                willingness_high=int(pi.get("willingness_high", 0)),
-                # Purchase Probability
-                purchase_probability_juster=int(pp.get("purchase_probability_juster", 0)),
-                # Qualitative Comments
-                perceived_message=str(qc.get("perceived_message", "")),
-                emotional_response=str(qc.get("emotional_response", "")),
-                purchase_trigger_barrier=str(qc.get("purchase_trigger_barrier", "")),
-                recommendation_context=str(qc.get("recommendation_context", "")),
-                raw_response=response_text,
-                qa_result=qa_result,
-            )
-        except (json.JSONDecodeError, KeyError, ValueError):
+            # QA fields
+            if any(data.get(f) for f in cls._QA_FIELDS):
+                qa_kwargs = {}
+                for f in cls._QA_FIELDS:
+                    lo, hi = scales.get(f, (1, 7))
+                    qa_kwargs[f] = _safe_int(data.get(f), lo, hi)
+                kwargs["qa_result"] = QAResult(**qa_kwargs)
+
+            return cls(**kwargs)
+        except json.JSONDecodeError as e:
+            logger.error("[%s] JSON 파싱 실패: %s", persona_name, e)
             return cls(
                 persona_id=persona_id,
                 persona_name=persona_name,
                 review_summary=response_text[:500],
                 raw_response=response_text,
                 error="Failed to parse JSON response",
+            )
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error("[%s] 데이터 변환 실패: %s", persona_name, e)
+            return cls(
+                persona_id=persona_id,
+                persona_name=persona_name,
+                review_summary=response_text[:500],
+                raw_response=response_text,
+                error=f"Data conversion error: {e}",
             )
 
     def to_dict(self) -> dict:

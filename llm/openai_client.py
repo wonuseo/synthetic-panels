@@ -145,6 +145,7 @@ def call_openai(
                 model=model,
                 max_tokens=2048,
                 temperature=0.7,
+                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": build_system_prompt(persona)},
                     {"role": "user", "content": user_content},
@@ -175,6 +176,7 @@ def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o") -> str:
                 model=model,
                 max_tokens=2048,
                 temperature=0.3,
+                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT},
                     {"role": "user", "content": build_synthesis_prompt(reviews_data)},

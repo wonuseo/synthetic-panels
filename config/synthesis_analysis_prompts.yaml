@@ -21,7 +21,14 @@ synthesis:
 
     {reviews_text}
 
-    Please synthesize these reviews into a consolidated analysis. Respond as a JSON object:
+    Please synthesize these reviews into a consolidated analysis. Respond as a single FLAT JSON object.
+
+    STRICT FORMAT RULES:
+    1. Float fields: use plain numbers with 1 decimal place (e.g., 4.3). NOT strings, NOT integers.
+    2. String fields: use plain strings. NOT arrays.
+    3. List fields (marked "list of strings"): use JSON arrays of strings (e.g., ["항목1", "항목2"]).
+    4. EVERY field listed below is REQUIRED — do NOT omit any field.
+    5. Output ONLY the JSON object. No markdown code blocks (```), no commentary.
 
     --- [Upper Funnel] 브랜드 자산 지표 ---
     - "avg_brand_attitude": float (브랜드 태도 2개 항목 전체 평균, 1 decimal place)
@@ -49,4 +56,4 @@ synthesis:
     - "go_nogo_recommendation": string, "강력 추천", "조건부 추천", "수정 후 재검토", "비추천" 중 하나 + 근거를 2-3문장으로 (한국어)
     - "improvement_priority": string, "크리에이티브", "가격·오퍼", "타겟팅", "메시지" 중 최우선 개선 영역 + 구체적 설명 (한국어)
 
-    Respond ONLY with the JSON object, no additional text.
+    Respond ONLY with the JSON object. No markdown, no commentary.

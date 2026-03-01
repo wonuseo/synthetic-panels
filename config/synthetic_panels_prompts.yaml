@@ -28,52 +28,49 @@ individual_review:
 
     {material_description}
 
-    Provide your review as a JSON object with the following fields:
+    Respond with a single FLAT JSON object — all keys at the top level, NO nested objects or sections.
+    Every key is English snake_case. The funnel section comments below are for context only; do NOT create nested objects for them.
+
+    STRICT FORMAT RULES:
+    1. ALL numeric fields must be plain integers (e.g., 5). NOT strings ("5"), NOT fractions (5/7), NOT floats (5.0), NOT text ("약 4점").
+    2. ALL string fields must be plain strings. Do NOT use arrays/lists for string fields.
+    3. EVERY field listed below is REQUIRED — do NOT omit any field.
+    4. Output ONLY the JSON object. No markdown code blocks (```), no commentary, no text before or after the JSON.
 
     --- [Upper Funnel] 브랜드 자산 ---
-    브랜드 태도 (Brand Attitude, 1-7 척도: 1=매우 부정적, 4=보통, 7=매우 긍정적)
-    - "like_dislike": integer 1-7, 이 브랜드/프로모션이 싫다(1) ~ 좋다(7)
-    - "favorable_unfavorable": integer 1-7, 이 브랜드/프로모션이 비호의적(1) ~ 호의적(7)
-    브랜드 적합성 (Brand Fit, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다)
-    - "brand_self_congruity": integer 1-7, 나 같은 사람을 위한 것이다
-    - "brand_image_fit": integer 1-7, 프로모션 이미지가 브랜드에 어울린다
-    광고 효과성 (Ad Effectiveness, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다)
-    - "message_clarity": integer 1-7, 무엇을 제공하는지 명확하게 이해된다
-    - "attention_grabbing": integer 1-7, 시선을 끈다
-    정성적 코멘트
-    - "first_impression": string, 첫인상을 1-2문장으로 (한국어)
-    - "perceived_message": string, 이 프로모션이 나에게 전달하는 핵심 메시지는 무엇인가? (한국어)
-    - "emotional_response": string, 이 프로모션을 보고 든 솔직한 감정과 느낌 (한국어)
+    "like_dislike": integer 1-7, 이 브랜드/프로모션이 싫다(1) ~ 좋다(7)
+    "favorable_unfavorable": integer 1-7, 이 브랜드/프로모션이 비호의적(1) ~ 호의적(7)
+    "brand_self_congruity": integer 1-7, 나 같은 사람을 위한 것이다
+    "brand_image_fit": integer 1-7, 프로모션 이미지가 브랜드에 어울린다
+    "message_clarity": integer 1-7, 무엇을 제공하는지 명확하게 이해된다
+    "attention_grabbing": integer 1-7, 시선을 끈다
+    "first_impression": string, 첫인상을 1-2문장으로 (한국어)
+    "perceived_message": string, 이 프로모션이 나에게 전달하는 핵심 메시지는 무엇인가? (한국어)
+    "emotional_response": string, 이 프로모션을 보고 든 솔직한 감정과 느낌 (한국어)
 
     --- [Mid Funnel] 수요 창출 ---
-    매력도
-    - "appeal_score": integer 1-10, 이 프로모션이 당신에게 얼마나 매력적인지
-    지각된 가치 (Perceived Value, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다)
-    - "value_for_money": integer 1-7, 가격 대비 가치가 있다
-    - "price_fairness": integer 1-7, 가격이 적정하다
-    정보 충분성
-    - "info_sufficiency": integer 1-7, 구매 결정에 충분한 정보가 제공되었다
-    정성적 코멘트
-    - "key_positives": list of strings, 매력적인 요소들과 이유 (한국어)
-    - "key_concerns": list of strings, 최소 2개 이상의 구체적 우려·거부감 요소 — 이 프로모션이 내 니즈를 충족하지 못하는 이유, 가격 대비 가치 의문, 대안과의 비교 등 실질적 내용으로 (한국어)
-    - "competitive_preference": string, 경쟁 브랜드 대비 이 프로모션의 장단점 비교 (한국어)
-    - "recommendation_context": string, 주변에 이 프로모션을 추천한다면 누구에게 어떻게 설명하겠는가? 추천하지 않겠다면 그 이유 (한국어)
-    관심도
-    - "recommendation": string, 다음 중 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"
+    "appeal_score": integer 1-10, 이 프로모션이 당신에게 얼마나 매력적인지
+    "value_for_money": integer 1-7, 가격 대비 가치가 있다
+    "price_fairness": integer 1-7, 가격이 적정하다
+    "info_sufficiency": integer 1-7, 구매 결정에 충분한 정보가 제공되었다
+    "key_positives": string, 매력적인 요소들과 이유를 세미콜론(;)으로 구분 (한국어)
+    "key_concerns": string, 최소 2개 이상의 구체적 우려·거부감 요소를 세미콜론(;)으로 구분 — 이 프로모션이 내 니즈를 충족하지 못하는 이유, 가격 대비 가치 의문, 대안과의 비교 등 실질적 내용으로 (한국어)
+    "competitive_preference": string, 경쟁 브랜드 대비 이 프로모션의 장단점 비교 (한국어)
+    "recommendation_context": string, 주변에 이 프로모션을 추천한다면 누구에게 어떻게 설명하겠는가? 추천하지 않겠다면 그 이유 (한국어)
+    "recommendation": string, 반드시 다음 중 정확히 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"
 
     --- [Lower Funnel] 전환·매출 ---
-    구매 의향 (Purchase Intention, 1-7 척도: 1=전혀 그렇지 않다, 7=매우 그렇다)
-    - "likelihood_high": integer 1-7, 이 프로모션을 구매할 가능성이 높다
-    - "probability_consider_high": integer 1-7, 이 프로모션을 고려할 확률이 높다
-    - "willingness_high": integer 1-7, 이 프로모션을 구매할 의향이 높다
-    구매 확률 (Purchase Probability, Juster Scale 0-10)
-    - "purchase_probability_juster": integer 0-10, 향후 이 프로모션을 실제로 구매할 확률
-      (0=전혀 가능성 없음, 1=거의 가능성 없음, 2=매우 낮은 가능성, 3=낮은 가능성, 4=약간의 가능성, 5=반반, 6=꽤 있는 가능성, 7=높은 가능성, 8=매우 높은 가능성, 9=거의 확실, 10=확실)
-    정성적 코멘트
-    - "purchase_trigger_barrier": string, 구매를 결정하게 만들려면 무엇이 추가/변경되어야 하는가? (한국어)
-    - "review_summary": string, 종합 평가를 간단한 문단으로 (한국어)
+    "likelihood_high": integer 1-7, 이 프로모션을 구매할 가능성이 높다
+    "probability_consider_high": integer 1-7, 이 프로모션을 고려할 확률이 높다
+    "willingness_high": integer 1-7, 이 프로모션을 구매할 의향이 높다
+    "purchase_probability_juster": integer 0-10, 향후 이 프로모션을 실제로 구매할 확률 (0=전혀 가능성 없음 ~ 10=확실)
+    "purchase_trigger_barrier": string, 구매를 결정하게 만들려면 무엇이 추가/변경되어야 하는가? (한국어)
+    "review_summary": string, 종합 평가를 간단한 문단으로 (한국어)
 
-    Respond ONLY with the JSON object, no additional text.
+    Example (structure only — values are placeholders):
+    {{"like_dislike":4,"favorable_unfavorable":3,"brand_self_congruity":5,"brand_image_fit":4,"message_clarity":5,"attention_grabbing":3,"first_impression":"...","perceived_message":"...","emotional_response":"...","appeal_score":6,"value_for_money":4,"price_fairness":3,"info_sufficiency":5,"key_positives":"항목1; 항목2","key_concerns":"우려1; 우려2","competitive_preference":"...","recommendation_context":"...","recommendation":"보통","likelihood_high":3,"probability_consider_high":4,"willingness_high":3,"purchase_probability_juster":4,"purchase_trigger_barrier":"...","review_summary":"..."}}
+
+    Respond ONLY with the JSON object. No markdown, no commentary.
 
   # QA 검증 항목 (qa_mode에 따라 프롬프트에 추가)
   qa_items:

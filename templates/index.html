@@ -729,11 +729,7 @@ function renderSynthesis(s) {
     html += `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
     for (const item of synQualItems) {
       html += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>`;
-      if (Array.isArray(item.val)) {
-        html += `<ul style="padding-left:18px;margin-top:4px">${item.val.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
-      } else {
-        html += `<div class="sq-text">${esc(String(item.val))}</div>`;
-      }
+      html += renderSynValue(item.val);
       html += `</div>`;
     }
     html += `</div>`;
@@ -744,17 +740,28 @@ function renderSynthesis(s) {
     html += `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
     for (const item of synDecisionItems) {
       html += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>`;
-      if (Array.isArray(item.val)) {
-        html += `<ul style="padding-left:18px;margin-top:4px">${item.val.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
-      } else {
-        html += esc(String(item.val));
-      }
+      html += renderSynValue(item.val);
       html += `</div>`;
     }
     html += `</div>`;
   }
 
   return html;
+}
+
+function renderSynValue(val) {
+  if (Array.isArray(val)) {
+    return `<ul style="padding-left:18px;margin-top:4px">${val.map(x => `<li>${esc(typeof x === 'object' ? JSON.stringify(x) : String(x))}</li>`).join('')}</ul>`;
+  }
+  if (val && typeof val === 'object') {
+    let html = '<div style="margin-top:4px">';
+    for (const [k, v] of Object.entries(val)) {
+      html += `<div style="margin-bottom:4px"><span style="font-weight:600;color:#636e72">${esc(k)}:</span> ${esc(typeof v === 'object' ? JSON.stringify(v) : String(v))}</div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+  return `<div class="sq-text">${esc(String(val))}</div>`;
 }
 
 function findSynthesisMeta(key) {

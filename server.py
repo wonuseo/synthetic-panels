@@ -18,6 +18,7 @@ from sheets.personas import load_personas
 from sheets.results import save_reviews, save_synthesis
 from llm.claude import call_claude, synthesize_claude
 from llm.openai_client import call_openai, synthesize_openai
+from llm.parse import extract_json_or_none
 from models.review import Review
 from models.qa import QAResult
 
@@ -268,14 +269,4 @@ async def api_save(
 
 
 def _parse_synthesis(raw: str) -> Optional[dict]:
-    if not raw:
-        return None
-    try:
-        text = raw.strip()
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0].strip()
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0].strip()
-        return json.loads(text)
-    except (json.JSONDecodeError, IndexError):
-        return None
+    return extract_json_or_none(raw)
