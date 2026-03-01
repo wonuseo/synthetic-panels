@@ -30,6 +30,12 @@ fields:
     label: "선호 음식 2"
   - key: persona_ksf
     label: "핵심 성공 요인 (KSF)"
+  - key: panel_skepticism
+    label: "마케팅 회의도"
+  - key: panel_competitor_pref
+    label: "선호 경쟁 브랜드"
+  - key: panel_past_friction
+    label: "과거 마찰/불만 경험"
 
 # LLM에 전달되는 페르소나 프로필 텍스트 템플릿
 # Python str.format(**fields) 방식으로 렌더링됩니다.
@@ -45,3 +51,6 @@ profile_template: |
   Activity Preferences: {panel_activity_pref_1}, {panel_activity_pref_2}, {panel_activity_pref_3}
   Cuisine Preferences: {panel_cuisine_1}, {panel_cuisine_2}
   Key Success Factors: {persona_ksf}
+  Marketing Skepticism Level: {panel_skepticism}
+  Preferred Competitor Brand(s): {panel_competitor_pref}
+  Past Friction / Complaints: {panel_past_friction}

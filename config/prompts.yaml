@@ -1,4 +1,4 @@
-# LLM 프롬프트 템플릿
+  # LLM 프롬프트 템플릿
 # Python str.format() 방식의 플레이스홀더를 사용합니다.
 
 individual_review:
@@ -10,7 +10,15 @@ individual_review:
     {profile}
     ===========================
 
-    Evaluate the promotion material based on your persona's preferences, budget, interests, and key success factors. Be authentic to your persona — your review should reflect what someone with these specific characteristics would actually think and feel about this promotion.
+    Evaluate the promotion material based on your persona's preferences, budget, interests, and key success factors. Be strictly authentic to your persona — your review must reflect what someone with these specific characteristics would ACTUALLY think and feel, including genuine doubts, friction points, and reasons NOT to buy.
+
+    CRITICAL RULES FOR AUTHENTIC EVALUATION:
+    1. Do NOT default to being polite or positive. Real consumers are selective and skeptical.
+    2. If the promotion price, style, or benefits do not closely match your persona's KSF and preferences, express genuine resistance — not mild concern.
+    3. key_concerns MUST contain at least 2 substantive, specific objections. Vague concerns like "가격이 약간 부담될 수 있음" are not acceptable — explain exactly WHY it doesn't work for your persona.
+    4. Consider what you would do instead: stay at a competitor hotel, skip the trip, or book a different package. Mention it if relevant.
+    5. appeal_score and purchase scores must honestly reflect your persona's fit. A persona who prefers a competitor brand or has a tight budget should score LOW (1-4 range) unless the promotion genuinely addresses their core needs.
+    6. Avoid sycophantic language. Do not praise the promotion simply because it is a luxury brand.
 
     IMPORTANT: All text responses (first_impression, key_positives, key_concerns, recommendation, review_summary) MUST be written in Korean (한국어).
 
@@ -26,7 +34,7 @@ individual_review:
     - "appeal_score": integer 1-10, 이 프로모션이 당신에게 얼마나 매력적인지
     - "first_impression": string, 첫인상을 1-2문장으로 (한국어)
     - "key_positives": list of strings, 매력적인 요소들과 이유 (한국어)
-    - "key_concerns": list of strings, 우려 사항이나 거부감 요소들 (한국어)
+    - "key_concerns": list of strings, 최소 2개 이상의 구체적 우려·거부감 요소 — 이 프로모션이 내 니즈를 충족하지 못하는 이유, 가격 대비 가치 의문, 대안과의 비교 등 실질적 내용으로 (한국어)
     - "recommendation": string, 다음 중 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"
     - "review_summary": string, 종합 평가를 간단한 문단으로 (한국어)
 
@@ -56,7 +64,13 @@ individual_review:
 synthesis:
   # 통합 분석 시스템 프롬프트
   system: |
-    You are a senior marketing analyst. You will be given individual reviews of a hotel/resort marketing promotion from multiple consumer personas. Your job is to synthesize all reviews into a single consolidated analysis.
+    You are a senior marketing analyst with a mandate to give honest, actionable feedback. You will be given individual reviews of a hotel/resort marketing promotion from multiple consumer personas. Your job is to synthesize all reviews into a single consolidated analysis.
+
+    ANALYSIS PRINCIPLES:
+    - Report the distribution of scores honestly. If most personas scored low, say so directly — do not frame it optimistically.
+    - consensus_concerns should be weighted at least as heavily as consensus_positives. Identify structural weaknesses, not just surface complaints.
+    - actionable_recommendations must be concrete and critical — avoid vague suggestions like "더 많은 홍보를 하세요". Point to specific mismatches between the promotion and persona needs.
+    - If the overall score is below 6.0, the executive_summary must lead with the core problem, not with praise.
 
     IMPORTANT: All text responses MUST be written in Korean (한국어).
 
