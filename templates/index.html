@@ -272,6 +272,21 @@
     .raw-content { display: none; margin-top: 8px; background: #f5f6fa; padding: 12px; border-radius: 8px; font-family: monospace; font-size: .8rem; white-space: pre-wrap; max-height: 300px; overflow: auto; }
     .raw-content.show { display: block; }
 
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #dfe6e9;
+      padding-bottom: 0; overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 10px 18px; font-size: .88rem; font-weight: 600;
+      border: none; background: none; color: #636e72; cursor: pointer;
+      border-bottom: 3px solid transparent; transition: .2s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: #6c5ce7; }
+    .tab-btn.active { color: #6c5ce7; border-bottom-color: #6c5ce7; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
     /* ── Hidden ── */
     .hidden { display: none !important; }
   </style>
@@ -353,25 +368,23 @@
       <button class="btn-secondary" id="btn-save">💾 Save to Sheets</button>
     </div>
 
-    <!-- Metrics -->
-    <div class="metrics" id="metrics"></div>
-    <div class="metrics" id="metrics2" style="margin-top:-10px"></div>
-    <div class="metrics" id="metrics3" style="margin-top:-10px"></div>
-
-    <!-- Synthesis -->
-    <div class="synthesis hidden" id="synthesis"></div>
-
-    <!-- Chart -->
-    <div class="card chart-area hidden" id="chart-area">
-      <h2>📈 매력도 점수 분포</h2>
-      <div id="chart"></div>
+    <!-- Tab bar -->
+    <div class="tab-bar" id="tab-bar">
+      <button class="tab-btn active" data-tab="overview">개요</button>
+      <button class="tab-btn" data-tab="upper">브랜드 자산</button>
+      <button class="tab-btn" data-tab="mid">수요 창출</button>
+      <button class="tab-btn" data-tab="lower">전환·매출</button>
+      <button class="tab-btn" data-tab="individual">개별 리뷰</button>
+      <button class="tab-btn" data-tab="qa">품질 검증</button>
     </div>
 
-    <!-- Individual -->
-    <div style="margin-top:24px">
-      <h2 style="font-size:1.15rem;margin-bottom:14px">🧑‍🤝‍🧑 개별 페르소나 리뷰</h2>
-      <div class="persona-cards" id="persona-cards"></div>
-    </div>
+    <!-- Tab panels -->
+    <div class="tab-panel active" id="tab-overview"></div>
+    <div class="tab-panel" id="tab-upper"></div>
+    <div class="tab-panel" id="tab-mid"></div>
+    <div class="tab-panel" id="tab-lower"></div>
+    <div class="tab-panel" id="tab-individual"></div>
+    <div class="tab-panel" id="tab-qa"></div>
   </div>
 </div>
 
@@ -384,6 +397,7 @@ let personasLoaded = false;
 const $textContent = document.getElementById('text-content');
 let lastReviews = [];
 let lastSynthesis = null;
+let lastSynthesisRaw = null;
 window.funnelConfig = null;
 
 /* ── Load funnel config ── */
@@ -583,6 +597,17 @@ $btnSave.addEventListener('click', async () => {
   }
 });
 
+/* ── Tab switching ── */
+document.getElementById('tab-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+});
+
 /* ══════════════════════════════
    Render results page
    ══════════════════════════════ */
@@ -590,17 +615,37 @@ function showResults(payload) {
   const { reviews, synthesis, synthesis_raw } = payload;
   lastReviews = reviews;
   lastSynthesis = synthesis;
+  lastSynthesisRaw = synthesis_raw;
 
   $pageUpload.classList.add('hidden');
   $pageResults.classList.remove('hidden');
 
+  // Reset to overview tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="overview"]').classList.add('active');
+  document.getElementById('tab-overview').classList.add('active');
+
+  // Render all tabs
+  renderOverviewTab(reviews, synthesis, synthesis_raw);
+  renderFunnelTab('upper');
+  renderFunnelTab('mid');
+  renderFunnelTab('lower');
+  renderIndividualTab(reviews);
+  renderQATab(reviews);
+}
+
+/* ── Overview Tab ── */
+function renderOverviewTab(reviews, synthesis, synthesis_raw) {
   const valid = reviews.filter(r => !r.error);
   const errors = reviews.filter(r => r.error).length;
   const interested = reviews.filter(r => r.recommendation && (
     r.recommendation.includes('관심 있음') || (r.recommendation.includes('Interested') && !r.recommendation.includes('Not'))
   )).length;
 
-  // Dynamic metrics from funnel config
+  let html = '';
+
+  // Key metrics
   const metricsCards = [
     metricCard('총 패널 수', `${reviews.length}명`),
     metricCard('유효 응답', `${valid.length}명`),
@@ -610,7 +655,7 @@ function showResults(payload) {
 
   if (window.funnelConfig) {
     for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
-      const quantItems = funnel.items.filter(i => i.type === 'quantitative');
+      const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
       if (!quantItems.length) continue;
       const vals = [];
       for (const item of quantItems) {
@@ -621,7 +666,6 @@ function showResults(payload) {
           vals.push({ label: item.label, avg, max });
         }
       }
-      // Show funnel-level average
       if (vals.length) {
         const funnelAvg = (vals.reduce((a,v) => a + parseFloat(v.avg), 0) / vals.length).toFixed(1);
         const maxScale = vals[0].max;
@@ -630,31 +674,34 @@ function showResults(payload) {
     }
   }
 
-  // Distribute metrics across 3 rows (4 per row)
   const rows = [[], [], []];
   metricsCards.forEach((card, i) => rows[Math.min(Math.floor(i / 4), 2)].push(card));
-  document.getElementById('metrics').innerHTML = rows[0].join('');
-  document.getElementById('metrics2').innerHTML = rows[1].join('');
-  document.getElementById('metrics3').innerHTML = rows[2].join('');
+  html += `<div class="metrics">${rows[0].join('')}</div>`;
+  if (rows[1].length) html += `<div class="metrics" style="margin-top:-10px">${rows[1].join('')}</div>`;
+  if (rows[2].length) html += `<div class="metrics" style="margin-top:-10px">${rows[2].join('')}</div>`;
 
-  // Synthesis
-  const $syn = document.getElementById('synthesis');
+  // Executive summary + go/no-go
   if (synthesis && !synthesis.error) {
-    $syn.classList.remove('hidden');
-    $syn.innerHTML = renderSynthesis(synthesis);
+    html += `<div class="synthesis">`;
+    if (synthesis.executive_summary) {
+      html += `<h3>💡 Executive Summary</h3>`;
+      html += `<div class="exec-summary">${esc(synthesis.executive_summary)}</div>`;
+    }
+    if (synthesis.go_nogo_recommendation) {
+      html += `<div class="syn-decision"><h4>📋 Go/No-Go 의사결정</h4>`;
+      html += `<div class="syn-decision-item">${renderSynValue(synthesis.go_nogo_recommendation)}</div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
   } else if (synthesis_raw) {
-    $syn.classList.remove('hidden');
-    $syn.innerHTML = `<h3>통합 분석 (Raw)</h3><pre style="white-space:pre-wrap;font-size:.85rem">${esc(synthesis_raw)}</pre>`;
-  } else {
-    $syn.classList.add('hidden');
+    html += `<div class="synthesis"><h3>통합 분석 (Raw)</h3><pre style="white-space:pre-wrap;font-size:.85rem">${esc(synthesis_raw)}</pre></div>`;
   }
 
-  // Chart
+  // Appeal chart
   const scored = reviews.filter(r => r.appeal_score > 0).sort((a,b) => b.appeal_score - a.appeal_score);
-  const $chart = document.getElementById('chart-area');
   if (scored.length) {
-    $chart.classList.remove('hidden');
-    document.getElementById('chart').innerHTML = scored.map(r => {
+    html += `<div class="card chart-area"><h2>📈 매력도 점수 분포</h2><div>`;
+    html += scored.map(r => {
       const pct = r.appeal_score * 10;
       const cls = r.appeal_score >= 7 ? 'high' : r.appeal_score >= 4 ? 'mid' : 'low';
       return `<div class="bar-row">
@@ -662,91 +709,231 @@ function showResults(payload) {
         <div class="bar"><div class="bar-fill ${cls}" style="width:${pct}%">${r.appeal_score}</div></div>
       </div>`;
     }).join('');
-  } else {
-    $chart.classList.add('hidden');
+    html += `</div></div>`;
   }
 
-  // Persona cards
-  const sorted = [...reviews].sort((a,b) => b.appeal_score - a.appeal_score);
-  document.getElementById('persona-cards').innerHTML = sorted.map((r, i) => renderPersonaCard(r, i)).join('');
+  document.getElementById('tab-overview').innerHTML = html;
 }
 
-function metricCard(label, value) {
-  return `<div class="metric-card"><div class="label">${label}</div><div class="value">${value}</div></div>`;
-}
-
-function renderSynthesis(s) {
+/* ── Funnel Tab (upper/mid/lower) ── */
+function renderFunnelTab(funnelKey) {
+  const $panel = document.getElementById('tab-' + funnelKey);
+  if (!window.funnelConfig || !window.funnelConfig[funnelKey]) {
+    $panel.innerHTML = '<p>퍼널 설정을 불러올 수 없습니다.</p>';
+    return;
+  }
+  const funnel = window.funnelConfig[funnelKey];
+  const valid = lastReviews.filter(r => !r.error);
   let html = '';
 
-  // Executive Summary (always at top if present)
-  if (s.executive_summary) {
-    html += `<h3>💡 Executive Summary</h3>`;
-    html += `<div class="exec-summary">${esc(s.executive_summary)}</div>`;
+  // Funnel header
+  html += `<h2 style="font-size:1.15rem;margin-bottom:6px">${esc(funnel.label)}</h2>`;
+  if (funnel.description) {
+    html += `<p style="color:#636e72;font-size:.9rem;margin-bottom:18px">${esc(funnel.description)}</p>`;
   }
 
-  // Render synthesis sections dynamically per funnel
-  // Collect quantitative metrics
-  const synMetrics = [];
-  // Collect qualitative items
-  const synQualItems = [];
-  // Collect categorical/decision items
-  const synDecisionItems = [];
-
-  // Known synthesis keys to skip (handled separately)
-  const handledKeys = new Set(['executive_summary']);
-
-  for (const key of Object.keys(s)) {
-    if (handledKeys.has(key)) continue;
-    const val = s[key];
-    if (val == null || val === '' || (Array.isArray(val) && !val.length)) continue;
-
-    // Try to find in funnel config synthesis metadata
-    const meta = findSynthesisMeta(key);
-    const label = meta ? meta.label : key;
-    const type = meta ? meta.type : guessType(val);
-
-    if (type === 'quantitative' && typeof val === 'number') {
-      const suffix = key.includes('probability') || key.includes('conversion') || key === 'overall_score' ? '/10' : '/7';
-      synMetrics.push({ label, val, suffix });
-    } else if (type === 'categorical') {
-      synDecisionItems.push({ label, val });
-    } else {
-      synQualItems.push({ label, val });
+  // Synthesis section for this funnel
+  if (lastSynthesis && !lastSynthesis.error) {
+    const synQuant = [];
+    const synQual = [];
+    const synCat = [];
+    for (const item of funnel.synthesis_items) {
+      const val = lastSynthesis[item.key];
+      if (val == null || val === '' || (Array.isArray(val) && !val.length)) continue;
+      if (item.type === 'quantitative' && typeof val === 'number') {
+        const suffix = item.key.includes('probability') || item.key.includes('conversion') || item.key === 'overall_score' ? '/10' : '/7';
+        synQuant.push({ label: item.label, val, suffix });
+      } else if (item.type === 'categorical') {
+        synCat.push({ label: item.label, val });
+      } else {
+        synQual.push({ label: item.label, val });
+      }
     }
-  }
-
-  // Render quantitative metrics
-  if (synMetrics.length) {
-    html += `<div class="syn-metrics">`;
-    for (const m of synMetrics) {
-      html += synMetric(m.label, m.val, m.suffix);
-    }
-    html += `</div>`;
-  }
-
-  // Render qualitative items
-  if (synQualItems.length) {
-    html += `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
-    for (const item of synQualItems) {
-      html += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>`;
-      html += renderSynValue(item.val);
+    if (synQuant.length || synQual.length || synCat.length) {
+      html += `<div class="synthesis">`;
+      html += `<h3>📊 통합 분석</h3>`;
+      if (synQuant.length) {
+        html += `<div class="syn-metrics">`;
+        for (const m of synQuant) html += synMetric(m.label, m.val, m.suffix);
+        html += `</div>`;
+      }
+      if (synQual.length) {
+        html += `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
+        for (const item of synQual) {
+          html += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
+        }
+        html += `</div>`;
+      }
+      if (synCat.length) {
+        html += `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
+        for (const item of synCat) {
+          html += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
+        }
+        html += `</div>`;
+      }
       html += `</div>`;
     }
-    html += `</div>`;
   }
 
-  // Render decision/categorical items
-  if (synDecisionItems.length) {
-    html += `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
-    for (const item of synDecisionItems) {
-      html += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>`;
-      html += renderSynValue(item.val);
-      html += `</div>`;
-    }
-    html += `</div>`;
-  }
+  // Per-persona breakdown for this funnel
+  html += `<h3 style="font-size:1.05rem;margin:20px 0 12px">🧑‍🤝‍🧑 개별 페르소나 (${esc(funnel.label.split('(')[0].trim())})</h3>`;
+  html += `<div class="persona-cards">`;
+  const sorted = [...lastReviews].sort((a,b) => b.appeal_score - a.appeal_score);
+  sorted.forEach((r, i) => {
+    const idx = `${funnelKey}-${i}`;
+    const emoji = recEmoji(r.recommendation);
+    const cls = r.appeal_score >= 7 ? 'high' : r.appeal_score >= 4 ? 'mid' : 'low';
+    html += `<div class="persona-card" id="pc-${idx}">
+      <div class="persona-card-header" onclick="toggleCard('${idx}')">
+        <span class="emoji">${emoji}</span>
+        <span class="name">${esc(r.persona_name)}</span>
+        <span class="score-badge ${cls}">${r.appeal_score}/10</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="persona-card-body">
+        ${renderScaleBarsForFunnel(r, funnelKey)}
+        ${renderQualItemsForFunnel(r, funnelKey)}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
 
+  $panel.innerHTML = html;
+}
+
+/* ── Scale bars for a single funnel ── */
+const _scaleCls = ['ba', 'pv', 'bf', 'ae', 'is', 'pi', 'pp'];
+const _funnelClsMap = { upper: 0, mid: 1, lower: 2 };
+
+function renderScaleBarsForFunnel(r, funnelKey) {
+  if (!window.funnelConfig) return '';
+  const funnel = window.funnelConfig[funnelKey];
+  if (!funnel) return '';
+  const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
+  if (!quantItems.length) return '';
+  const cls = _scaleCls[(_funnelClsMap[funnelKey] || 0) % _scaleCls.length];
+  const scaleLabel = quantItems[0].scale || '1-7';
+  let html = `<div class="scale-section"><h5>📊 정량 평가 (${scaleLabel})</h5><div class="scale-grid">`;
+  html += `<div class="scale-group">`;
+  for (const item of quantItems) {
+    const val = r[item.key];
+    if (val == null) continue;
+    const max = (item.scale === '0-10' || item.scale === '1-10') ? 10 : 7;
+    html += scaleBar(item.label, val, max, cls);
+  }
+  html += `</div></div></div>`;
   return html;
+}
+
+/* ── Qual items for a single funnel ── */
+function renderQualItemsForFunnel(r, funnelKey) {
+  if (!window.funnelConfig) return '';
+  const funnel = window.funnelConfig[funnelKey];
+  if (!funnel) return '';
+  const qualItems = funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
+  let items = '';
+  for (const item of qualItems) {
+    const val = r[item.key];
+    if (!val) continue;
+    items += `<div class="qual-item"><div class="qual-label">${esc(item.label)}</div><div class="qual-text">${esc(val)}</div></div>`;
+  }
+  if (!items) return '';
+  return `<div class="qual-section"><h5>💬 정성적 코멘트</h5><div class="qual-grid">${items}</div></div>`;
+}
+
+/* ── Individual Tab (full persona cards, all funnels) ── */
+function renderIndividualTab(reviews) {
+  let html = `<h2 style="font-size:1.15rem;margin-bottom:14px">🧑‍🤝‍🧑 개별 페르소나 리뷰</h2>`;
+  html += `<div class="persona-cards">`;
+  const sorted = [...reviews].sort((a,b) => b.appeal_score - a.appeal_score);
+  html += sorted.map((r, i) => renderPersonaCard(r, i)).join('');
+  html += `</div>`;
+  document.getElementById('tab-individual').innerHTML = html;
+}
+
+/* ── QA Tab ── */
+function renderQATab(reviews) {
+  const valid = reviews.filter(r => !r.error);
+  const errors = reviews.filter(r => r.error);
+  let html = '';
+
+  // Aggregate QA stats
+  const withQA = valid.filter(r => r.qa_result && r.qa_result.qa_mode !== 'off');
+  if (withQA.length) {
+    const avgConsistency = withQA.reduce((a,r) => a + (r.qa_result.consistency_score || 0), 0) / withQA.length;
+    const avgTrap = withQA.reduce((a,r) => a + (r.qa_result.trap_pass_rate || 0), 0) / withQA.length;
+    const avgQuality = withQA.reduce((a,r) => a + (r.qa_result.persona_quality || 0), 0) / withQA.length;
+    const passCount = withQA.filter(r => r.qa_result.qa_passed).length;
+    const qCls = v => v >= 0.7 ? 'good' : v >= 0.5 ? 'warn' : 'bad';
+
+    html += `<div class="synthesis">`;
+    html += `<h3>🔍 QA 통합 현황</h3>`;
+    html += `<div class="qa-summary" style="margin-top:14px">`;
+    html += `<div class="qa-score-card"><div class="qa-s-label">평균 일관성</div><div class="qa-s-value ${qCls(avgConsistency)}">${(avgConsistency * 100).toFixed(0)}%</div></div>`;
+    html += `<div class="qa-score-card"><div class="qa-s-label">평균 트랩 통과율</div><div class="qa-s-value ${qCls(avgTrap)}">${(avgTrap * 100).toFixed(0)}%</div></div>`;
+    html += `<div class="qa-score-card"><div class="qa-s-label">평균 페르소나 품질</div><div class="qa-s-value ${qCls(avgQuality)}">${(avgQuality * 100).toFixed(0)}%</div></div>`;
+    html += `<div class="qa-score-card"><div class="qa-s-label">PASS / 전체</div><div class="qa-s-value ${passCount === withQA.length ? 'good' : 'warn'}">${passCount} / ${withQA.length}</div></div>`;
+    html += `</div>`;
+
+    // Per-funnel QA breakdown
+    if (window.funnelConfig) {
+      html += `<div class="qa-detail" style="margin-top:16px">`;
+      for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
+        if (!funnel.qa_items.length) continue;
+        html += `<div class="qa-detail-group"><h6>${esc(funnel.label.split('(')[0].trim())} QA</h6>`;
+        for (const qaItem of funnel.qa_items) {
+          const vals = withQA.map(r => r.qa_result[qaItem.key] || r[qaItem.key]).filter(v => v != null && v > 0);
+          const avg = vals.length ? (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1) : '-';
+          const typeLabel = qaItem.type === 'replication' ? '(일관성)' : '(트랩)';
+          html += `<div class="qa-pair"><span class="qp-label">${esc(qaItem.key)} ${typeLabel}</span><span class="qp-val">${avg}</span></div>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+
+    // Per-persona QA cards
+    html += `<h3 style="font-size:1.05rem;margin:20px 0 12px">🧑‍🤝‍🧑 개별 QA 결과</h3>`;
+    html += `<div class="persona-cards">`;
+    withQA.forEach((r, i) => {
+      const idx = `qa-${i}`;
+      html += `<div class="persona-card" id="pc-${idx}">
+        <div class="persona-card-header" onclick="toggleCard('${idx}')">
+          <span class="name">${esc(r.persona_name)}</span>
+          <span class="qa-badge ${r.qa_result.qa_passed ? 'pass' : 'fail'}">${r.qa_result.qa_passed ? 'QA PASS' : 'QA FAIL'}</span>
+          <span class="chevron">▶</span>
+        </div>
+        <div class="persona-card-body">${renderQA(r.qa_result)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<p style="color:#636e72">QA 데이터가 없습니다 (QA mode가 off이거나 유효 응답이 없습니다).</p>`;
+  }
+
+  // Error list
+  if (errors.length) {
+    html += `<h3 style="font-size:1.05rem;margin:24px 0 12px;color:#d63031">⚠️ 오류 목록 (${errors.length}건)</h3>`;
+    html += `<div class="persona-cards">`;
+    errors.forEach((r, i) => {
+      html += `<div class="persona-card" style="border-left:4px solid #d63031">
+        <div class="persona-card-header">
+          <span class="emoji">🔴</span>
+          <span class="name">${esc(r.persona_name)}</span>
+          <span style="color:#d63031;font-size:.85rem">${esc(r.error)}</span>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  document.getElementById('tab-qa').innerHTML = html;
+}
+
+/* ── Shared rendering helpers ── */
+function metricCard(label, value) {
+  return `<div class="metric-card"><div class="label">${label}</div><div class="value">${value}</div></div>`;
 }
 
 function renderSynValue(val) {
@@ -764,38 +951,6 @@ function renderSynValue(val) {
   return `<div class="sq-text">${esc(String(val))}</div>`;
 }
 
-function findSynthesisMeta(key) {
-  /* Look up a synthesis key in the loaded funnel YAML config (not available on frontend).
-     We use a static mapping derived from funnel_config.yaml synthesis_items. */
-  const map = {
-    avg_brand_attitude: { label: '평균 브랜드 태도', type: 'quantitative' },
-    avg_brand_fit: { label: '평균 브랜드 적합성', type: 'quantitative' },
-    avg_ad_effectiveness: { label: '평균 광고 효과성', type: 'quantitative' },
-    message_gap_analysis: { label: '메시지 갭 분석', type: 'qualitative' },
-    emotional_tone_summary: { label: '감정 톤 요약', type: 'qualitative' },
-    overall_score: { label: '종합 매력도', type: 'quantitative' },
-    avg_perceived_value: { label: '평균 지각된 가치', type: 'quantitative' },
-    consensus_positives: { label: '공통 긍정 요소', type: 'qualitative' },
-    consensus_concerns: { label: '공통 우려 사항', type: 'qualitative' },
-    segment_insights: { label: '세그먼트 인사이트', type: 'qualitative' },
-    wom_potential: { label: '구전(WoM) 잠재력', type: 'qualitative' },
-    target_segment_priority: { label: '타겟 세그먼트 우선순위', type: 'qualitative' },
-    avg_purchase_intention: { label: '평균 구매 의향', type: 'quantitative' },
-    avg_purchase_probability: { label: '평균 구매 확률', type: 'quantitative' },
-    estimated_conversion_range: { label: '예상 전환율', type: 'qualitative' },
-    key_conversion_barriers: { label: '핵심 전환 장벽', type: 'qualitative' },
-    actionable_recommendations: { label: '실행 제안', type: 'qualitative' },
-    go_nogo_recommendation: { label: 'Go/No-Go 판단', type: 'categorical' },
-    improvement_priority: { label: '최우선 개선 영역', type: 'categorical' },
-  };
-  return map[key] || null;
-}
-
-function guessType(val) {
-  if (typeof val === 'number') return 'quantitative';
-  return 'qualitative';
-}
-
 function synMetric(label, value, suffix) {
   const v = value != null ? value : '-';
   return `<div class="syn-metric"><div class="syn-m-label">${label}</div><div class="syn-m-value">${v}${value != null ? suffix : ''}</div></div>`;
@@ -809,7 +964,6 @@ function renderQA(qa) {
   let html = `<div class="qa-section">`;
   html += `<h5>🔍 QA 검증 결과 (${isLite ? 'Lite' : 'Full'} Mode)</h5>`;
 
-  // Summary scores
   html += `<div class="qa-summary">`;
   html += `<div class="qa-score-card"><div class="qa-s-label">응답 일관성</div><div class="qa-s-value ${qCls(qa.consistency_score)}">${(qa.consistency_score * 100).toFixed(0)}%</div></div>`;
   html += `<div class="qa-score-card"><div class="qa-s-label">트랩 통과율</div><div class="qa-s-value ${qCls(qa.trap_pass_rate)}">${(qa.trap_pass_rate * 100).toFixed(0)}%</div></div>`;
@@ -817,10 +971,7 @@ function renderQA(qa) {
   html += `<div class="qa-score-card"><div class="qa-s-label">판정</div><div class="qa-s-value ${qa.qa_passed ? 'good' : 'bad'}">${qa.qa_passed ? 'PASS' : 'FAIL'}</div></div>`;
   html += `</div>`;
 
-  // Detail: replication pairs & trap items
   html += `<div class="qa-detail">`;
-
-  // Replication
   html += `<div class="qa-detail-group"><h6>일관성 검증 (Core vs Replication)</h6>`;
   html += `<div class="qa-pair"><span class="qp-label">브랜드 호감도 (Rep)</span><span class="qp-val">${qa.qa_rep_brand_attitude || '-'}</span></div>`;
   if (!isLite) {
@@ -829,7 +980,6 @@ function renderQA(qa) {
   }
   html += `</div>`;
 
-  // Trap
   html += `<div class="qa-detail-group"><h6>트랩 항목 (페르소나 적합성)</h6>`;
   html += `<div class="qa-pair"><span class="qp-label">예산 민감도</span><span class="qp-val">${qa.qa_trap_budget_sensitivity || '-'}</span></div>`;
   if (!isLite) {
@@ -837,7 +987,6 @@ function renderQA(qa) {
     html += `<div class="qa-pair"><span class="qp-label">회의감 체크</span><span class="qp-val">${qa.qa_trap_skepticism_check || '-'}</span></div>`;
   }
   html += `</div>`;
-
   html += `</div></div>`;
   return html;
 }
@@ -848,8 +997,8 @@ function renderPersonaCard(r, idx) {
   const positives = (r.key_positives || '').split('; ').filter(Boolean);
   const concerns = (r.key_concerns || '').split('; ').filter(Boolean);
 
-  return `<div class="persona-card" id="pc-${idx}">
-    <div class="persona-card-header" onclick="toggleCard(${idx})">
+  return `<div class="persona-card" id="pc-ind-${idx}">
+    <div class="persona-card-header" onclick="toggleCard('ind-${idx}')">
       <span class="emoji">${emoji}</span>
       <span class="name">${esc(r.persona_name)}</span>
       <span class="score-badge ${cls}">${r.appeal_score}/10</span>
@@ -868,20 +1017,19 @@ function renderPersonaCard(r, idx) {
       ${renderQualItems(r)}
       ${renderQA(r.qa_result)}
       <div class="review-summary"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>
-      <button class="raw-toggle" onclick="toggleRaw(${idx})">Raw Response 보기</button>
-      <pre class="raw-content" id="raw-${idx}">${esc(r.raw_response)}</pre>
+      <button class="raw-toggle" onclick="toggleRaw('ind-${idx}')">Raw Response 보기</button>
+      <pre class="raw-content" id="raw-ind-${idx}">${esc(r.raw_response)}</pre>
     </div>
   </div>`;
 }
 
-const _scaleCls = ['ba', 'pv', 'bf', 'ae', 'is', 'pi', 'pp'];
-
+/* ── Scale bars (all funnels — used in Individual tab) ── */
 function renderScaleBars(r) {
   if (!window.funnelConfig) return '';
   let html = '<div class="scale-section"><h5>📊 정량 평가</h5><div class="scale-grid">';
   let clsIdx = 0;
   for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
-    const quantItems = funnel.items.filter(i => i.type === 'quantitative');
+    const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
     if (!quantItems.length) { clsIdx++; continue; }
     const cls = _scaleCls[clsIdx % _scaleCls.length];
     const scaleLabel = quantItems[0].scale || '1-7';
@@ -899,11 +1047,12 @@ function renderScaleBars(r) {
   return html;
 }
 
+/* ── Qual items (all funnels — used in Individual tab) ── */
 function renderQualItems(r) {
   if (!window.funnelConfig) return '';
   let items = '';
   for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
-    const qualItems = funnel.items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
+    const qualItems = funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
     for (const item of qualItems) {
       const val = r[item.key];
       if (!val) continue;

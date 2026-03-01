@@ -121,23 +121,48 @@ _init_scales_cache()
 
 
 def get_funnel_groups() -> dict:
-    """프론트엔드용: {funnel_name: {label, items: [{key, label, scale, type}]}} 형태"""
+    """프론트엔드용: {funnel_name: {label, description, individual_items, synthesis_items, qa_items}} 형태"""
     cfg = load_funnel_config()
     groups: dict = {}
     for funnel_name in _FUNNEL_ORDER:
         funnel = cfg["funnels"].get(funnel_name, {})
-        items_list: list[dict] = []
+
+        # individual_items
+        individual_list: list[dict] = []
         ind = funnel.get("individual_items", {})
         for item_type in _ITEM_TYPE_ORDER:
             for item in ind.get(item_type, []):
-                items_list.append({
+                individual_list.append({
                     "key": item["key"],
                     "label": item["label"],
                     "scale": item.get("scale", ""),
                     "type": item_type,
                 })
+
+        # synthesis_items
+        synthesis_list: list[dict] = []
+        syn = funnel.get("synthesis_items", {})
+        for item_type in _ITEM_TYPE_ORDER:
+            for item in syn.get(item_type, []):
+                synthesis_list.append({
+                    "key": item["key"],
+                    "label": item["label"],
+                    "type": item_type,
+                })
+
+        # qa_items
+        qa_list: list[dict] = []
+        for item in funnel.get("qa_items", []):
+            qa_list.append({
+                "key": item["key"],
+                "type": item.get("type", ""),
+            })
+
         groups[funnel_name] = {
             "label": funnel.get("label", funnel_name),
-            "items": items_list,
+            "description": funnel.get("description", ""),
+            "individual_items": individual_list,
+            "synthesis_items": synthesis_list,
+            "qa_items": qa_list,
         }
     return groups
