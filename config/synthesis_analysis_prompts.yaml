@@ -23,32 +23,30 @@ synthesis:
 
     Please synthesize these reviews into a consolidated analysis. Respond as a JSON object:
 
-    --- 기존 종합 지표 ---
+    --- [Upper Funnel] 브랜드 자산 지표 ---
+    - "avg_brand_attitude": float (브랜드 태도 2개 항목 전체 평균, 1 decimal place)
+    - "avg_brand_fit": float (브랜드 적합성 2항목 — brand_self_congruity, brand_image_fit — 전체 평균, 1 decimal place)
+    - "avg_ad_effectiveness": float (광고 효과성 2항목 — message_clarity, attention_grabbing — 전체 평균, 1 decimal place)
+    - "message_gap_analysis": string, 의도한 메시지 vs 페르소나들이 지각한 메시지 간 갭 분석 (한국어)
+    - "emotional_tone_summary": string, 전반적 감정 톤 요약 + 세그먼트별 차이 (한국어)
+
+    --- [Mid Funnel] 수요 창출 지표 ---
     - "overall_score": float (average appeal score, 1 decimal place)
-    - "executive_summary": string, 2-3문장의 핵심 요약 (한국어)
+    - "avg_perceived_value": float (지각된 가치 2항목 — value_for_money, price_fairness — 전체 평균, 1 decimal place)
     - "consensus_positives": list of strings, 여러 페르소나가 공통적으로 긍정적으로 평가한 요소들 (한국어)
     - "consensus_concerns": list of strings, 여러 페르소나가 공통적으로 우려한 사항들 (한국어)
     - "segment_insights": list of strings, 페르소나 세그먼트 간 주목할 만한 차이점 (한국어)
-    - "actionable_recommendations": list of strings, 프로모션 개선을 위한 구체적 제안 (한국어)
+    - "wom_potential": string, 추천 의향 분석 — 누가 추천하겠다고 했고, 핵심 추천 메시지는 무엇인가 (한국어)
+    - "target_segment_priority": list of strings, 세그먼트별 타겟 우선순위 + 예상 반응도 (한국어)
 
-    --- 평균 지표 ---
-    - "avg_brand_attitude": float (브랜드 태도 2개 항목 전체 평균, 1 decimal place)
+    --- [Lower Funnel] 전환·매출 지표 ---
     - "avg_purchase_intention": float (구매 의향 3개 항목 전체 평균, 1 decimal place)
     - "avg_purchase_probability": float (Juster 구매확률 전체 평균, 1 decimal place)
-    - "avg_perceived_value": float (지각된 가치 2항목 — value_for_money, price_fairness — 전체 평균, 1 decimal place)
-    - "avg_brand_fit": float (브랜드 적합성 2항목 — brand_self_congruity, brand_image_fit — 전체 평균, 1 decimal place)
-    - "avg_ad_effectiveness": float (광고 효과성 2항목 — message_clarity, attention_grabbing — 전체 평균, 1 decimal place)
-
-    --- 의사결정 지원 ---
-    - "go_nogo_recommendation": string, "강력 추천", "조건부 추천", "수정 후 재검토", "비추천" 중 하나 + 근거를 2-3문장으로 (한국어)
-    - "target_segment_priority": list of strings, 세그먼트별 타겟 우선순위 + 예상 반응도 (한국어)
-    - "improvement_priority": string, "크리에이티브", "가격·오퍼", "타겟팅", "메시지" 중 최우선 개선 영역 + 구체적 설명 (한국어)
     - "estimated_conversion_range": string, Juster 점수 기반 예상 전환율 범위 (예: "2-5%") + 산출 근거 (한국어)
-
-    --- 정성적 코멘트 종합 분석 ---
-    - "message_gap_analysis": string, 의도한 메시지 vs 페르소나들이 지각한 메시지 간 갭 분석 (한국어)
-    - "emotional_tone_summary": string, 전반적 감정 톤 요약 + 세그먼트별 차이 (한국어)
     - "key_conversion_barriers": list of strings, 가장 빈번하게 언급된 구매 장벽 Top 3 (한국어)
-    - "wom_potential": string, 추천 의향 분석 — 누가 추천하겠다고 했고, 핵심 추천 메시지는 무엇인가 (한국어)
+    - "actionable_recommendations": list of strings, 프로모션 개선을 위한 구체적 제안 (한국어)
+    - "executive_summary": string, 2-3문장의 핵심 요약 (한국어)
+    - "go_nogo_recommendation": string, "강력 추천", "조건부 추천", "수정 후 재검토", "비추천" 중 하나 + 근거를 2-3문장으로 (한국어)
+    - "improvement_priority": string, "크리에이티브", "가격·오퍼", "타겟팅", "메시지" 중 최우선 개선 영역 + 구체적 설명 (한국어)
 
     Respond ONLY with the JSON object, no additional text.
