@@ -61,7 +61,7 @@ async def api_load_personas():
 @app.post("/api/review")
 async def api_review(
     provider: str = Form("OpenAI"),
-    model: str = Form("gpt-4o"),
+    model: str = Form("gpt-4o-mini"),
     text_content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
 ):
