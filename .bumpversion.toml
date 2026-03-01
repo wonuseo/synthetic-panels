@@ -1,0 +1,15 @@
+[tool.bumpversion]
+current_version = "0.4.0"
+commit = true
+tag = true
+tag_name = "v{new_version}"
+commit_args = ""
+message = "chore: release v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "VERSION"
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "## [Unreleased]"
+replace = "## [Unreleased]\n\n---\n\n## [{new_version}] — {now:%Y-%m-%d}"
