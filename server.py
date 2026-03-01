@@ -15,7 +15,7 @@ from sse_starlette.sse import EventSourceResponse
 from config import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE
 from sheets.client import open_spreadsheet_by_url
 from sheets.personas import load_personas
-from sheets.results import save_reviews
+from sheets.results import save_reviews, save_synthesis
 from llm.claude import call_claude, synthesize_claude
 from llm.openai_client import call_openai, synthesize_openai
 from models.review import Review
@@ -37,6 +37,13 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "version": APP_VERSION, "last_updated": LAST_UPDATED})
+
+
+@app.get("/api/funnel-config")
+async def api_funnel_config():
+    """프론트엔드용 퍼널 설정 반환"""
+    from config.funnel import get_funnel_groups
+    return {"ok": True, "funnels": get_funnel_groups()}
 
 
 @app.post("/api/personas")
@@ -191,6 +198,7 @@ async def api_review(
 @app.post("/api/save")
 async def api_save(
     reviews_json: str = Form(...),
+    synthesis_json: Optional[str] = Form(None),
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
@@ -250,6 +258,10 @@ async def api_save(
             ))
         run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         save_reviews(spreadsheet, reviews, run_id)
+        if synthesis_json:
+            synthesis_data = json.loads(synthesis_json)
+            if synthesis_data and isinstance(synthesis_data, dict):
+                save_synthesis(spreadsheet, synthesis_data, run_id)
         return {"ok": True, "run_id": run_id, "count": len(reviews)}
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})

@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 import json
 
+from config.funnel import get_individual_keys, get_qa_keys
 from models.qa import QAResult
 
 
@@ -147,38 +148,13 @@ class Review:
         return asdict(self)
 
     def to_sheet_row(self, run_id: str) -> list:
-        row = [
-            run_id,
-            self.persona_id,
-            self.persona_name,
-            self.appeal_score,
-            self.first_impression,
-            self.key_positives,
-            self.key_concerns,
-            self.recommendation,
-            self.review_summary,
-            self.like_dislike,
-            self.favorable_unfavorable,
-            self.value_for_money,
-            self.price_fairness,
-            self.brand_self_congruity,
-            self.brand_image_fit,
-            self.message_clarity,
-            self.attention_grabbing,
-            self.info_sufficiency,
-            self.competitive_preference,
-            self.likelihood_high,
-            self.probability_consider_high,
-            self.willingness_high,
-            self.purchase_probability_juster,
-            self.perceived_message,
-            self.emotional_response,
-            self.purchase_trigger_barrier,
-            self.recommendation_context,
-            self.error or "",
-        ]
+        row = [run_id, self.persona_id, self.persona_name]
+        for key in get_individual_keys():
+            row.append(getattr(self, key, ""))
+        row.append(self.error or "")
         if self.qa_result:
             row.extend(self.qa_result.to_sheet_columns())
         else:
-            row.extend([""] * 11)
+            qa_col_count = len(get_qa_keys()) + 5  # 5 = QA_COMPUTED fields
+            row.extend([""] * qa_col_count)
         return row

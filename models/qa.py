@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 
+from config.funnel import get_qa_keys
+
 # ── Replication pairs: (replication_field, core_field) ────────────
 REPLICATION_PAIRS_FULL: List[Tuple[str, str]] = [
     ("qa_rep_brand_attitude", "like_dislike"),
@@ -112,16 +114,12 @@ class QAResult:
 
     def to_sheet_columns(self) -> list:
         """Return flat list for appending to sheet row."""
-        return [
-            self.qa_rep_brand_attitude,
-            self.qa_rep_value_perception,
-            self.qa_rep_purchase_intent,
-            self.qa_trap_budget_sensitivity,
-            self.qa_trap_competitor_loyalty,
-            self.qa_trap_skepticism_check,
+        row = [getattr(self, key, 0) for key in get_qa_keys()]
+        row.extend([
             round(self.consistency_score, 3),
             round(self.trap_pass_rate, 3),
             round(self.persona_quality, 3),
             self.qa_passed,
             self.qa_mode,
-        ]
+        ])
+        return row

@@ -383,6 +383,20 @@ let selectedFile = null;
 let personasLoaded = false;
 const $textContent = document.getElementById('text-content');
 let lastReviews = [];
+let lastSynthesis = null;
+window.funnelConfig = null;
+
+/* ── Load funnel config ── */
+async function loadFunnelConfig() {
+  try {
+    const res = await fetch('/api/funnel-config');
+    const data = await res.json();
+    if (data.ok) window.funnelConfig = data.funnels;
+  } catch (e) {
+    console.error('Failed to load funnel config:', e);
+  }
+}
+loadFunnelConfig();
 
 /* ── DOM refs ── */
 const $dropZone       = document.getElementById('drop-zone');
@@ -550,6 +564,7 @@ $btnSave.addEventListener('click', async () => {
   $btnSave.textContent = '저장 중...';
   const fd = new FormData();
   fd.append('reviews_json', JSON.stringify(lastReviews));
+  if (lastSynthesis) fd.append('synthesis_json', JSON.stringify(lastSynthesis));
   try {
     const res = await fetch('/api/save', { method: 'POST', body: fd });
     const data = await res.json();
@@ -574,70 +589,53 @@ $btnSave.addEventListener('click', async () => {
 function showResults(payload) {
   const { reviews, synthesis, synthesis_raw } = payload;
   lastReviews = reviews;
+  lastSynthesis = synthesis;
 
   $pageUpload.classList.add('hidden');
   $pageResults.classList.remove('hidden');
 
   const valid = reviews.filter(r => !r.error);
-  const validScores = valid.filter(r => r.appeal_score > 0).map(r => r.appeal_score);
-  const avg = validScores.length ? (validScores.reduce((a,b) => a+b, 0) / validScores.length).toFixed(1) : '0';
+  const errors = reviews.filter(r => r.error).length;
   const interested = reviews.filter(r => r.recommendation && (
     r.recommendation.includes('관심 있음') || (r.recommendation.includes('Interested') && !r.recommendation.includes('Not'))
   )).length;
-  const errors = reviews.filter(r => r.error).length;
 
-  // Brand Attitude averages (2 items: like_dislike, favorable_unfavorable)
-  const baScores = valid.filter(r => r.like_dislike > 0).map(r =>
-    (r.like_dislike + r.favorable_unfavorable) / 2
-  );
-  const avgBa = baScores.length ? (baScores.reduce((a,b) => a+b, 0) / baScores.length).toFixed(1) : '0';
-  // Perceived Value averages
-  const pvScores = valid.filter(r => r.value_for_money > 0).map(r =>
-    (r.value_for_money + r.price_fairness) / 2
-  );
-  const avgPv = pvScores.length ? (pvScores.reduce((a,b) => a+b, 0) / pvScores.length).toFixed(1) : '0';
-  // Brand Fit averages
-  const bfScores = valid.filter(r => r.brand_self_congruity > 0).map(r =>
-    (r.brand_self_congruity + r.brand_image_fit) / 2
-  );
-  const avgBf = bfScores.length ? (bfScores.reduce((a,b) => a+b, 0) / bfScores.length).toFixed(1) : '0';
-  // Ad Effectiveness averages
-  const aeScores = valid.filter(r => r.message_clarity > 0).map(r =>
-    (r.message_clarity + r.attention_grabbing) / 2
-  );
-  const avgAe = aeScores.length ? (aeScores.reduce((a,b) => a+b, 0) / aeScores.length).toFixed(1) : '0';
-  // Purchase Intention averages
-  const piScores = valid.filter(r => r.likelihood_high > 0).map(r =>
-    (r.likelihood_high + r.probability_consider_high + r.willingness_high) / 3
-  );
-  const avgPi = piScores.length ? (piScores.reduce((a,b) => a+b, 0) / piScores.length).toFixed(1) : '0';
-  // Purchase Probability average
-  const ppScores = valid.map(r => r.purchase_probability_juster).filter(v => v > 0);
-  const avgPp = ppScores.length ? (ppScores.reduce((a,b) => a+b, 0) / ppScores.length).toFixed(1) : '0';
-
-  // Metrics row 1
-  document.getElementById('metrics').innerHTML = [
-    metricCard('평균 매력도', `${avg} / 10`),
+  // Dynamic metrics from funnel config
+  const metricsCards = [
     metricCard('총 패널 수', `${reviews.length}명`),
+    metricCard('유효 응답', `${valid.length}명`),
     metricCard('관심 표명', `${interested}명`),
     metricCard('오류', `${errors}건`),
-  ].join('');
+  ];
 
-  // Metrics row 2
-  document.getElementById('metrics2').innerHTML = [
-    metricCard('브랜드 태도', `${avgBa} / 7`),
-    metricCard('지각된 가치', `${avgPv} / 7`),
-    metricCard('브랜드 적합성', `${avgBf} / 7`),
-    metricCard('광고 효과성', `${avgAe} / 7`),
-  ].join('');
+  if (window.funnelConfig) {
+    for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
+      const quantItems = funnel.items.filter(i => i.type === 'quantitative');
+      if (!quantItems.length) continue;
+      const vals = [];
+      for (const item of quantItems) {
+        const scores = valid.map(r => r[item.key]).filter(v => v > 0);
+        if (scores.length) {
+          const max = item.scale === '0-10' || item.scale === '1-10' ? 10 : 7;
+          const avg = (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(1);
+          vals.push({ label: item.label, avg, max });
+        }
+      }
+      // Show funnel-level average
+      if (vals.length) {
+        const funnelAvg = (vals.reduce((a,v) => a + parseFloat(v.avg), 0) / vals.length).toFixed(1);
+        const maxScale = vals[0].max;
+        metricsCards.push(metricCard(funnel.label.split('(')[0].trim(), `${funnelAvg} / ${maxScale}`));
+      }
+    }
+  }
 
-  // Metrics row 3
-  document.getElementById('metrics3').innerHTML = [
-    metricCard('구매 의향', `${avgPi} / 7`),
-    metricCard('구매 확률', `${avgPp} / 10`),
-    metricCard('유효 응답', `${valid.length}명`),
-    metricCard('정보 충분성', `${valid.filter(r=>r.info_sufficiency>0).length ? (valid.filter(r=>r.info_sufficiency>0).map(r=>r.info_sufficiency).reduce((a,b)=>a+b,0)/valid.filter(r=>r.info_sufficiency>0).length).toFixed(1) : '0'} / 7`),
-  ].join('');
+  // Distribute metrics across 3 rows (4 per row)
+  const rows = [[], [], []];
+  metricsCards.forEach((card, i) => rows[Math.min(Math.floor(i / 4), 2)].push(card));
+  document.getElementById('metrics').innerHTML = rows[0].join('');
+  document.getElementById('metrics2').innerHTML = rows[1].join('');
+  document.getElementById('metrics3').innerHTML = rows[2].join('');
 
   // Synthesis
   const $syn = document.getElementById('synthesis');
@@ -680,73 +678,115 @@ function metricCard(label, value) {
 function renderSynthesis(s) {
   let html = '';
 
-  // Executive Summary
-  html += `<h3>💡 Executive Summary</h3>`;
-  html += `<div class="exec-summary">${esc(s.executive_summary || '')}</div>`;
-
-  // Average Metrics
-  html += `<div class="syn-metrics">`;
-  html += synMetric('종합 점수', s.overall_score, '/10');
-  html += synMetric('브랜드 태도', s.avg_brand_attitude, '/7');
-  html += synMetric('지각된 가치', s.avg_perceived_value, '/7');
-  html += synMetric('브랜드 적합성', s.avg_brand_fit, '/7');
-  html += synMetric('광고 효과성', s.avg_ad_effectiveness, '/7');
-  html += synMetric('구매 의향', s.avg_purchase_intention, '/7');
-  html += synMetric('구매 확률', s.avg_purchase_probability, '/10');
-  html += `</div>`;
-
-  // Consensus
-  html += `<div class="two-col">`;
-  html += `<div class="syn-list"><h4>✅ 공통 긍정 요소</h4><ul>${(s.consensus_positives||[]).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
-  html += `<div class="syn-list"><h4>⚠️ 공통 우려 사항</h4><ul>${(s.consensus_concerns||[]).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
-  html += `</div>`;
-
-  if (s.segment_insights && s.segment_insights.length) {
-    html += `<div class="syn-list"><h4>📊 세그먼트별 인사이트</h4><ul>${s.segment_insights.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  // Executive Summary (always at top if present)
+  if (s.executive_summary) {
+    html += `<h3>💡 Executive Summary</h3>`;
+    html += `<div class="exec-summary">${esc(s.executive_summary)}</div>`;
   }
 
-  // Decision Support
-  if (s.go_nogo_recommendation || s.improvement_priority || s.estimated_conversion_range) {
+  // Render synthesis sections dynamically per funnel
+  // Collect quantitative metrics
+  const synMetrics = [];
+  // Collect qualitative items
+  const synQualItems = [];
+  // Collect categorical/decision items
+  const synDecisionItems = [];
+
+  // Known synthesis keys to skip (handled separately)
+  const handledKeys = new Set(['executive_summary']);
+
+  for (const key of Object.keys(s)) {
+    if (handledKeys.has(key)) continue;
+    const val = s[key];
+    if (val == null || val === '' || (Array.isArray(val) && !val.length)) continue;
+
+    // Try to find in funnel config synthesis metadata
+    const meta = findSynthesisMeta(key);
+    const label = meta ? meta.label : key;
+    const type = meta ? meta.type : guessType(val);
+
+    if (type === 'quantitative' && typeof val === 'number') {
+      const suffix = key.includes('probability') || key.includes('conversion') || key === 'overall_score' ? '/10' : '/7';
+      synMetrics.push({ label, val, suffix });
+    } else if (type === 'categorical') {
+      synDecisionItems.push({ label, val });
+    } else {
+      synQualItems.push({ label, val });
+    }
+  }
+
+  // Render quantitative metrics
+  if (synMetrics.length) {
+    html += `<div class="syn-metrics">`;
+    for (const m of synMetrics) {
+      html += synMetric(m.label, m.val, m.suffix);
+    }
+    html += `</div>`;
+  }
+
+  // Render qualitative items
+  if (synQualItems.length) {
+    html += `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
+    for (const item of synQualItems) {
+      html += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>`;
+      if (Array.isArray(item.val)) {
+        html += `<ul style="padding-left:18px;margin-top:4px">${item.val.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+      } else {
+        html += `<div class="sq-text">${esc(String(item.val))}</div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Render decision/categorical items
+  if (synDecisionItems.length) {
     html += `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
-    if (s.go_nogo_recommendation) {
-      html += `<div class="syn-decision-item"><div class="d-label">Go/No-Go 판단</div>${esc(s.go_nogo_recommendation)}</div>`;
-    }
-    if (s.target_segment_priority && s.target_segment_priority.length) {
-      html += `<div class="syn-decision-item"><div class="d-label">타겟 세그먼트 우선순위</div><ul style="padding-left:18px;margin-top:4px">${s.target_segment_priority.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
-    }
-    if (s.improvement_priority) {
-      html += `<div class="syn-decision-item"><div class="d-label">최우선 개선 영역</div>${esc(s.improvement_priority)}</div>`;
-    }
-    if (s.estimated_conversion_range) {
-      html += `<div class="syn-decision-item"><div class="d-label">예상 전환율</div>${esc(s.estimated_conversion_range)}</div>`;
+    for (const item of synDecisionItems) {
+      html += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>`;
+      if (Array.isArray(item.val)) {
+        html += `<ul style="padding-left:18px;margin-top:4px">${item.val.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+      } else {
+        html += esc(String(item.val));
+      }
+      html += `</div>`;
     }
     html += `</div>`;
-  }
-
-  // Qualitative Analysis
-  if (s.message_gap_analysis || s.emotional_tone_summary || s.wom_potential) {
-    html += `<div class="syn-qual"><h4>💬 정성적 코멘트 종합 분석</h4>`;
-    if (s.message_gap_analysis) {
-      html += `<div class="syn-qual-item"><div class="sq-label">메시지 갭 분석</div><div class="sq-text">${esc(s.message_gap_analysis)}</div></div>`;
-    }
-    if (s.emotional_tone_summary) {
-      html += `<div class="syn-qual-item"><div class="sq-label">감정 톤 요약</div><div class="sq-text">${esc(s.emotional_tone_summary)}</div></div>`;
-    }
-    if (s.key_conversion_barriers && s.key_conversion_barriers.length) {
-      html += `<div class="syn-qual-item"><div class="sq-label">핵심 전환 장벽 Top 3</div><ol style="padding-left:18px;margin-top:4px">${s.key_conversion_barriers.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
-    }
-    if (s.wom_potential) {
-      html += `<div class="syn-qual-item"><div class="sq-label">구전(WoM) 잠재력</div><div class="sq-text">${esc(s.wom_potential)}</div></div>`;
-    }
-    html += `</div>`;
-  }
-
-  // Actionable Recommendations
-  if (s.actionable_recommendations && s.actionable_recommendations.length) {
-    html += `<div class="syn-list" style="margin-top:12px"><h4>🎯 실행 제안</h4><ol style="padding-left:18px">${s.actionable_recommendations.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   }
 
   return html;
+}
+
+function findSynthesisMeta(key) {
+  /* Look up a synthesis key in the loaded funnel YAML config (not available on frontend).
+     We use a static mapping derived from funnel_config.yaml synthesis_items. */
+  const map = {
+    avg_brand_attitude: { label: '평균 브랜드 태도', type: 'quantitative' },
+    avg_brand_fit: { label: '평균 브랜드 적합성', type: 'quantitative' },
+    avg_ad_effectiveness: { label: '평균 광고 효과성', type: 'quantitative' },
+    message_gap_analysis: { label: '메시지 갭 분석', type: 'qualitative' },
+    emotional_tone_summary: { label: '감정 톤 요약', type: 'qualitative' },
+    overall_score: { label: '종합 매력도', type: 'quantitative' },
+    avg_perceived_value: { label: '평균 지각된 가치', type: 'quantitative' },
+    consensus_positives: { label: '공통 긍정 요소', type: 'qualitative' },
+    consensus_concerns: { label: '공통 우려 사항', type: 'qualitative' },
+    segment_insights: { label: '세그먼트 인사이트', type: 'qualitative' },
+    wom_potential: { label: '구전(WoM) 잠재력', type: 'qualitative' },
+    target_segment_priority: { label: '타겟 세그먼트 우선순위', type: 'qualitative' },
+    avg_purchase_intention: { label: '평균 구매 의향', type: 'quantitative' },
+    avg_purchase_probability: { label: '평균 구매 확률', type: 'quantitative' },
+    estimated_conversion_range: { label: '예상 전환율', type: 'qualitative' },
+    key_conversion_barriers: { label: '핵심 전환 장벽', type: 'qualitative' },
+    actionable_recommendations: { label: '실행 제안', type: 'qualitative' },
+    go_nogo_recommendation: { label: 'Go/No-Go 판단', type: 'categorical' },
+    improvement_priority: { label: '최우선 개선 영역', type: 'categorical' },
+  };
+  return map[key] || null;
+}
+
+function guessType(val) {
+  if (typeof val === 'number') return 'quantitative';
+  return 'qualitative';
 }
 
 function synMetric(label, value, suffix) {
@@ -817,58 +857,54 @@ function renderPersonaCard(r, idx) {
         <div><h5>✅ 긍정 요소</h5><ul>${positives.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
         <div><h5>⚠️ 우려 사항</h5><ul>${concerns.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
       </div>
-      <div class="scale-section">
-        <h5>📊 정량 평가</h5>
-        <div class="scale-grid">
-          <div class="scale-group">
-            <h6>브랜드 태도 (1-7)</h6>
-            ${scaleBar('호감도', r.like_dislike, 7, 'ba')}
-            ${scaleBar('호의도', r.favorable_unfavorable, 7, 'ba')}
-          </div>
-          <div class="scale-group">
-            <h6>지각된 가치 (1-7)</h6>
-            ${scaleBar('가격 대비 가치', r.value_for_money, 7, 'pv')}
-            ${scaleBar('가격 적정성', r.price_fairness, 7, 'pv')}
-          </div>
-          <div class="scale-group">
-            <h6>브랜드 적합성 (1-7)</h6>
-            ${scaleBar('자아 일치', r.brand_self_congruity, 7, 'bf')}
-            ${scaleBar('이미지 적합', r.brand_image_fit, 7, 'bf')}
-          </div>
-          <div class="scale-group">
-            <h6>광고 효과성 (1-7)</h6>
-            ${scaleBar('메시지 명확성', r.message_clarity, 7, 'ae')}
-            ${scaleBar('주목도', r.attention_grabbing, 7, 'ae')}
-          </div>
-          <div class="scale-group">
-            <h6>구매 의향 (1-7)</h6>
-            ${scaleBar('구매 가능성', r.likelihood_high, 7, 'pi')}
-            ${scaleBar('고려 확률', r.probability_consider_high, 7, 'pi')}
-            ${scaleBar('구매 의향', r.willingness_high, 7, 'pi')}
-          </div>
-          <div class="scale-group">
-            <h6>기타 정량</h6>
-            ${scaleBar('구매 확률', r.purchase_probability_juster, 10, 'pp')}
-            ${scaleBar('정보 충분성', r.info_sufficiency, 7, 'is')}
-          </div>
-        </div>
-      </div>
-      ${r.competitive_preference ? `<div style="margin:10px 0;font-size:.9rem"><strong>경쟁 비교:</strong> ${esc(r.competitive_preference)}</div>` : ''}
-      <div class="qual-section">
-        <h5>💬 정성적 코멘트</h5>
-        <div class="qual-grid">
-          ${r.perceived_message ? `<div class="qual-item"><div class="qual-label">핵심 메시지 인식</div><div class="qual-text">${esc(r.perceived_message)}</div></div>` : ''}
-          ${r.emotional_response ? `<div class="qual-item"><div class="qual-label">감정적 반응</div><div class="qual-text">${esc(r.emotional_response)}</div></div>` : ''}
-          ${r.purchase_trigger_barrier ? `<div class="qual-item"><div class="qual-label">구매 트리거/장벽</div><div class="qual-text">${esc(r.purchase_trigger_barrier)}</div></div>` : ''}
-          ${r.recommendation_context ? `<div class="qual-item"><div class="qual-label">추천 맥락</div><div class="qual-text">${esc(r.recommendation_context)}</div></div>` : ''}
-        </div>
-      </div>
+      ${renderScaleBars(r)}
+      ${renderQualItems(r)}
       ${renderQA(r.qa_result)}
       <div class="review-summary"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>
       <button class="raw-toggle" onclick="toggleRaw(${idx})">Raw Response 보기</button>
       <pre class="raw-content" id="raw-${idx}">${esc(r.raw_response)}</pre>
     </div>
   </div>`;
+}
+
+const _scaleCls = ['ba', 'pv', 'bf', 'ae', 'is', 'pi', 'pp'];
+
+function renderScaleBars(r) {
+  if (!window.funnelConfig) return '';
+  let html = '<div class="scale-section"><h5>📊 정량 평가</h5><div class="scale-grid">';
+  let clsIdx = 0;
+  for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
+    const quantItems = funnel.items.filter(i => i.type === 'quantitative');
+    if (!quantItems.length) { clsIdx++; continue; }
+    const cls = _scaleCls[clsIdx % _scaleCls.length];
+    const scaleLabel = quantItems[0].scale || '1-7';
+    html += `<div class="scale-group"><h6>${esc(funnel.label.split('(')[0].trim())} (${scaleLabel})</h6>`;
+    for (const item of quantItems) {
+      const val = r[item.key];
+      if (val == null) continue;
+      const max = (item.scale === '0-10' || item.scale === '1-10') ? 10 : 7;
+      html += scaleBar(item.label, val, max, cls);
+    }
+    html += '</div>';
+    clsIdx++;
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function renderQualItems(r) {
+  if (!window.funnelConfig) return '';
+  let items = '';
+  for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
+    const qualItems = funnel.items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
+    for (const item of qualItems) {
+      const val = r[item.key];
+      if (!val) continue;
+      items += `<div class="qual-item"><div class="qual-label">${esc(item.label)}</div><div class="qual-text">${esc(val)}</div></div>`;
+    }
+  }
+  if (!items) return '';
+  return `<div class="qual-section"><h5>💬 정성적 코멘트</h5><div class="qual-grid">${items}</div></div>`;
 }
 
 function toggleCard(idx) {
