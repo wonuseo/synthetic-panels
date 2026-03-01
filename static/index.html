@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Synthetic Panels</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/app.css" />
 </head>
 <body>
@@ -11,7 +14,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <span>🏨</span>
+      <span class="header-icon">🏨</span>
       <h1>Synthetic Panels</h1>
     </div>
     <span class="version-info">v{{ version }} · {{ last_updated }}</span>
@@ -26,14 +29,14 @@
 
         <label style="margin-top:0">이미지 / PDF</label>
         <div class="drop-zone" id="drop-zone">
-          <div style="font-size:2.2rem">📄</div>
+          <div class="drop-zone-icon">📄</div>
           <p>PDF, PNG, JPG 파일을 드래그하거나 클릭하여 업로드</p>
           <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" />
         </div>
         <div class="preview hidden" id="preview"></div>
 
         <label style="margin-top:18px">텍스트 내용</label>
-        <textarea id="text-content" rows="6" placeholder="프로모션 텍스트 내용을 입력하세요 (선택사항)" style="width:100%;padding:10px 12px;border:1px solid #dfe6e9;border-radius:8px;font-size:.95rem;background:#fafafa;resize:vertical;font-family:inherit;line-height:1.5;"></textarea>
+        <textarea id="text-content" rows="6" placeholder="프로모션 텍스트 내용을 입력하세요 (선택사항)" style="resize:vertical"></textarea>
 
         <div class="progress-area hidden" id="progress-area">
           <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
@@ -47,8 +50,8 @@
       <div class="card">
         <h2>⚙️ Settings</h2>
 
-        <button class="btn-secondary" style="margin-top:4px;width:100%" id="btn-load-personas">페르소나 로드</button>
-        <button class="btn-secondary" style="margin-top:8px;width:100%;border-color:#b2bec3;color:#636e72" onclick="loadDemo()">🔍 데모 미리보기</button>
+        <button class="btn-secondary full-width" style="margin-top:4px" id="btn-load-personas">페르소나 로드</button>
+        <button class="btn-secondary full-width btn-secondary--ghost" style="margin-top:8px" onclick="loadDemo()">🔍 데모 미리보기</button>
         <div id="persona-status"></div>
         <div id="persona-list-wrap" class="hidden"></div>
 
@@ -100,6 +103,6 @@
   </div>
 </div>
 
-<script src="/static/app.js"></script>
+<script type="module" src="/static/js/main.js"></script>
 </body>
 </html>

@@ -400,6 +400,14 @@ function showResults(payload) {
   renderQATab(reviews);
 }
 
+/* ── Hierarchy UI helpers ── */
+function hierHeader(lvl, label, title) {
+  return `<div class="section-header"><span class="section-level ${lvl}">${label}</span><span class="section-title-text">${title}</span><div class="section-line"></div></div>`;
+}
+function hierConnector(label) {
+  return `<div class="level-connector"><div class="connector-track"><div class="connector-dot"></div><div class="connector-dot"></div><div class="connector-dot"></div></div><div class="connector-arrow"></div>${label ? `<span class="connector-label">${label}</span>` : ''}</div>`;
+}
+
 /* ── Overview Tab ── */
 function renderOverviewTab(reviews, synthesis, synthesis_raw) {
   const valid = reviews.filter(r => !r.error);
@@ -411,11 +419,24 @@ function renderOverviewTab(reviews, synthesis, synthesis_raw) {
   const funnelAverages = computeFunnelAverages(valid);
 
   let html = '';
+
+  // ── L1: 종합 요약 ──
+  html += hierHeader('l1', 'L1', '종합 요약');
   html += renderMetricGroups(reviews, valid, errors, interested, funnelAverages);
   html += renderStrategicNarrative(funnelAverages, valid, synthesis, synthesis_raw);
-  html += renderAppealChart(reviews);
-  html += renderFunnelSummaries(synthesis);
+
+  html += hierConnector('퍼널 단계 분석');
+
+  // ── L2: 퍼널 단계별 분석 ──
+  html += hierHeader('l2', 'L2', '퍼널 단계별 분석');
+  html += renderFunnelSummaries(synthesis, funnelAverages);
   html += renderIntegratedChart(valid);
+
+  html += hierConnector('세부 데이터');
+
+  // ── L3: 세부 분석 ──
+  html += hierHeader('l3', 'L3', '세부 분석');
+  html += renderAppealChart(reviews);
   html += renderTargetDeepDive(valid);
 
   document.getElementById('tab-overview').innerHTML = html;
@@ -461,29 +482,42 @@ function renderMetricGroups(reviews, valid, errors, interested, funnelAverages) 
   return html;
 }
 
-/* ── Funnel visual diagram (trapezoid clip-path) ── */
+/* ── Funnel visual diagram (trapezoid + dotted connector + score box) ── */
 function renderFunnelDiagram(funnelAverages) {
   const entries = Object.entries(funnelAverages);
   const colors = { upper: '#6c5ce7', mid: '#0984e3', lower: '#00b894' };
-  // Each stage: clip-path trapezoid coords [tl,tr,br,bl] + inner content padding
-  const stageConfigs = [
-    { clip: 'polygon(0% 0%, 100% 0%, 91% 100%, 9% 100%)',  pad: '0 13%' },
-    { clip: 'polygon(9% 0%, 91% 0%, 82% 100%, 18% 100%)',  pad: '0 22%' },
-    { clip: 'polygon(18% 0%, 82% 0%, 73% 100%, 27% 100%)', pad: '0 30%' },
+  const stageClips = [
+    'polygon(0% 0%, 100% 0%, 91% 100%, 9% 100%)',
+    'polygon(9% 0%, 91% 0%, 82% 100%, 18% 100%)',
+    'polygon(18% 0%, 82% 0%, 73% 100%, 27% 100%)',
   ];
 
-  let html = '<div class="card funnel-visual"><h2>📊 퍼널 점수</h2><div class="funnel-diagram-wrap">';
+  let html = '<div class="card funnel-visual"><h2>📊 퍼널 점수</h2><div class="funnel-diagram-v2">';
   entries.forEach(([key, fa], i) => {
     const color = colors[key] || '#6c5ce7';
     const normPct = Math.round(fa.normalized * 100);
-    const shortLabel = fa.label.split('(')[0].trim();
-    const cfg = stageConfigs[i] || stageConfigs[2];
-    html += `<div class="funnel-stage" style="clip-path:${cfg.clip};background:${color}15">`;
-    html += `<div class="funnel-score-fill" style="width:${normPct}%;background:${color}40"></div>`;
-    html += `<div class="funnel-stage-content" style="padding:${cfg.pad}">`;
-    html += `<span class="funnel-stage-label">${esc(shortLabel)}</span>`;
-    html += `<span class="funnel-stage-score" style="color:${color}">${fa.avg} / ${fa.max}</span>`;
-    html += `</div></div>`;
+    const shortLabel = fa.label.split('(')[0].trim().split(' & ')[0];
+    const clip = stageClips[i] || stageClips[2];
+
+    html += '<div class="fdv2-row">';
+
+    // Funnel stage (trapezoid)
+    html += `<div class="fdv2-stage" style="clip-path:${clip};background:${color}18">`;
+    html += `<div class="fdv2-fill" style="width:${normPct}%;background:${color}35"></div>`;
+    html += `<span class="fdv2-label">${esc(shortLabel)}</span>`;
+    html += '</div>';
+
+    // Dotted connector
+    html += `<div class="fdv2-conn" style="border-top-color:${color}70"></div>`;
+
+    // Score box
+    html += `<div class="fdv2-box" style="border-color:${color}50;background:${color}07">`;
+    html += `<div class="fdv2-score"><span class="fdv2-num" style="color:${color}">${fa.avg}</span><span class="fdv2-den">/ ${fa.max}</span></div>`;
+    html += `<div class="fdv2-bar-bg"><div class="fdv2-bar-fill" style="width:${normPct}%;background:${color}"></div></div>`;
+    html += `<span class="fdv2-pct">${normPct}%</span>`;
+    html += '</div>';
+
+    html += '</div>';
   });
   html += '</div></div>';
   return html;
@@ -574,47 +608,66 @@ function renderAppealChart(reviews) {
   return html;
 }
 
-/* ── Section 4: 퍼널별 핵심 지표 카드 ── */
-function renderFunnelSummaries(synthesis) {
-  if (!synthesis || synthesis.error || !window.funnelConfig) return '';
-  let html = '<div class="card"><h2>📊 퍼널별 핵심 지표</h2><div class="funnel-summaries">';
+/* ── Section 4: 퍼널별 핵심 지표 카드 (L2 columns) ── */
+function renderFunnelSummaries(synthesis, funnelAverages) {
+  if (!window.funnelConfig) return '';
+  let html = '<div class="funnel-columns">';
   for (const [key, funnel] of Object.entries(window.funnelConfig)) {
-    html += renderFunnelSummaryCard(key, funnel, synthesis);
+    const fa = funnelAverages ? funnelAverages[key] : null;
+    html += renderFunnelColCard(key, funnel, synthesis, fa);
   }
-  html += '</div></div>';
+  html += '</div>';
   return html;
 }
 
-function renderFunnelSummaryCard(key, funnel, synthesis) {
+function renderFunnelColCard(key, funnel, synthesis, fa) {
+  const colorMap = { upper: 'var(--upper)', mid: 'var(--mid)', lower: 'var(--lower)' };
+  const color = colorMap[key] || 'var(--accent)';
+  const shortLabel = funnel.label.split('(')[0].trim();
   const synQuant = [], synQual = [];
-  for (const item of funnel.synthesis_items) {
-    const val = synthesis[item.key];
-    if (val == null || val === '' || (Array.isArray(val) && !val.length)) continue;
-    if (item.type === 'quantitative' && typeof val === 'number') {
-      const suffix = item.key.includes('probability') || item.key.includes('conversion') || item.key === 'overall_score' ? '/10' : '/7';
-      synQuant.push({ label: item.label, val, suffix });
-    } else if (item.type !== 'categorical') {
-      synQual.push({ label: item.label, val });
+
+  if (synthesis && !synthesis.error) {
+    for (const item of funnel.synthesis_items) {
+      const val = synthesis[item.key];
+      if (val == null || val === '' || (Array.isArray(val) && !val.length)) continue;
+      if (item.type === 'quantitative' && typeof val === 'number') {
+        const suffix = item.key.includes('probability') || item.key.includes('conversion') || item.key === 'overall_score' ? '/10' : '/7';
+        synQuant.push({ label: item.label, val, suffix });
+      } else if (item.type !== 'categorical') {
+        synQual.push({ label: item.label, val });
+      }
     }
   }
 
-  let html = `<div class="funnel-summary-card">`;
-  html += `<div class="funnel-summary-header"><span class="funnel-dot ${key}"></span><span class="funnel-summary-title">${esc(funnel.label.split('(')[0].trim())}</span></div>`;
+  let html = `<div class="funnel-col-card">`;
+
+  // Header: title + big score
+  html += `<div class="fcc-header ${key}">`;
+  html += `<div class="fcc-label-row"><span class="funnel-dot ${key}"></span><span class="fcc-title">${esc(shortLabel)}</span></div>`;
+  if (fa) {
+    const pct = Math.round(fa.normalized * 100);
+    html += `<div class="fcc-score-row"><span class="fcc-score-num" style="color:${color}">${fa.avg}</span><span class="fcc-score-den">/ ${fa.max}</span><span class="fcc-score-pct">${pct}%</span></div>`;
+    html += `<div class="fcc-bar"><div class="fcc-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+  }
+  html += `</div>`;
+
+  // Body: key metrics + qualitative
+  html += `<div class="fcc-body">`;
   if (synQuant.length) {
-    html += `<div class="syn-metrics" style="margin-top:12px">`;
-    for (const m of synQuant.slice(0, 3)) html += synMetric(m.label, m.val, m.suffix);
-    html += '</div>';
-  }
-  if (synQual.length) {
-    html += '<div class="syn-qual-compact">';
-    for (const item of synQual.slice(0, 2)) {
-      const raw = Array.isArray(item.val) ? item.val.slice(0, 2).join(', ') : String(item.val);
-      const text = raw.substring(0, 120);
-      html += `<div class="qual-compact-item"><div class="qual-compact-label">${esc(item.label)}</div><div class="qual-text" style="font-size:.83rem">${esc(text)}${raw.length > 120 ? '…' : ''}</div></div>`;
+    html += `<div class="fcc-metrics">`;
+    for (const m of synQuant.slice(0, 3)) {
+      html += `<div class="fcc-metric-row"><span class="fcc-metric-label">${esc(m.label)}</span><span class="fcc-metric-val">${m.val}${m.suffix}</span></div>`;
     }
-    html += '</div>';
+    html += `</div>`;
   }
-  html += '</div>';
+  for (const item of synQual.slice(0, 2)) {
+    const raw = Array.isArray(item.val) ? item.val.slice(0, 2).join(', ') : String(item.val);
+    const text = raw.substring(0, 120);
+    html += `<div class="fcc-qual-item"><span class="fcc-qual-label">${esc(item.label)}</span><span class="fcc-qual-text">${esc(text)}${raw.length > 120 ? '…' : ''}</span></div>`;
+  }
+  html += `</div>`;
+
+  html += `</div>`;
   return html;
 }
 
@@ -685,10 +738,11 @@ function renderFunnelTab(funnelKey) {
   const valid = lastReviews.filter(r => !r.error);
   let html = '';
 
-  html += `<h2 style="font-size:1.15rem;margin-bottom:6px">${esc(funnel.label)}</h2>`;
-  if (funnel.description) {
-    html += `<p style="color:#636e72;font-size:.9rem;margin-bottom:18px">${esc(funnel.description)}</p>`;
-  }
+  // Funnel tab header
+  html += `<div class="funnel-tab-header">`;
+  html += `<div class="funnel-tab-title"><span class="funnel-dot ${funnelKey}" style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0"></span>${esc(funnel.label)}</div>`;
+  if (funnel.description) html += `<div class="funnel-tab-desc">${esc(funnel.description)}</div>`;
+  html += `</div>`;
 
   if (lastSynthesis && !lastSynthesis.error) {
     const synQuant = [], synQual = [], synCat = [];
@@ -705,6 +759,7 @@ function renderFunnelTab(funnelKey) {
       }
     }
     if (synQuant.length || synQual.length || synCat.length) {
+      html += hierHeader('l1', 'L1', '통합 분석');
       html += `<div class="synthesis"><h3>📊 통합 분석</h3>`;
       if (synQuant.length) {
         html += `<div class="syn-metrics">`;
@@ -724,10 +779,11 @@ function renderFunnelTab(funnelKey) {
         html += `</div>`;
       }
       html += `</div>`;
+      html += hierConnector('개별 페르소나');
     }
   }
 
-  html += `<h3 style="font-size:1.05rem;margin:20px 0 12px">🧑‍🤝‍🧑 개별 페르소나 (${esc(funnel.label.split('(')[0].trim())})</h3>`;
+  html += hierHeader('l2', 'L2', `개별 페르소나 · ${esc(funnel.label.split('(')[0].trim())}`);
   html += `<div class="persona-cards">`;
   [...lastReviews].sort((a,b) => b.appeal_score - a.appeal_score).forEach((r, i) => {
     const idx = `${funnelKey}-${i}`;
