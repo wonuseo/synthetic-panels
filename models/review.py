@@ -39,34 +39,41 @@ class Review:
                 text = text.split("```")[1].split("```")[0].strip()
 
             data = json.loads(text)
-            positives = data.get("key_positives", [])
+
+            # Support both flat and nested (Korean category keys) structures
+            base = data.get("기본 평가", data)
+            ba   = data.get("브랜드 태도", data)
+            pi   = data.get("구매 의향", data)
+            pp   = data.get("구매 확률", data)
+
+            positives = base.get("key_positives", [])
             if isinstance(positives, list):
                 positives = "; ".join(positives)
 
-            concerns = data.get("key_concerns", [])
+            concerns = base.get("key_concerns", [])
             if isinstance(concerns, list):
                 concerns = "; ".join(concerns)
 
             return cls(
                 persona_id=persona_id,
                 persona_name=persona_name,
-                appeal_score=int(data.get("appeal_score", 0)),
-                first_impression=str(data.get("first_impression", "")),
+                appeal_score=int(base.get("appeal_score", 0)),
+                first_impression=str(base.get("first_impression", "")),
                 key_positives=str(positives),
                 key_concerns=str(concerns),
-                recommendation=str(data.get("recommendation", "")),
-                review_summary=str(data.get("review_summary", "")),
+                recommendation=str(base.get("recommendation", "")),
+                review_summary=str(base.get("review_summary", "")),
                 # Brand Attitude
-                like_dislike=int(data.get("like_dislike", 0)),
-                positive_negative=int(data.get("positive_negative", 0)),
-                good_bad=int(data.get("good_bad", 0)),
-                favorable_unfavorable=int(data.get("favorable_unfavorable", 0)),
+                like_dislike=int(ba.get("like_dislike", 0)),
+                positive_negative=int(ba.get("positive_negative", 0)),
+                good_bad=int(ba.get("good_bad", 0)),
+                favorable_unfavorable=int(ba.get("favorable_unfavorable", 0)),
                 # Purchase Intention
-                likelihood_high=int(data.get("likelihood_high", 0)),
-                probability_consider_high=int(data.get("probability_consider_high", 0)),
-                willingness_high=int(data.get("willingness_high", 0)),
+                likelihood_high=int(pi.get("likelihood_high", 0)),
+                probability_consider_high=int(pi.get("probability_consider_high", 0)),
+                willingness_high=int(pi.get("willingness_high", 0)),
                 # Purchase Probability
-                purchase_probability_juster=int(data.get("purchase_probability_juster", 0)),
+                purchase_probability_juster=int(pp.get("purchase_probability_juster", 0)),
                 raw_response=response_text,
             )
         except (json.JSONDecodeError, KeyError, ValueError):
