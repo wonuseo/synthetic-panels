@@ -1,0 +1,47 @@
+# 페르소나 필드 정의 — Google Sheets 컬럼명과 일치해야 합니다.
+fields:
+  - key: persona_id
+    label: "ID"
+  - key: persona_name
+    label: "이름"
+  - key: panel_gender
+    label: "성별"
+  - key: panel_sex
+    label: "성"
+  - key: persona_season
+    label: "선호 시즌"
+  - key: panel_cpc
+    label: "CPC (예산 등급)"
+  - key: panel_potential
+    label: "잠재 가치"
+  - key: panel_room_pref
+    label: "선호 객실 타입"
+  - key: panel_bed_pref
+    label: "선호 침대 타입"
+  - key: panel_activity_pref_1
+    label: "선호 활동 1"
+  - key: panel_activity_pref_2
+    label: "선호 활동 2"
+  - key: panel_activity_pref_3
+    label: "선호 활동 3"
+  - key: panel_cuisine_1
+    label: "선호 음식 1"
+  - key: panel_cuisine_2
+    label: "선호 음식 2"
+  - key: persona_ksf
+    label: "핵심 성공 요인 (KSF)"
+
+# LLM에 전달되는 페르소나 프로필 텍스트 템플릿
+# Python str.format(**fields) 방식으로 렌더링됩니다.
+profile_template: |
+  Name: {persona_name}
+  Gender: {panel_gender}
+  Sex: {panel_sex}
+  Preferred Season: {persona_season}
+  Cost Per Click (Budget Tier): {panel_cpc}
+  Potential Value: {panel_potential}
+  Room Preference: {panel_room_pref}
+  Bed Preference: {panel_bed_pref}
+  Activity Preferences: {panel_activity_pref_1}, {panel_activity_pref_2}, {panel_activity_pref_3}
+  Cuisine Preferences: {panel_cuisine_1}, {panel_cuisine_2}
+  Key Success Factors: {persona_ksf}
