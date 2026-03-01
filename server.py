@@ -26,10 +26,23 @@ app = FastAPI(title="Synthetic Panels")
 
 STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES_DIR = Path(__file__).parent / "static"
-_VERSION_FILE = Path(__file__).parent / "VERSION"
-APP_VERSION = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "dev"
-_mtime = _VERSION_FILE.stat().st_mtime if _VERSION_FILE.exists() else None
-LAST_UPDATED = datetime.fromtimestamp(_mtime).strftime("%Y-%m-%d %H:%M") if _mtime else datetime.now().strftime("%Y-%m-%d %H:%M")
+def _git_info() -> tuple[str, str]:
+    import subprocess
+    cwd = str(Path(__file__).parent)
+    try:
+        version = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=cwd, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        raw_date = subprocess.check_output(
+            ["git", "log", "-1", "--format=%ci"], cwd=cwd, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        last_updated = datetime.fromisoformat(raw_date).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        version = "dev"
+        last_updated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return version, last_updated
+
+APP_VERSION, LAST_UPDATED = _git_info()
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))

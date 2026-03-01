@@ -11,8 +11,6 @@ uvicorn server:app --reload --port 8000
 # Install dependencies
 pip install -r requirements.txt
 
-# Release (bumps VERSION, updates CHANGELOG, creates git tag)
-./scripts/release.sh [patch|minor|major]
 ```
 
 No test suite exists yet.
