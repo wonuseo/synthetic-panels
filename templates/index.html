@@ -159,7 +159,7 @@
     /* ── Scale bars ── */
     .scale-section { margin: 14px 0; }
     .scale-section h5 { font-size: .85rem; margin-bottom: 8px; color: #636e72; }
-    .scale-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .scale-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 640px) { .scale-grid { grid-template-columns: 1fr; } }
     .scale-group { background: #f8f9fa; border-radius: 8px; padding: 14px; }
     .scale-group h6 { font-size: .8rem; color: #636e72; margin-bottom: 8px; font-weight: 600; }
@@ -169,8 +169,64 @@
     .scale-item .scale-fill { height: 100%; border-radius: 3px; transition: width .4s; }
     .scale-item .scale-val { width: 32px; font-weight: 600; font-size: .85rem; }
     .scale-fill.ba { background: linear-gradient(90deg, #6c5ce7, #a29bfe); }
+    .scale-fill.pv { background: linear-gradient(90deg, #0984e3, #74b9ff); }
+    .scale-fill.bf { background: linear-gradient(90deg, #e17055, #fab1a0); }
+    .scale-fill.ae { background: linear-gradient(90deg, #00cec9, #81ecec); }
+    .scale-fill.is { background: linear-gradient(90deg, #636e72, #b2bec3); }
     .scale-fill.pi { background: linear-gradient(90deg, #00b894, #55efc4); }
     .scale-fill.pp { background: linear-gradient(90deg, #fdcb6e, #e17055); }
+
+    /* ── QA Badge ── */
+    .qa-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 10px; border-radius: 12px; font-size: .78rem; font-weight: 600; margin-left: 6px;
+    }
+    .qa-badge.pass { background: #e8f5e9; color: #2e7d32; }
+    .qa-badge.fail { background: #ffebee; color: #c62828; }
+
+    /* ── QA Section in persona card ── */
+    .qa-section { margin: 16px 0; padding: 14px; background: #f0f0f5; border-radius: 10px; border: 1px solid #e0e0e8; }
+    .qa-section h5 { font-size: .85rem; margin-bottom: 10px; color: #636e72; }
+    .qa-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+    .qa-score-card { background: #fff; border-radius: 8px; padding: 10px 16px; text-align: center; flex: 1; min-width: 100px; }
+    .qa-score-card .qa-s-label { font-size: .75rem; color: #636e72; }
+    .qa-score-card .qa-s-value { font-size: 1.2rem; font-weight: 700; margin-top: 2px; }
+    .qa-score-card .qa-s-value.good { color: #2e7d32; }
+    .qa-score-card .qa-s-value.warn { color: #e65100; }
+    .qa-score-card .qa-s-value.bad { color: #c62828; }
+    .qa-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    @media (max-width: 640px) { .qa-detail { grid-template-columns: 1fr; } }
+    .qa-detail-group { background: #fff; border-radius: 8px; padding: 10px 14px; }
+    .qa-detail-group h6 { font-size: .78rem; color: #636e72; margin-bottom: 6px; font-weight: 600; }
+    .qa-pair { display: flex; justify-content: space-between; font-size: .82rem; padding: 3px 0; border-bottom: 1px solid #f5f5f5; }
+    .qa-pair:last-child { border-bottom: none; }
+    .qa-pair .qp-label { color: #636e72; }
+    .qa-pair .qp-val { font-weight: 600; }
+
+    /* ── Qualitative comments ── */
+    .qual-section { margin: 16px 0; }
+    .qual-section h5 { font-size: .85rem; margin-bottom: 10px; color: #636e72; }
+    .qual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .qual-grid { grid-template-columns: 1fr; } }
+    .qual-item { background: #f8f9fa; border-radius: 8px; padding: 14px; }
+    .qual-item .qual-label { font-size: .8rem; color: #636e72; font-weight: 600; margin-bottom: 4px; }
+    .qual-item .qual-text { font-size: .88rem; line-height: 1.6; color: #2d3436; }
+
+    /* ── Synthesis sections ── */
+    .syn-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+    @media (max-width: 640px) { .syn-metrics { grid-template-columns: repeat(2, 1fr); } }
+    .syn-metric { background: rgba(255,255,255,.7); border-radius: 8px; padding: 12px 14px; text-align: center; }
+    .syn-metric .syn-m-label { font-size: .78rem; color: #636e72; }
+    .syn-metric .syn-m-value { font-size: 1.3rem; font-weight: 700; color: #2d3436; margin-top: 2px; }
+    .syn-decision { background: rgba(255,255,255,.5); border-radius: 10px; padding: 18px; margin: 16px 0; }
+    .syn-decision h4 { font-size: .95rem; margin-bottom: 10px; color: #2d3436; }
+    .syn-decision-item { margin-bottom: 10px; font-size: .9rem; line-height: 1.6; }
+    .syn-decision-item .d-label { font-weight: 600; color: #636e72; font-size: .82rem; }
+    .syn-qual { margin: 16px 0; }
+    .syn-qual h4 { font-size: .95rem; margin-bottom: 10px; color: #2d3436; }
+    .syn-qual-item { background: rgba(255,255,255,.5); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+    .syn-qual-item .sq-label { font-size: .82rem; font-weight: 600; color: #636e72; margin-bottom: 4px; }
+    .syn-qual-item .sq-text { font-size: .9rem; line-height: 1.6; }
 
     /* ── Persona cards ── */
     .persona-cards { display: flex; flex-direction: column; gap: 10px; }
@@ -292,6 +348,7 @@
     <!-- Metrics -->
     <div class="metrics" id="metrics"></div>
     <div class="metrics" id="metrics2" style="margin-top:-10px"></div>
+    <div class="metrics" id="metrics3" style="margin-top:-10px"></div>
 
     <!-- Synthesis -->
     <div class="synthesis hidden" id="synthesis"></div>
@@ -521,11 +578,26 @@ function showResults(payload) {
   )).length;
   const errors = reviews.filter(r => r.error).length;
 
-  // Brand Attitude averages
+  // Brand Attitude averages (2 items: like_dislike, favorable_unfavorable)
   const baScores = valid.filter(r => r.like_dislike > 0).map(r =>
-    (r.like_dislike + r.positive_negative + r.good_bad + r.favorable_unfavorable) / 4
+    (r.like_dislike + r.favorable_unfavorable) / 2
   );
   const avgBa = baScores.length ? (baScores.reduce((a,b) => a+b, 0) / baScores.length).toFixed(1) : '0';
+  // Perceived Value averages
+  const pvScores = valid.filter(r => r.value_for_money > 0).map(r =>
+    (r.value_for_money + r.price_fairness) / 2
+  );
+  const avgPv = pvScores.length ? (pvScores.reduce((a,b) => a+b, 0) / pvScores.length).toFixed(1) : '0';
+  // Brand Fit averages
+  const bfScores = valid.filter(r => r.brand_self_congruity > 0).map(r =>
+    (r.brand_self_congruity + r.brand_image_fit) / 2
+  );
+  const avgBf = bfScores.length ? (bfScores.reduce((a,b) => a+b, 0) / bfScores.length).toFixed(1) : '0';
+  // Ad Effectiveness averages
+  const aeScores = valid.filter(r => r.message_clarity > 0).map(r =>
+    (r.message_clarity + r.attention_grabbing) / 2
+  );
+  const avgAe = aeScores.length ? (aeScores.reduce((a,b) => a+b, 0) / aeScores.length).toFixed(1) : '0';
   // Purchase Intention averages
   const piScores = valid.filter(r => r.likelihood_high > 0).map(r =>
     (r.likelihood_high + r.probability_consider_high + r.willingness_high) / 3
@@ -545,10 +617,18 @@ function showResults(payload) {
 
   // Metrics row 2
   document.getElementById('metrics2').innerHTML = [
-    metricCard('평균 브랜드 태도', `${avgBa} / 7`),
-    metricCard('평균 구매 의향', `${avgPi} / 7`),
-    metricCard('평균 구매 확률', `${avgPp} / 10`),
+    metricCard('브랜드 태도', `${avgBa} / 7`),
+    metricCard('지각된 가치', `${avgPv} / 7`),
+    metricCard('브랜드 적합성', `${avgBf} / 7`),
+    metricCard('광고 효과성', `${avgAe} / 7`),
+  ].join('');
+
+  // Metrics row 3
+  document.getElementById('metrics3').innerHTML = [
+    metricCard('구매 의향', `${avgPi} / 7`),
+    metricCard('구매 확률', `${avgPp} / 10`),
     metricCard('유효 응답', `${valid.length}명`),
+    metricCard('정보 충분성', `${valid.filter(r=>r.info_sufficiency>0).length ? (valid.filter(r=>r.info_sufficiency>0).map(r=>r.info_sufficiency).reduce((a,b)=>a+b,0)/valid.filter(r=>r.info_sufficiency>0).length).toFixed(1) : '0'} / 7`),
   ].join('');
 
   // Synthesis
@@ -591,18 +671,119 @@ function metricCard(label, value) {
 
 function renderSynthesis(s) {
   let html = '';
+
+  // Executive Summary
   html += `<h3>💡 Executive Summary</h3>`;
   html += `<div class="exec-summary">${esc(s.executive_summary || '')}</div>`;
+
+  // Average Metrics
+  html += `<div class="syn-metrics">`;
+  html += synMetric('종합 점수', s.overall_score, '/10');
+  html += synMetric('브랜드 태도', s.avg_brand_attitude, '/7');
+  html += synMetric('지각된 가치', s.avg_perceived_value, '/7');
+  html += synMetric('브랜드 적합성', s.avg_brand_fit, '/7');
+  html += synMetric('광고 효과성', s.avg_ad_effectiveness, '/7');
+  html += synMetric('구매 의향', s.avg_purchase_intention, '/7');
+  html += synMetric('구매 확률', s.avg_purchase_probability, '/10');
+  html += `</div>`;
+
+  // Consensus
   html += `<div class="two-col">`;
   html += `<div class="syn-list"><h4>✅ 공통 긍정 요소</h4><ul>${(s.consensus_positives||[]).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   html += `<div class="syn-list"><h4>⚠️ 공통 우려 사항</h4><ul>${(s.consensus_concerns||[]).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   html += `</div>`;
+
   if (s.segment_insights && s.segment_insights.length) {
     html += `<div class="syn-list"><h4>📊 세그먼트별 인사이트</h4><ul>${s.segment_insights.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   }
+
+  // Decision Support
+  if (s.go_nogo_recommendation || s.improvement_priority || s.estimated_conversion_range) {
+    html += `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
+    if (s.go_nogo_recommendation) {
+      html += `<div class="syn-decision-item"><div class="d-label">Go/No-Go 판단</div>${esc(s.go_nogo_recommendation)}</div>`;
+    }
+    if (s.target_segment_priority && s.target_segment_priority.length) {
+      html += `<div class="syn-decision-item"><div class="d-label">타겟 세그먼트 우선순위</div><ul style="padding-left:18px;margin-top:4px">${s.target_segment_priority.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+    if (s.improvement_priority) {
+      html += `<div class="syn-decision-item"><div class="d-label">최우선 개선 영역</div>${esc(s.improvement_priority)}</div>`;
+    }
+    if (s.estimated_conversion_range) {
+      html += `<div class="syn-decision-item"><div class="d-label">예상 전환율</div>${esc(s.estimated_conversion_range)}</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Qualitative Analysis
+  if (s.message_gap_analysis || s.emotional_tone_summary || s.wom_potential) {
+    html += `<div class="syn-qual"><h4>💬 정성적 코멘트 종합 분석</h4>`;
+    if (s.message_gap_analysis) {
+      html += `<div class="syn-qual-item"><div class="sq-label">메시지 갭 분석</div><div class="sq-text">${esc(s.message_gap_analysis)}</div></div>`;
+    }
+    if (s.emotional_tone_summary) {
+      html += `<div class="syn-qual-item"><div class="sq-label">감정 톤 요약</div><div class="sq-text">${esc(s.emotional_tone_summary)}</div></div>`;
+    }
+    if (s.key_conversion_barriers && s.key_conversion_barriers.length) {
+      html += `<div class="syn-qual-item"><div class="sq-label">핵심 전환 장벽 Top 3</div><ol style="padding-left:18px;margin-top:4px">${s.key_conversion_barriers.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
+    }
+    if (s.wom_potential) {
+      html += `<div class="syn-qual-item"><div class="sq-label">구전(WoM) 잠재력</div><div class="sq-text">${esc(s.wom_potential)}</div></div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Actionable Recommendations
   if (s.actionable_recommendations && s.actionable_recommendations.length) {
     html += `<div class="syn-list" style="margin-top:12px"><h4>🎯 실행 제안</h4><ol style="padding-left:18px">${s.actionable_recommendations.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`;
   }
+
+  return html;
+}
+
+function synMetric(label, value, suffix) {
+  const v = value != null ? value : '-';
+  return `<div class="syn-metric"><div class="syn-m-label">${label}</div><div class="syn-m-value">${v}${value != null ? suffix : ''}</div></div>`;
+}
+
+function renderQA(qa) {
+  if (!qa || qa.qa_mode === 'off') return '';
+  const isLite = qa.qa_mode === 'lite';
+  const qCls = v => v >= 0.7 ? 'good' : v >= 0.5 ? 'warn' : 'bad';
+
+  let html = `<div class="qa-section">`;
+  html += `<h5>🔍 QA 검증 결과 (${isLite ? 'Lite' : 'Full'} Mode)</h5>`;
+
+  // Summary scores
+  html += `<div class="qa-summary">`;
+  html += `<div class="qa-score-card"><div class="qa-s-label">응답 일관성</div><div class="qa-s-value ${qCls(qa.consistency_score)}">${(qa.consistency_score * 100).toFixed(0)}%</div></div>`;
+  html += `<div class="qa-score-card"><div class="qa-s-label">트랩 통과율</div><div class="qa-s-value ${qCls(qa.trap_pass_rate)}">${(qa.trap_pass_rate * 100).toFixed(0)}%</div></div>`;
+  html += `<div class="qa-score-card"><div class="qa-s-label">페르소나 품질</div><div class="qa-s-value ${qCls(qa.persona_quality)}">${(qa.persona_quality * 100).toFixed(0)}%</div></div>`;
+  html += `<div class="qa-score-card"><div class="qa-s-label">판정</div><div class="qa-s-value ${qa.qa_passed ? 'good' : 'bad'}">${qa.qa_passed ? 'PASS' : 'FAIL'}</div></div>`;
+  html += `</div>`;
+
+  // Detail: replication pairs & trap items
+  html += `<div class="qa-detail">`;
+
+  // Replication
+  html += `<div class="qa-detail-group"><h6>일관성 검증 (Core vs Replication)</h6>`;
+  html += `<div class="qa-pair"><span class="qp-label">브랜드 호감도 (Rep)</span><span class="qp-val">${qa.qa_rep_brand_attitude || '-'}</span></div>`;
+  if (!isLite) {
+    html += `<div class="qa-pair"><span class="qp-label">가치 인식 (Rep)</span><span class="qp-val">${qa.qa_rep_value_perception || '-'}</span></div>`;
+    html += `<div class="qa-pair"><span class="qp-label">구매 의향 (Rep)</span><span class="qp-val">${qa.qa_rep_purchase_intent || '-'}</span></div>`;
+  }
+  html += `</div>`;
+
+  // Trap
+  html += `<div class="qa-detail-group"><h6>트랩 항목 (페르소나 적합성)</h6>`;
+  html += `<div class="qa-pair"><span class="qp-label">예산 민감도</span><span class="qp-val">${qa.qa_trap_budget_sensitivity || '-'}</span></div>`;
+  if (!isLite) {
+    html += `<div class="qa-pair"><span class="qp-label">경쟁사 충성도</span><span class="qp-val">${qa.qa_trap_competitor_loyalty || '-'}</span></div>`;
+    html += `<div class="qa-pair"><span class="qp-label">회의감 체크</span><span class="qp-val">${qa.qa_trap_skepticism_check || '-'}</span></div>`;
+  }
+  html += `</div>`;
+
+  html += `</div></div>`;
   return html;
 }
 
@@ -618,6 +799,7 @@ function renderPersonaCard(r, idx) {
       <span class="name">${esc(r.persona_name)}</span>
       <span class="score-badge ${cls}">${r.appeal_score}/10</span>
       <span class="rec-text">${esc(r.recommendation)}</span>
+      ${r.qa_result && r.qa_result.qa_mode !== 'off' ? `<span class="qa-badge ${r.qa_result.qa_passed ? 'pass' : 'fail'}">${r.qa_result.qa_passed ? 'QA PASS' : 'QA FAIL'}</span>` : ''}
       <span class="chevron">▶</span>
     </div>
     <div class="persona-card-body">
@@ -628,26 +810,52 @@ function renderPersonaCard(r, idx) {
         <div><h5>⚠️ 우려 사항</h5><ul>${concerns.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
       </div>
       <div class="scale-section">
+        <h5>📊 정량 평가</h5>
         <div class="scale-grid">
           <div class="scale-group">
-            <h6>📊 브랜드 태도 (1-7)</h6>
+            <h6>브랜드 태도 (1-7)</h6>
             ${scaleBar('호감도', r.like_dislike, 7, 'ba')}
-            ${scaleBar('긍/부정', r.positive_negative, 7, 'ba')}
-            ${scaleBar('좋음/나쁨', r.good_bad, 7, 'ba')}
             ${scaleBar('호의도', r.favorable_unfavorable, 7, 'ba')}
           </div>
           <div class="scale-group">
-            <h6>🛒 구매 의향 (1-7)</h6>
+            <h6>지각된 가치 (1-7)</h6>
+            ${scaleBar('가격 대비 가치', r.value_for_money, 7, 'pv')}
+            ${scaleBar('가격 적정성', r.price_fairness, 7, 'pv')}
+          </div>
+          <div class="scale-group">
+            <h6>브랜드 적합성 (1-7)</h6>
+            ${scaleBar('자아 일치', r.brand_self_congruity, 7, 'bf')}
+            ${scaleBar('이미지 적합', r.brand_image_fit, 7, 'bf')}
+          </div>
+          <div class="scale-group">
+            <h6>광고 효과성 (1-7)</h6>
+            ${scaleBar('메시지 명확성', r.message_clarity, 7, 'ae')}
+            ${scaleBar('주목도', r.attention_grabbing, 7, 'ae')}
+          </div>
+          <div class="scale-group">
+            <h6>구매 의향 (1-7)</h6>
             ${scaleBar('구매 가능성', r.likelihood_high, 7, 'pi')}
             ${scaleBar('고려 확률', r.probability_consider_high, 7, 'pi')}
             ${scaleBar('구매 의향', r.willingness_high, 7, 'pi')}
           </div>
           <div class="scale-group">
-            <h6>🎯 구매 확률 (Juster 0-10)</h6>
+            <h6>기타 정량</h6>
             ${scaleBar('구매 확률', r.purchase_probability_juster, 10, 'pp')}
+            ${scaleBar('정보 충분성', r.info_sufficiency, 7, 'is')}
           </div>
         </div>
       </div>
+      ${r.competitive_preference ? `<div style="margin:10px 0;font-size:.9rem"><strong>경쟁 비교:</strong> ${esc(r.competitive_preference)}</div>` : ''}
+      <div class="qual-section">
+        <h5>💬 정성적 코멘트</h5>
+        <div class="qual-grid">
+          ${r.perceived_message ? `<div class="qual-item"><div class="qual-label">핵심 메시지 인식</div><div class="qual-text">${esc(r.perceived_message)}</div></div>` : ''}
+          ${r.emotional_response ? `<div class="qual-item"><div class="qual-label">감정적 반응</div><div class="qual-text">${esc(r.emotional_response)}</div></div>` : ''}
+          ${r.purchase_trigger_barrier ? `<div class="qual-item"><div class="qual-label">구매 트리거/장벽</div><div class="qual-text">${esc(r.purchase_trigger_barrier)}</div></div>` : ''}
+          ${r.recommendation_context ? `<div class="qual-item"><div class="qual-label">추천 맥락</div><div class="qual-text">${esc(r.recommendation_context)}</div></div>` : ''}
+        </div>
+      </div>
+      ${renderQA(r.qa_result)}
       <div class="review-summary"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>
       <button class="raw-toggle" onclick="toggleRaw(${idx})">Raw Response 보기</button>
       <pre class="raw-content" id="raw-${idx}">${esc(r.raw_response)}</pre>
