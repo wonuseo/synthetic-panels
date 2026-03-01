@@ -20,6 +20,13 @@
     }
     .header h1 { font-size: 1.6rem; font-weight: 700; }
     .header span { font-size: 1.8rem; }
+    .header { justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .version-badge {
+      font-size: .75rem; font-weight: 600; color: #6c5ce7;
+      background: #f0eeff; border: 1px solid #d4caff;
+      padding: 3px 10px; border-radius: 20px; letter-spacing: .02em;
+    }
 
     /* ── Page: Upload ── */
     .upload-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 28px; }
@@ -275,8 +282,11 @@
 <div class="app">
   <!-- Header -->
   <div class="header">
-    <span>🏨</span>
-    <h1>Synthetic Panels</h1>
+    <div class="header-left">
+      <span>🏨</span>
+      <h1>Synthetic Panels</h1>
+    </div>
+    <span class="version-badge">v{{ version }} · 2026-03-01</span>
   </div>
 
   <!-- ═══════ PAGE: UPLOAD ═══════ -->

@@ -25,6 +25,8 @@ app = FastAPI(title="Synthetic Panels")
 
 STATIC_DIR = Path(__file__).parent / "frontend"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+_VERSION_FILE = Path(__file__).parent / "VERSION"
+APP_VERSION = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "dev"
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -32,7 +34,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 @app.get("/")
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "version": APP_VERSION})
 
 
 @app.post("/api/personas")
