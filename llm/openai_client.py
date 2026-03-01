@@ -127,6 +127,7 @@ def call_openai(
     filename: Optional[str],
     model: str = "gpt-4o",
     text_content: str = "",
+    qa_mode: str = "off",
 ) -> Review:
     client = _get_client()
 
@@ -135,7 +136,7 @@ def call_openai(
         user_content.extend(prepare_for_openai(file_bytes, filename))
     user_content.append({
         "type": "text",
-        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content),
+        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content, qa_mode=qa_mode),
     })
 
     try:
@@ -151,7 +152,10 @@ def call_openai(
             ),
         )
         response_text = response.choices[0].message.content
-        return Review.from_llm_response(persona.persona_id, persona.persona_name, response_text)
+        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text)
+        if qa_mode != "off" and review.qa_result:
+            review.qa_result.compute_scores(review, persona, qa_mode)
+        return review
     except Exception as e:
         logger.error("call_openai 실패: %s", e)
         return Review(

@@ -12,13 +12,14 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
-from config import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME
+from config import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE
 from sheets.client import open_spreadsheet_by_url
 from sheets.personas import load_personas
 from sheets.results import save_reviews
 from llm.claude import call_claude, synthesize_claude
 from llm.openai_client import call_openai, synthesize_openai
 from models.review import Review
+from models.qa import QAResult
 
 app = FastAPI(title="Synthetic Panels")
 
@@ -64,6 +65,7 @@ async def api_review(
     model: str = Form("gpt-4o-mini"),
     text_content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
+    qa_mode: str = Form(QA_MODE),
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
@@ -89,9 +91,9 @@ async def api_review(
 
         def run_single(persona):
             if provider == "Claude":
-                return call_claude(persona, file_bytes, filename, model, text_content)
+                return call_claude(persona, file_bytes, filename, model, text_content, qa_mode=qa_mode)
             else:
-                return call_openai(persona, file_bytes, filename, model, text_content)
+                return call_openai(persona, file_bytes, filename, model, text_content, qa_mode=qa_mode)
 
         futures = {executor.submit(run_single, p): p for p in personas}
         reviews = []
@@ -135,13 +137,23 @@ async def api_review(
                 "recommendation": r.recommendation,
                 "review_summary": r.review_summary,
                 "like_dislike": r.like_dislike,
-                "positive_negative": r.positive_negative,
-                "good_bad": r.good_bad,
                 "favorable_unfavorable": r.favorable_unfavorable,
+                "value_for_money": r.value_for_money,
+                "price_fairness": r.price_fairness,
+                "brand_self_congruity": r.brand_self_congruity,
+                "brand_image_fit": r.brand_image_fit,
+                "message_clarity": r.message_clarity,
+                "attention_grabbing": r.attention_grabbing,
+                "info_sufficiency": r.info_sufficiency,
+                "competitive_preference": r.competitive_preference,
                 "likelihood_high": r.likelihood_high,
                 "probability_consider_high": r.probability_consider_high,
                 "willingness_high": r.willingness_high,
                 "purchase_probability_juster": r.purchase_probability_juster,
+                "perceived_message": r.perceived_message,
+                "emotional_response": r.emotional_response,
+                "purchase_trigger_barrier": r.purchase_trigger_barrier,
+                "recommendation_context": r.recommendation_context,
             }
             for r in reviews
             if not r.error
@@ -183,6 +195,24 @@ async def api_save(
         data = json.loads(reviews_json)
         reviews = []
         for r in data:
+            # Restore QA result if present
+            qa_data = r.get("qa_result")
+            qa_result = None
+            if qa_data and isinstance(qa_data, dict):
+                qa_result = QAResult(
+                    qa_rep_brand_attitude=int(qa_data.get("qa_rep_brand_attitude", 0)),
+                    qa_rep_value_perception=int(qa_data.get("qa_rep_value_perception", 0)),
+                    qa_rep_purchase_intent=int(qa_data.get("qa_rep_purchase_intent", 0)),
+                    qa_trap_budget_sensitivity=int(qa_data.get("qa_trap_budget_sensitivity", 0)),
+                    qa_trap_competitor_loyalty=int(qa_data.get("qa_trap_competitor_loyalty", 0)),
+                    qa_trap_skepticism_check=int(qa_data.get("qa_trap_skepticism_check", 0)),
+                    consistency_score=float(qa_data.get("consistency_score", 0)),
+                    trap_pass_rate=float(qa_data.get("trap_pass_rate", 0)),
+                    persona_quality=float(qa_data.get("persona_quality", 0)),
+                    qa_passed=bool(qa_data.get("qa_passed", False)),
+                    qa_mode=str(qa_data.get("qa_mode", "off")),
+                )
+
             reviews.append(Review(
                 persona_id=r["persona_id"],
                 persona_name=r["persona_name"],
@@ -193,15 +223,26 @@ async def api_save(
                 recommendation=r.get("recommendation", ""),
                 review_summary=r.get("review_summary", ""),
                 like_dislike=r.get("like_dislike", 0),
-                positive_negative=r.get("positive_negative", 0),
-                good_bad=r.get("good_bad", 0),
                 favorable_unfavorable=r.get("favorable_unfavorable", 0),
+                value_for_money=r.get("value_for_money", 0),
+                price_fairness=r.get("price_fairness", 0),
+                brand_self_congruity=r.get("brand_self_congruity", 0),
+                brand_image_fit=r.get("brand_image_fit", 0),
+                message_clarity=r.get("message_clarity", 0),
+                attention_grabbing=r.get("attention_grabbing", 0),
+                info_sufficiency=r.get("info_sufficiency", 0),
+                competitive_preference=r.get("competitive_preference", ""),
                 likelihood_high=r.get("likelihood_high", 0),
                 probability_consider_high=r.get("probability_consider_high", 0),
                 willingness_high=r.get("willingness_high", 0),
                 purchase_probability_juster=r.get("purchase_probability_juster", 0),
+                perceived_message=r.get("perceived_message", ""),
+                emotional_response=r.get("emotional_response", ""),
+                purchase_trigger_barrier=r.get("purchase_trigger_barrier", ""),
+                recommendation_context=r.get("recommendation_context", ""),
                 raw_response=r.get("raw_response", ""),
                 error=r.get("error"),
+                qa_result=qa_result,
             ))
         run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         save_reviews(spreadsheet, reviews, run_id)

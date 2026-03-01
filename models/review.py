@@ -2,6 +2,8 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 import json
 
+from models.qa import QAResult
+
 
 @dataclass
 class Review:
@@ -41,6 +43,8 @@ class Review:
     recommendation_context: str = ""
     raw_response: str = ""
     error: Optional[str] = None
+    # QA Result
+    qa_result: Optional[QAResult] = None
 
     @classmethod
     def from_llm_response(cls, persona_id: str, persona_name: str, response_text: str) -> "Review":
@@ -73,6 +77,22 @@ class Review:
             concerns = base.get("key_concerns", [])
             if isinstance(concerns, list):
                 concerns = "; ".join(concerns)
+
+            # Parse QA fields if present
+            qa_fields = data.get("QA 검증", data)
+            qa_result = None
+            if any(qa_fields.get(f) for f in (
+                "qa_rep_brand_attitude", "qa_rep_value_perception", "qa_rep_purchase_intent",
+                "qa_trap_budget_sensitivity", "qa_trap_competitor_loyalty", "qa_trap_skepticism_check",
+            )):
+                qa_result = QAResult(
+                    qa_rep_brand_attitude=int(qa_fields.get("qa_rep_brand_attitude", 0)),
+                    qa_rep_value_perception=int(qa_fields.get("qa_rep_value_perception", 0)),
+                    qa_rep_purchase_intent=int(qa_fields.get("qa_rep_purchase_intent", 0)),
+                    qa_trap_budget_sensitivity=int(qa_fields.get("qa_trap_budget_sensitivity", 0)),
+                    qa_trap_competitor_loyalty=int(qa_fields.get("qa_trap_competitor_loyalty", 0)),
+                    qa_trap_skepticism_check=int(qa_fields.get("qa_trap_skepticism_check", 0)),
+                )
 
             return cls(
                 persona_id=persona_id,
@@ -110,6 +130,7 @@ class Review:
                 purchase_trigger_barrier=str(qc.get("purchase_trigger_barrier", "")),
                 recommendation_context=str(qc.get("recommendation_context", "")),
                 raw_response=response_text,
+                qa_result=qa_result,
             )
         except (json.JSONDecodeError, KeyError, ValueError):
             return cls(
@@ -124,7 +145,7 @@ class Review:
         return asdict(self)
 
     def to_sheet_row(self, run_id: str) -> list:
-        return [
+        row = [
             run_id,
             self.persona_id,
             self.persona_name,
@@ -154,3 +175,8 @@ class Review:
             self.recommendation_context,
             self.error or "",
         ]
+        if self.qa_result:
+            row.extend(self.qa_result.to_sheet_columns())
+        else:
+            row.extend([""] * 11)
+        return row

@@ -19,6 +19,7 @@ def _load_synthesis_prompts() -> dict:
 
 _prompts = _load_prompts()
 _individual = _prompts["individual_review"]
+_qa_items = _individual.get("qa_items", {})
 _synthesis = _load_synthesis_prompts()["synthesis"]
 
 
@@ -26,7 +27,7 @@ def build_system_prompt(persona: Persona) -> str:
     return _individual["system"].format(profile=persona.to_profile_text())
 
 
-def build_user_prompt(has_image: bool = True, text_content: str = "") -> str:
+def build_user_prompt(has_image: bool = True, text_content: str = "", qa_mode: str = "off") -> str:
     sources = _individual["material_sources"]
     parts = []
     if has_image:
@@ -36,7 +37,10 @@ def build_user_prompt(has_image: bool = True, text_content: str = "") -> str:
     if not parts:
         parts.append(sources["default"])
     material_description = "\n\n".join(parts)
-    return _individual["user_base"].format(material_description=material_description)
+    prompt = _individual["user_base"].format(material_description=material_description)
+    if qa_mode != "off" and qa_mode in _qa_items:
+        prompt += _qa_items[qa_mode]
+    return prompt
 
 
 SYNTHESIS_SYSTEM_PROMPT: str = _synthesis["system"]

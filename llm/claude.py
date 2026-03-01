@@ -115,6 +115,7 @@ def call_claude(
     filename: Optional[str],
     model: str = "claude-sonnet-4-20250514",
     text_content: str = "",
+    qa_mode: str = "off",
 ) -> Review:
     client = _get_client()
 
@@ -123,7 +124,7 @@ def call_claude(
         user_content.extend(prepare_for_claude(file_bytes, filename))
     user_content.append({
         "type": "text",
-        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content),
+        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content, qa_mode=qa_mode),
     })
 
     try:
@@ -137,7 +138,10 @@ def call_claude(
             ),
         )
         response_text = response.content[0].text
-        return Review.from_llm_response(persona.persona_id, persona.persona_name, response_text)
+        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text)
+        if qa_mode != "off" and review.qa_result:
+            review.qa_result.compute_scores(review, persona, qa_mode)
+        return review
     except Exception as e:
         logger.error("call_claude 실패: %s", e)
         return Review(

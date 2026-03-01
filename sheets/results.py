@@ -2,6 +2,20 @@ import gspread
 from typing import List
 from models.review import Review
 
+QA_HEADERS = [
+    "qa_rep_brand_attitude",
+    "qa_rep_value_perception",
+    "qa_rep_purchase_intent",
+    "qa_trap_budget_sensitivity",
+    "qa_trap_competitor_loyalty",
+    "qa_trap_skepticism_check",
+    "qa_consistency_score",
+    "qa_trap_pass_rate",
+    "qa_persona_quality",
+    "qa_passed",
+    "qa_mode",
+]
+
 RESULTS_HEADERS = [
     "run_id",
     "persona_id",
@@ -31,7 +45,7 @@ RESULTS_HEADERS = [
     "purchase_trigger_barrier",
     "recommendation_context",
     "error",
-]
+] + QA_HEADERS
 
 
 def save_reviews(

@@ -75,6 +75,23 @@ individual_review:
 
     Respond ONLY with the JSON object, no additional text.
 
+  # QA 검증 항목 (qa_mode에 따라 프롬프트에 추가)
+  qa_items:
+    full: |
+
+      --- QA 검증 항목 (아래 항목도 JSON에 포함해 주세요) ---
+      - "qa_rep_brand_attitude": integer 1-7, 이 프로모션에 대한 전반적인 호감도
+      - "qa_rep_value_perception": integer 1-7, 이 프로모션의 가격 대비 만족도
+      - "qa_rep_purchase_intent": integer 1-7, 이 프로모션을 실제로 이용할 가능성
+      - "qa_trap_budget_sensitivity": integer 1-7, 가격이 나의 예산에 부담이 된다
+      - "qa_trap_competitor_loyalty": integer 1-7, 경쟁 브랜드보다 이 프로모션이 더 매력적이다
+      - "qa_trap_skepticism_check": integer 1-7, 이 프로모션의 혜택이 과장되지 않고 신뢰할 수 있다
+    lite: |
+
+      --- QA 검증 항목 (아래 항목도 JSON에 포함해 주세요) ---
+      - "qa_rep_brand_attitude": integer 1-7, 이 프로모션에 대한 전반적인 호감도
+      - "qa_trap_budget_sensitivity": integer 1-7, 가격이 나의 예산에 부담이 된다
+
   # 자료 유형별 설명 문구
   material_sources:
     image: "The attached image/document shows the visual promotion material."
