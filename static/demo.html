@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synthetic Panels — Demo</title>
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <span>🏨</span>
+      <h1>Synthetic Panels</h1>
+    </div>
+    <span class="version-info">Demo Mode</span>
+  </div>
+
+  <div id="page-upload" class="hidden"></div>
+
+  <div id="page-results">
+    <div class="results-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <h2>📊 Panel Review Results <span style="font-size:.85rem;color:#636e72;font-weight:400">— 샘플 데이터</span></h2>
+      </div>
+    </div>
+
+    <div class="tab-bar" id="tab-bar">
+      <button class="tab-btn active" data-tab="overview">개요</button>
+      <button class="tab-btn" data-tab="upper">브랜드 자산</button>
+      <button class="tab-btn" data-tab="mid">수요 창출</button>
+      <button class="tab-btn" data-tab="lower">전환·매출</button>
+      <button class="tab-btn" data-tab="individual">개별 리뷰</button>
+      <button class="tab-btn" data-tab="qa">품질 검증</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-overview"></div>
+    <div class="tab-panel" id="tab-upper"></div>
+    <div class="tab-panel" id="tab-mid"></div>
+    <div class="tab-panel" id="tab-lower"></div>
+    <div class="tab-panel" id="tab-individual"></div>
+    <div class="tab-panel" id="tab-qa"></div>
+  </div>
+</div>
+
+<!-- Stub elements required by app.js DOM refs (not visible in demo) -->
+<div style="display:none">
+  <div id="drop-zone"></div>
+  <input type="file" id="file-input">
+  <div id="preview"></div>
+  <button id="btn-run"></button>
+  <div id="progress-area"></div>
+  <div id="progress-fill"></div>
+  <div id="progress-text"></div>
+  <button id="btn-load-personas"></button>
+  <div id="persona-status"></div>
+  <div id="persona-list-wrap"></div>
+  <select id="provider"><option value="OpenAI">OpenAI</option></select>
+  <div id="provider-warning"></div>
+  <select id="model"></select>
+  <select id="qa-mode"><option value="lite">Lite</option></select>
+  <button id="btn-back"></button>
+  <button id="btn-save"></button>
+  <textarea id="text-content"></textarea>
+</div>
+
+<script src="./app.js"></script>
+<script>loadDemo();</script>
+</body>
+</html>
