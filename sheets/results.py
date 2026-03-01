@@ -1,51 +1,10 @@
 import gspread
 from typing import List
+
+from config.funnel import get_results_headers, get_synthesis_keys
 from models.review import Review
 
-QA_HEADERS = [
-    "qa_rep_brand_attitude",
-    "qa_rep_value_perception",
-    "qa_rep_purchase_intent",
-    "qa_trap_budget_sensitivity",
-    "qa_trap_competitor_loyalty",
-    "qa_trap_skepticism_check",
-    "qa_consistency_score",
-    "qa_trap_pass_rate",
-    "qa_persona_quality",
-    "qa_passed",
-    "qa_mode",
-]
-
-RESULTS_HEADERS = [
-    "run_id",
-    "persona_id",
-    "persona_name",
-    "appeal_score",
-    "first_impression",
-    "key_positives",
-    "key_concerns",
-    "recommendation",
-    "review_summary",
-    "like_dislike",
-    "favorable_unfavorable",
-    "value_for_money",
-    "price_fairness",
-    "brand_self_congruity",
-    "brand_image_fit",
-    "message_clarity",
-    "attention_grabbing",
-    "info_sufficiency",
-    "competitive_preference",
-    "likelihood_high",
-    "probability_consider_high",
-    "willingness_high",
-    "purchase_probability_juster",
-    "perceived_message",
-    "emotional_response",
-    "purchase_trigger_barrier",
-    "recommendation_context",
-    "error",
-] + QA_HEADERS
+RESULTS_HEADERS = get_results_headers()
 
 
 def save_reviews(
@@ -62,3 +21,28 @@ def save_reviews(
 
     rows = [review.to_sheet_row(run_id) for review in reviews]
     worksheet.append_rows(rows)
+
+
+def save_synthesis(
+    spreadsheet: gspread.Spreadsheet,
+    synthesis_data: dict,
+    run_id: str,
+    worksheet_name: str = "synthesis",
+) -> None:
+    """synthesis 결과를 별도 'synthesis' 워크시트에 저장."""
+    syn_keys = get_synthesis_keys()
+    headers = ["run_id"] + syn_keys
+
+    try:
+        worksheet = spreadsheet.worksheet(worksheet_name)
+    except gspread.WorksheetNotFound:
+        worksheet = spreadsheet.add_worksheet(title=worksheet_name, rows=1000, cols=len(headers))
+        worksheet.append_row(headers)
+
+    row = [run_id]
+    for key in syn_keys:
+        val = synthesis_data.get(key, "")
+        if isinstance(val, list):
+            val = "; ".join(str(v) for v in val)
+        row.append(val)
+    worksheet.append_row(row)
