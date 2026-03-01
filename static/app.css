@@ -279,3 +279,113 @@ input:focus, select:focus { outline: none; border-color: #6c5ce7; background: #f
 
 /* ── Hidden ── */
 .hidden { display: none !important; }
+
+/* ── Metrics groups (Overview) ── */
+.metrics-groups { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+.metrics-group { flex: 1; min-width: 280px; }
+.metrics-group-title { font-size: .75rem; font-weight: 700; color: #636e72; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.metrics-3col { grid-template-columns: repeat(3, 1fr) !important; }
+@media (max-width: 768px) {
+  .metrics-groups { flex-direction: column; }
+  .metrics-3col { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* ── Storyline / Strategic Narrative ── */
+.storyline { margin-bottom: 24px; }
+.storyline h2 { margin-bottom: 14px; }
+.narrative-main {
+  font-size: 1.05rem; line-height: 1.7; color: #2d3436;
+  padding: 14px 18px; background: rgba(108,92,231,.06);
+  border-radius: 10px; margin-bottom: 14px;
+}
+.funnel-comments { display: flex; flex-direction: column; gap: 10px; }
+.funnel-comment {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: .9rem; line-height: 1.6; color: #2d3436;
+}
+.funnel-tag {
+  display: inline-block; padding: 2px 10px; border-radius: 10px;
+  font-size: .75rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; margin-top: 2px;
+}
+.funnel-tag.upper { background: rgba(108,92,231,.15); color: #6c5ce7; }
+.funnel-tag.mid   { background: rgba(9,132,227,.15);  color: #0984e3; }
+.funnel-tag.lower { background: rgba(0,184,148,.15);  color: #00b894; }
+
+/* ── Funnel summary cards ── */
+.funnel-summaries { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 16px; }
+@media (max-width: 768px) { .funnel-summaries { grid-template-columns: 1fr; } }
+.funnel-summary-card { background: #f8f9fa; border-radius: 10px; padding: 16px; border: 1px solid #dfe6e9; }
+.funnel-summary-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.funnel-summary-title { font-size: .9rem; font-weight: 700; color: #2d3436; }
+.funnel-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.funnel-dot.upper { background: #6c5ce7; }
+.funnel-dot.mid   { background: #0984e3; }
+.funnel-dot.lower { background: #00b894; }
+.syn-qual-compact { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.qual-compact-item { background: #fff; border-radius: 8px; padding: 10px 12px; }
+.qual-compact-label { font-size: .75rem; font-weight: 600; color: #636e72; margin-bottom: 3px; }
+
+/* ── Integrated chart funnel groups ── */
+.chart-funnel-group { margin-bottom: 20px; }
+.chart-funnel-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .82rem; font-weight: 700; color: #636e72;
+  text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px;
+}
+.bar-fill.upper-fill { background: linear-gradient(90deg, #6c5ce7, #a29bfe); }
+.bar-fill.mid-fill   { background: linear-gradient(90deg, #0984e3, #74b9ff); }
+.bar-fill.lower-fill { background: linear-gradient(90deg, #00b894, #55efc4); }
+
+/* ── Target deep dive ── */
+.target-deep-dive { margin-top: 4px; }
+.target-persona-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; background: #f8f9fa; border-radius: 10px;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+
+/* ── Panel status mini row ── */
+.panel-status-mini { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+.mini-stat { font-size: .75rem; color: #636e72; background: #f5f6fa; border-radius: 20px; padding: 3px 10px; }
+.mini-stat strong { color: #2d3436; font-weight: 600; }
+
+/* ── Funnel visual diagram ── */
+.funnel-visual { margin-bottom: 24px; }
+.funnel-diagram-wrap { display: flex; flex-direction: column; align-items: stretch; padding: 8px 0 4px; gap: 2px; }
+.funnel-stage {
+  position: relative; height: 56px; overflow: hidden;
+  display: flex; align-items: center; width: 100%; box-sizing: border-box;
+}
+.funnel-stage-bg { display: none; }
+.funnel-score-fill { position: absolute; left: 0; top: 0; bottom: 0; z-index: 1; }
+.funnel-stage-content { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.funnel-stage-label { font-weight: 600; font-size: .9rem; color: #2d3436; }
+.funnel-stage-score { font-weight: 700; font-size: 1rem; }
+
+/* ── Per-funnel pos/neg layers in strategic narrative ── */
+.funnel-layer-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.funnel-layer-section { border: 1px solid #f1f2f6; border-radius: 10px; overflow: hidden; }
+.funnel-layer-header { padding: 6px 14px; background: #f8f9fa; }
+.persona-layer { display: grid; grid-template-columns: 180px 1fr; align-items: start; gap: 12px; padding: 10px 14px; }
+.layer-pos { background: rgba(0,184,148,.05); border-top: 1px solid rgba(0,184,148,.15); }
+.layer-neg { background: rgba(214,48,49,.04); border-top: 1px solid rgba(214,48,49,.12); }
+.layer-persona-info { display: flex; flex-direction: column; gap: 4px; }
+.layer-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; align-self: flex-start; }
+.layer-badge.pos { background: rgba(0,184,148,.18); color: #00b894; }
+.layer-badge.neg { background: rgba(214,48,49,.14); color: #d63031; }
+.layer-persona-name { font-weight: 700; font-size: .88rem; color: #2d3436; }
+.layer-score-bar-wrap { height: 4px; background: #f1f2f6; border-radius: 2px; overflow: hidden; }
+.layer-score-fill-bar { height: 100%; border-radius: 2px; }
+.layer-score-val { font-size: .75rem; font-weight: 700; }
+.layer-comment { font-size: .83rem; color: #636e72; line-height: 1.6; padding-top: 4px; }
+
+/* ── Target deep dive: per-funnel 2-col layout ── */
+.funnel-deep-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid #f1f2f6; }
+.funnel-deep-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 700; font-size: .9rem; color: #2d3436; }
+.deep-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.deep-qual .qual-item { margin-bottom: 8px; }
+
+@media (max-width: 768px) {
+  .persona-layer { grid-template-columns: 1fr; }
+  .deep-two-col { grid-template-columns: 1fr; }
+}
