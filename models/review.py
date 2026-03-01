@@ -79,7 +79,9 @@ class Review:
                 concerns = "; ".join(concerns)
 
             # Parse QA fields if present
-            qa_fields = data.get("QA 검증", data)
+            # Try "QA 검증" first, then "QA 검증 항목" (matches the prompt section header),
+            # then fall back to the root dict for flat JSON responses.
+            qa_fields = data.get("QA 검증") or data.get("QA 검증 항목") or data
             qa_result = None
             if any(qa_fields.get(f) for f in (
                 "qa_rep_brand_attitude", "qa_rep_value_perception", "qa_rep_purchase_intent",
