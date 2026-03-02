@@ -76,9 +76,34 @@ export function renderQA(qa) {
 }
 
 export function hierHeader(lvl, label, title) {
-  return `<div class="section-header"><span class="section-level ${lvl}">${label}</span><span class="section-title-text">${title}</span><div class="section-line"></div></div>`;
+  return `<div class="section-header ${lvl}"><span class="section-level ${lvl}">${label}</span><span class="section-title-text">${title}</span><div class="section-line"></div></div>`;
 }
 
 export function hierConnector(label) {
-  return `<div class="level-connector"><div class="connector-track"><div class="connector-dot"></div><div class="connector-dot"></div><div class="connector-dot"></div></div><div class="connector-arrow"></div>${label ? `<span class="connector-label">${label}</span>` : ''}</div>`;
+  return `<div class="level-connector"><div class="connector-line"></div><div class="connector-pill"><span class="connector-arrow-icon">▼</span>${label ? `<span class="connector-label">${label}</span>` : ''}</div></div>`;
+}
+
+/**
+ * Builds an inner step-rail track within an L-layer.
+ * @param {Array<{label: string, html: string}>} steps
+ * @param {boolean} [compact] - use compact sizing (for inside cards)
+ */
+export function buildStepTrack(steps, compact = false) {
+  const cls = compact ? 'step-track step-track--compact' : 'step-track';
+  let out = `<div class="${cls}">`;
+  steps.forEach(({ label, html }, i) => {
+    const num = String(i + 1).padStart(2, '0');
+    out += `<div class="step-item">
+      <div class="step-rail">
+        <div class="step-num">${num}</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-content">
+        ${label ? `<div class="step-tag">${label}</div>` : ''}
+        ${html}
+      </div>
+    </div>`;
+  });
+  out += '</div>';
+  return out;
 }

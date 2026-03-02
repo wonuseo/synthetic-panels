@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { esc, scaleBar, recEmoji, synMetric, renderSynValue, hierHeader, hierConnector, _scaleCls, _funnelClsMap } from './helpers.js';
+import { esc, scaleBar, recEmoji, synMetric, renderSynValue, hierHeader, hierConnector, buildStepTrack, _scaleCls, _funnelClsMap } from './helpers.js';
 import { computeFunnelAverages } from './overview.js';
 
 function renderScaleBarsForFunnel(r, funnelKey) {
@@ -67,35 +67,50 @@ export function renderFunnelTab(funnelKey) {
     }
     if (synQuant.length || synQual.length || synCat.length) {
       html += hierHeader('l1', 'L1', '통합 분석');
-      html += `<div class="synthesis"><h3>📊 통합 분석</h3>`;
+      html += `<div class="level-zone l1">`;
+
+      // Build inner steps: 정량 → 정성 → 의사결정
+      const synthSteps = [];
       if (synQuant.length) {
-        html += `<div class="syn-metrics">`;
-        for (const m of synQuant) html += synMetric(m.label, m.val, m.suffix);
-        html += `</div>`;
+        let qHtml = `<div class="syn-metrics">`;
+        for (const m of synQuant) qHtml += synMetric(m.label, m.val, m.suffix);
+        qHtml += `</div>`;
+        synthSteps.push({ label: '정량 지표', html: qHtml });
       }
       if (synQual.length) {
-        html += `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
+        let qualHtml = `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
         for (const item of synQual)
-          html += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
-        html += `</div>`;
+          qualHtml += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
+        qualHtml += `</div>`;
+        synthSteps.push({ label: '정성적 분석', html: qualHtml });
       }
       if (synCat.length) {
-        html += `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
+        let catHtml = `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
         for (const item of synCat)
-          html += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
-        html += `</div>`;
+          catHtml += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
+        catHtml += `</div>`;
+        synthSteps.push({ label: '의사결정 지원', html: catHtml });
       }
+
+      html += `<div class="synthesis"><h3>📊 통합 분석</h3>`;
+      html += buildStepTrack(synthSteps, true);
+      html += `</div>`;
       html += `</div>`;
       html += hierConnector('개별 페르소나');
     }
   }
 
   html += hierHeader('l2', 'L2', `개별 페르소나 · ${esc(funnel.label.split('(')[0].trim())}`);
+  html += `<div class="level-zone l2">`;
   html += `<div class="persona-cards">`;
   [...state.lastReviews].sort((a, b) => b.appeal_score - a.appeal_score).forEach((r, i) => {
     const idx = `${funnelKey}-${i}`;
     const emoji = recEmoji(r.recommendation);
     const cls = r.appeal_score >= 7 ? 'high' : r.appeal_score >= 4 ? 'mid' : 'low';
+    const cardSteps = [
+      { label: '정량 평가',   html: renderScaleBarsForFunnel(r, funnelKey) },
+      { label: '정성 코멘트', html: renderQualItemsForFunnel(r, funnelKey) },
+    ].filter(s => s.html.trim());
     html += `<div class="persona-card" id="pc-${idx}">
       <div class="persona-card-header" onclick="toggleCard('${idx}')">
         <span class="emoji">${emoji}</span>
@@ -104,11 +119,11 @@ export function renderFunnelTab(funnelKey) {
         <span class="chevron">▶</span>
       </div>
       <div class="persona-card-body">
-        ${renderScaleBarsForFunnel(r, funnelKey)}
-        ${renderQualItemsForFunnel(r, funnelKey)}
+        ${cardSteps.length ? buildStepTrack(cardSteps, true) : ''}
       </div>
     </div>`;
   });
+  html += `</div>`;
   html += `</div>`;
   $panel.innerHTML = html;
 }

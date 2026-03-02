@@ -1,4 +1,4 @@
-import { esc, scaleBar, recEmoji, renderQA, _scaleCls } from './helpers.js';
+import { esc, scaleBar, recEmoji, renderQA, buildStepTrack, _scaleCls } from './helpers.js';
 
 function renderScaleBars(r) {
   if (!window.funnelConfig) return '';
@@ -44,6 +44,36 @@ export function renderPersonaCard(r, idx) {
   const positives = (r.key_positives || '').split('; ').filter(Boolean);
   const concerns = (r.key_concerns || '').split('; ').filter(Boolean);
 
+  // Build steps: 첫인상 → 반응 분석 → 정량 평가 → 정성 코멘트 → QA → 종합 평가
+  const steps = [];
+
+  if (r.first_impression) {
+    steps.push({ label: '첫인상', html: `<div class="impression">"${esc(r.first_impression)}"</div>` });
+  }
+
+  if (positives.length || concerns.length) {
+    steps.push({
+      label: '반응 분석',
+      html: `<div class="pos-neg">
+        <div><h5>✅ 긍정 요소</h5><ul>${positives.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div><h5>⚠️ 우려 사항</h5><ul>${concerns.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      </div>`,
+    });
+  }
+
+  const scalesHtml = renderScaleBars(r);
+  if (scalesHtml) steps.push({ label: '정량 평가', html: scalesHtml });
+
+  const qualHtml = renderQualItems(r);
+  if (qualHtml) steps.push({ label: '정성 코멘트', html: qualHtml });
+
+  const qaHtml = renderQA(r.qa_result);
+  if (qaHtml) steps.push({ label: 'QA 검증', html: qaHtml });
+
+  if (r.review_summary) {
+    steps.push({ label: '종합 평가', html: `<div class="review-summary">${esc(r.review_summary)}</div>` });
+  }
+
   return `<div class="persona-card" id="pc-ind-${idx}">
     <div class="persona-card-header" onclick="toggleCard('ind-${idx}')">
       <span class="emoji">${emoji}</span>
@@ -55,15 +85,7 @@ export function renderPersonaCard(r, idx) {
     </div>
     <div class="persona-card-body">
       ${r.error ? `<div style="color:#d63031;margin-bottom:10px">오류: ${esc(r.error)}</div>` : ''}
-      <div class="impression">"${esc(r.first_impression)}"</div>
-      <div class="pos-neg">
-        <div><h5>✅ 긍정 요소</h5><ul>${positives.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
-        <div><h5>⚠️ 우려 사항</h5><ul>${concerns.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
-      </div>
-      ${renderScaleBars(r)}
-      ${renderQualItems(r)}
-      ${renderQA(r.qa_result)}
-      <div class="review-summary"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>
+      ${buildStepTrack(steps, true)}
       <button class="raw-toggle" onclick="toggleRaw('ind-${idx}')">Raw Response 보기</button>
       <pre class="raw-content" id="raw-ind-${idx}">${esc(r.raw_response)}</pre>
     </div>

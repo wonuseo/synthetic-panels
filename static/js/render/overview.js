@@ -1,4 +1,4 @@
-import { esc, scaleBar, recEmoji, synMetric, renderSynValue, hierHeader, hierConnector, _scaleCls, _funnelClsMap } from './helpers.js';
+import { esc, scaleBar, recEmoji, synMetric, renderSynValue, hierHeader, hierConnector, buildStepTrack, _scaleCls, _funnelClsMap } from './helpers.js';
 
 export function computeFunnelAverages(valid) {
   const result = {};
@@ -82,8 +82,6 @@ function renderStrategicNarrative(funnelAverages, valid, synthesis, synthesis_ra
   }
   const topPersona = valid.length ? [...valid].sort((a, b) => b.appeal_score - a.appeal_score)[0] : null;
 
-  let html = '<div class="card storyline"><h2>🎯 전략적 권고</h2>';
-
   let mainText = '';
   if (strongestFunnel && topPersona) {
     mainText = `현재의 프로모션은 <strong>${esc(strongestFunnel.label.split('(')[0].trim())}</strong>에서 유효하며, <strong>${esc(topPersona.persona_name)}</strong> 세그먼트에서 가장 반응이 좋았습니다.`;
@@ -92,10 +90,19 @@ function renderStrategicNarrative(funnelAverages, valid, synthesis, synthesis_ra
   } else if (topPersona) {
     mainText = `<strong>${esc(topPersona.persona_name)}</strong> 세그먼트에서 가장 반응이 좋았습니다.`;
   }
-  if (mainText) html += `<div class="narrative-main">${mainText}</div>`;
+
+  const innerSteps = [];
+
+  if (mainText) {
+    innerSteps.push({ label: '핵심 인사이트', html: `<div class="narrative-main">${mainText}</div>` });
+  }
 
   if (valid.length && window.funnelConfig) {
-    html += '<div class="funnel-layer-list">';
+    let fll = '<div class="funnel-compare-grid">';
+    fll += '<div class="fcg-th fcg-th-label"></div>';
+    fll += '<div class="fcg-th fcg-th-pos">▲ 최고 반응</div>';
+    fll += '<div class="fcg-th fcg-th-neg">▼ 최저 반응</div>';
+
     for (const [funnelKey, funnel] of Object.entries(window.funnelConfig)) {
       const shortLabel = funnel.label.split('(')[0].trim();
       const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
@@ -124,23 +131,42 @@ function renderStrategicNarrative(funnelAverages, valid, synthesis, synthesis_ra
       const negPct = Math.round(scored[scored.length - 1].norm * 100);
       const color = { upper: '#6c5ce7', mid: '#0984e3', lower: '#00b894' }[funnelKey] || '#6c5ce7';
 
-      html += `<div class="funnel-layer-section">`;
-      html += `<div class="funnel-layer-header"><span class="funnel-tag ${funnelKey}">${esc(shortLabel)}</span></div>`;
-      html += `<div class="persona-layer layer-pos">`;
-      html += `<div class="layer-persona-info"><span class="layer-badge pos">▲ 최고 반응</span><span class="layer-persona-name">${esc(mostPos.persona_name)}</span><div class="layer-score-bar-wrap"><div class="layer-score-fill-bar" style="width:${posPct}%;background:${color}"></div></div><span class="layer-score-val" style="color:${color}">${posScore} / ${max}</span></div>`;
-      html += `<div class="layer-comment">${posComment ? esc(String(posComment).substring(0, 130)) : ''}</div>`;
-      html += `</div>`;
+      // label cell
+      fll += `<div class="fcg-label">`;
+      fll += `<span class="funnel-dot ${funnelKey}"></span>`;
+      fll += `<span class="fcg-label-text ${funnelKey}">${esc(shortLabel)}</span>`;
+      fll += `</div>`;
+
+      // positive cell
+      fll += `<div class="fcg-cell">`;
+      fll += `<div class="fcg-score-col">`;
+      fll += `<span class="layer-persona-name">${esc(mostPos.persona_name)}</span>`;
+      fll += `<div class="layer-score-bar-wrap"><div class="layer-score-fill-bar" style="width:${posPct}%;background:${color}"></div></div>`;
+      fll += `<span class="layer-score-val" style="color:${color}">${posScore}/${max}</span>`;
+      fll += `</div>`;
+      fll += `<div class="fcg-comment-col">${posComment ? esc(String(posComment).substring(0, 160)) : ''}</div>`;
+      fll += `</div>`;
+
+      // negative cell
       if (scored.length > 1) {
-        html += `<div class="persona-layer layer-neg">`;
-        html += `<div class="layer-persona-info"><span class="layer-badge neg">▼ 최저 반응</span><span class="layer-persona-name">${esc(mostNeg.persona_name)}</span><div class="layer-score-bar-wrap"><div class="layer-score-fill-bar" style="width:${negPct}%;background:#d63031"></div></div><span class="layer-score-val" style="color:#d63031">${negScore} / ${max}</span></div>`;
-        html += `<div class="layer-comment">${negComment ? esc(String(negComment).substring(0, 130)) : ''}</div>`;
-        html += `</div>`;
+        fll += `<div class="fcg-cell">`;
+        fll += `<div class="fcg-score-col">`;
+        fll += `<span class="layer-persona-name">${esc(mostNeg.persona_name)}</span>`;
+        fll += `<div class="layer-score-bar-wrap"><div class="layer-score-fill-bar" style="width:${negPct}%;background:#d63031"></div></div>`;
+        fll += `<span class="layer-score-val" style="color:#d63031">${negScore}/${max}</span>`;
+        fll += `</div>`;
+        fll += `<div class="fcg-comment-col">${negComment ? esc(String(negComment).substring(0, 160)) : ''}</div>`;
+        fll += `</div>`;
+      } else {
+        fll += `<div class="fcg-cell fcg-empty">—</div>`;
       }
-      html += `</div>`;
     }
-    html += '</div>';
+    fll += '</div>';
+    innerSteps.push({ label: '퍼널별 반응 비교', html: fll });
   }
 
+  let html = '<div class="card storyline"><h2>🎯 전략적 권고</h2>';
+  if (innerSteps.length) html += buildStepTrack(innerSteps, true);
   html += '</div>';
   return html;
 }
@@ -220,25 +246,36 @@ function renderFunnelColCard(key, funnel, synthesis, fa) {
 
 function renderIntegratedChart(valid) {
   if (!valid.length || !window.funnelConfig) return '';
-  const fillCls = { upper: 'upper-fill', mid: 'mid-fill', lower: 'lower-fill' };
+  const colorMap = { upper: '#6c5ce7', mid: '#0984e3', lower: '#00b894' };
 
-  let html = '<div class="card chart-area"><h2>📐 퍼널별 정량 지표 통합</h2>';
+  let html = '<div class="card chart-area"><h2>📐 퍼널별 정량 지표 통합</h2><div class="vbar-chart">';
   for (const [key, funnel] of Object.entries(window.funnelConfig)) {
     const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
     if (!quantItems.length) continue;
-    const cls = fillCls[key] || 'upper-fill';
-    html += `<div class="chart-funnel-group"><div class="chart-funnel-label"><span class="funnel-dot ${key}"></span><span>${esc(funnel.label.split('(')[0].trim())}</span></div>`;
-    for (const item of quantItems) {
+    const color = colorMap[key] || '#6c5ce7';
+    const max = (quantItems[0].scale === '0-10' || quantItems[0].scale === '1-10') ? 10 : 7;
+
+    const items = quantItems.map(item => {
       const scores = valid.map(r => r[item.key]).filter(v => v > 0);
-      if (!scores.length) continue;
-      const max = (item.scale === '0-10' || item.scale === '1-10') ? 10 : 7;
-      const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
-      const pct = (parseFloat(avg) / max) * 100;
-      html += `<div class="bar-row"><div class="name">${esc(item.label)}</div><div class="bar"><div class="bar-fill ${cls}" style="width:${pct}%">${avg}/${max}</div></div></div>`;
+      if (!scores.length) return null;
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      return { label: item.label, avg: avg.toFixed(1), pct: Math.round((avg / max) * 100) };
+    }).filter(Boolean);
+    if (!items.length) continue;
+
+    html += `<div class="vbar-funnel-group">`;
+    html += `<div class="vbar-group-header"><span class="funnel-dot ${key}"></span><span class="vbar-group-label ${key}">${esc(funnel.label.split('(')[0].trim())}</span><span class="vbar-max-label">/ ${max}</span></div>`;
+    html += `<div class="vbar-bars">`;
+    for (const item of items) {
+      html += `<div class="vbar-item">`;
+      html += `<span class="vbar-val" style="color:${color}">${item.avg}</span>`;
+      html += `<div class="vbar-bar-wrap"><div class="vbar-fill" style="height:${item.pct}%;background:${color}30;border-top:2px solid ${color}"></div></div>`;
+      html += `<div class="vbar-label">${esc(item.label)}</div>`;
+      html += `</div>`;
     }
-    html += '</div>';
+    html += `</div></div>`;
   }
-  html += '</div>';
+  html += '</div></div>';
   return html;
 }
 
@@ -317,21 +354,35 @@ export function renderOverviewTab(reviews, synthesis, synthesis_raw) {
 
   let html = '';
 
+  // ── L1: 종합 요약 ─────────────────────────────────────────
   html += hierHeader('l1', 'L1', '종합 요약');
-  html += renderMetricGroups(reviews, valid, errors, interested, funnelAverages);
-  html += renderStrategicNarrative(funnelAverages, valid, synthesis, synthesis_raw);
+  html += `<div class="level-zone l1">`;
+  html += buildStepTrack([
+    { label: '단계별 종합',  html: renderFunnelSummaries(synthesis, funnelAverages) },
+    { label: '전략적 권고', html: renderStrategicNarrative(funnelAverages, valid, synthesis, synthesis_raw) },
+  ]);
+  html += `</div>`;
 
   html += hierConnector('퍼널 단계 분석');
 
+  // ── L2: 퍼널 단계별 분석 ──────────────────────────────────
   html += hierHeader('l2', 'L2', '퍼널 단계별 분석');
-  html += renderFunnelSummaries(synthesis, funnelAverages);
-  html += renderIntegratedChart(valid);
+  html += `<div class="level-zone l2">`;
+  html += buildStepTrack([
+    { label: '정량 지표 통합', html: renderIntegratedChart(valid) },
+  ]);
+  html += `</div>`;
 
   html += hierConnector('세부 데이터');
 
+  // ── L3: 세부 분석 ─────────────────────────────────────────
   html += hierHeader('l3', 'L3', '세부 분석');
-  html += renderAppealChart(reviews);
-  html += renderTargetDeepDive(valid);
+  html += `<div class="level-zone l3">`;
+  html += buildStepTrack([
+    { label: '매력도 분포',      html: renderAppealChart(reviews) },
+    { label: '타겟 심층 분석',   html: renderTargetDeepDive(valid) },
+  ]);
+  html += `</div>`;
 
   document.getElementById('tab-overview').innerHTML = html;
 }
