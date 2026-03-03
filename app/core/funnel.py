@@ -161,6 +161,9 @@ def get_funnel_groups() -> dict:
         groups[funnel_name] = {
             "label": funnel.get("label", funnel_name),
             "description": funnel.get("description", ""),
+            "desc_who": funnel.get("desc_who", ""),
+            "desc_goal": funnel.get("desc_goal", ""),
+            "desc_metrics": funnel.get("desc_metrics", ""),
             "individual_items": individual_list,
             "synthesis_items": synthesis_list,
             "qa_items": qa_list,

@@ -48,7 +48,13 @@ export function renderFunnelTab(funnelKey) {
 
   html += `<div class="funnel-tab-header">`;
   html += `<div class="funnel-tab-title"><span class="funnel-dot ${funnelKey}" style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0"></span>${esc(funnel.label)}</div>`;
-  if (funnel.description) html += `<div class="funnel-tab-desc">${esc(funnel.description)}</div>`;
+  if (funnel.desc_who || funnel.desc_goal || funnel.desc_metrics) {
+    html += `<div class="fcc-desc-grid">`;
+    if (funnel.desc_who) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">Who</span><span class="fcc-desc-val">${esc(funnel.desc_who)}</span></div>`;
+    if (funnel.desc_goal) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">Goal</span><span class="fcc-desc-val">${esc(funnel.desc_goal)}</span></div>`;
+    if (funnel.desc_metrics) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">Metrics</span><span class="fcc-desc-val">${esc(funnel.desc_metrics)}</span></div>`;
+    html += `</div>`;
+  }
   html += `</div>`;
 
   if (state.lastSynthesis && !state.lastSynthesis.error) {

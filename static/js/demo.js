@@ -1,6 +1,6 @@
 export const DEMO_FUNNEL_CONFIG = {
   upper: {
-    label: 'Brand (브랜드 자산 구축)', description: '브랜드 인지, 태도, 이미지 형성 관련 지표',
+    label: 'Brand (브랜드 자산 구축)', desc_who: '잠재 고객', desc_goal: '브랜드를 처음 인지하고 태도·이미지를 형성하는 단계', desc_metrics: '호감도, 메시지 전달력, 감정 반응',
     individual_items: [
       { key: 'like_dislike',          label: '브랜드 호감도',  scale: '1-7', type: 'quantitative' },
       { key: 'favorable_unfavorable', label: '브랜드 호의도',  scale: '1-7', type: 'quantitative' },
@@ -22,7 +22,7 @@ export const DEMO_FUNNEL_CONFIG = {
     qa_items: [{ key: 'qa_rep_brand_attitude', type: 'replication' }, { key: 'qa_trap_skepticism_check', type: 'trap' }],
   },
   mid: {
-    label: 'Demand & Acquisition (수요 창출·신규 획득)', description: '관심, 가치 인식, 경쟁 우위, 추천 관련 지표',
+    label: 'Demand & Acquisition (수요 창출·신규 획득)', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '수요를 확보하고 신규 고객을 획득하는 단계', desc_metrics: '매력도, 가성비, 경쟁 비교, 추천 의향',
     individual_items: [
       { key: 'appeal_score',   label: '매력도',      scale: '1-10', type: 'quantitative' },
       { key: 'value_for_money',label: '가성비',       scale: '1-7',  type: 'quantitative' },
@@ -45,7 +45,7 @@ export const DEMO_FUNNEL_CONFIG = {
     qa_items: [{ key: 'qa_rep_value_perception', type: 'replication' }, { key: 'qa_trap_budget_sensitivity', type: 'trap' }],
   },
   lower: {
-    label: 'Sales & Conversion (전환·매출)', description: '구매 의향, 전환율, 장벽, 의사결정 지원 지표',
+    label: 'Sales & Conversion (전환·매출)', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 전환과 매출로 이어지는 단계', desc_metrics: '구매 확률, 전환 장벽, 가격 민감도',
     individual_items: [
       { key: 'likelihood_high',          label: '구매 가능성',       scale: '1-7',  type: 'quantitative' },
       { key: 'probability_consider_high',label: '고려 확률',          scale: '1-7',  type: 'quantitative' },

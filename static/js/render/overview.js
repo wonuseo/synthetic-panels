@@ -218,6 +218,13 @@ function renderFunnelColCard(key, funnel, synthesis, fa) {
 
   html += `<div class="fcc-header ${key}">`;
   html += `<div class="fcc-label-row"><span class="funnel-dot ${key}"></span><span class="fcc-title">${esc(shortLabel)}</span></div>`;
+  if (funnel.desc_who || funnel.desc_goal || funnel.desc_metrics) {
+    html += `<div class="fcc-desc-grid">`;
+    if (funnel.desc_who) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">Who</span><span class="fcc-desc-val">${esc(funnel.desc_who)}</span></div>`;
+    if (funnel.desc_goal) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">Goal</span><span class="fcc-desc-val">${esc(funnel.desc_goal)}</span></div>`;
+    if (funnel.desc_metrics) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">Metrics</span><span class="fcc-desc-val">${esc(funnel.desc_metrics)}</span></div>`;
+    html += `</div>`;
+  }
   if (fa) {
     const pct = Math.round(fa.normalized * 100);
     html += `<div class="fcc-score-row"><span class="fcc-score-num" style="color:${color}">${fa.avg}</span><span class="fcc-score-den">/ ${fa.max}</span><span class="fcc-score-pct">${pct}%</span></div>`;
@@ -233,10 +240,14 @@ function renderFunnelColCard(key, funnel, synthesis, fa) {
     }
     html += `</div>`;
   }
-  for (const item of synQual.slice(0, 2)) {
-    const raw = Array.isArray(item.val) ? item.val.slice(0, 2).join(', ') : String(item.val);
-    const text = raw.substring(0, 120);
-    html += `<div class="fcc-qual-item"><span class="fcc-qual-label">${esc(item.label)}</span><span class="fcc-qual-text">${esc(text)}${raw.length > 120 ? '…' : ''}</span></div>`;
+  if (synQual.length) {
+    html += `<ul class="fcc-qual-list">`;
+    for (const item of synQual.slice(0, 3)) {
+      const raw = Array.isArray(item.val) ? item.val.slice(0, 3).join(', ') : String(item.val);
+      const text = raw.substring(0, 140);
+      html += `<li class="fcc-qual-bullet"><span class="fcc-qual-label">${esc(item.label)}</span><span class="fcc-qual-text">${esc(text)}${raw.length > 140 ? '…' : ''}</span></li>`;
+    }
+    html += `</ul>`;
   }
   html += `</div>`;
 
