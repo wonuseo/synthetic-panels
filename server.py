@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sse_starlette.sse import EventSourceResponse
 
-from app.core import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE
+from app.core import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE, REVIEW_PASSWORD, DAILY_REVIEW_LIMIT
 from app.sheets.client import open_spreadsheet_by_url
 from app.sheets.personas import load_personas
 from app.sheets.results import save_reviews, save_synthesis
@@ -22,7 +22,26 @@ from app.llm.parse import extract_json_or_none
 from app.models.review import Review
 from app.models.qa import QAResult
 
+from zoneinfo import ZoneInfo
+
 app = FastAPI(title="Synthetic Panels")
+
+# ── Daily review counter (KST) ──
+_review_counts: dict[str, int] = {}  # {"2026-03-03": 5, ...}
+
+def _today_kst() -> str:
+    return datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+
+def _get_today_count() -> int:
+    return _review_counts.get(_today_kst(), 0)
+
+def _increment_today_count():
+    key = _today_kst()
+    _review_counts[key] = _review_counts.get(key, 0) + 1
+    # clean up old dates
+    for k in list(_review_counts):
+        if k != key:
+            del _review_counts[k]
 
 STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES_DIR = Path(__file__).parent / "static"
@@ -84,6 +103,14 @@ async def api_load_personas():
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
 
+@app.get("/api/review-limit")
+async def api_review_limit():
+    """오늘 리뷰 횟수와 비밀번호 필요 여부 반환"""
+    count = _get_today_count()
+    needs_password = REVIEW_PASSWORD and count >= DAILY_REVIEW_LIMIT
+    return {"ok": True, "today_count": count, "limit": DAILY_REVIEW_LIMIT, "needs_password": needs_password}
+
+
 @app.post("/api/review")
 async def api_review(
     provider: str = Form("OpenAI"),
@@ -91,9 +118,19 @@ async def api_review(
     text_content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     qa_mode: str = Form(QA_MODE),
+    password: Optional[str] = Form(None),
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
+
+    # Daily limit check
+    if REVIEW_PASSWORD and _get_today_count() >= DAILY_REVIEW_LIMIT:
+        if not password or password != REVIEW_PASSWORD:
+            return JSONResponse(status_code=403, content={
+                "ok": False,
+                "error": f"오늘 {DAILY_REVIEW_LIMIT}회 이상 실행했습니다. 비밀번호를 입력해주세요.",
+                "needs_password": True,
+            })
 
     file_bytes = None
     filename = None
@@ -109,6 +146,7 @@ async def api_review(
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
     total = len(personas)
+    _increment_today_count()
 
     async def event_generator():
         loop = asyncio.get_event_loop()

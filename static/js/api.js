@@ -24,8 +24,17 @@ export async function loadPersonas() {
   }
 }
 
+export async function checkReviewLimit() {
+  const res = await fetch('/api/review-limit');
+  return await res.json();
+}
+
 export async function runReview(fd, onProgress, onStatus) {
   const res = await fetch('/api/review', { method: 'POST', body: fd });
+  if (res.status === 403) {
+    const err = await res.json();
+    throw { needsPassword: err.needs_password, message: err.error };
+  }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';

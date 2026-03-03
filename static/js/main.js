@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { DEMO_FUNNEL_CONFIG, DEMO_REVIEWS, DEMO_SYNTHESIS } from './demo.js';
-import { loadFunnelConfig, loadPersonas, runReview, saveResults } from './api.js';
+import { loadFunnelConfig, loadPersonas, runReview, saveResults, checkReviewLimit } from './api.js';
 import { $, updateRunBtn, handleFile, initModelSelector } from './ui.js';
 import { renderOverviewTab } from './render/overview.js';
 import { renderFunnelTab } from './render/funnel-tab.js';
@@ -107,6 +107,17 @@ $.btnLoad.addEventListener('click', async () => {
 $.btnRun.addEventListener('click', async () => {
   const textVal = $.textContent.value.trim();
   if ((!state.selectedFile && !textVal) || !state.personasLoaded) return;
+
+  // Check daily limit and ask for password if needed
+  let password = null;
+  try {
+    const limitInfo = await checkReviewLimit();
+    if (limitInfo.needs_password) {
+      password = prompt(`오늘 ${limitInfo.today_count}/${limitInfo.limit}회 사용했습니다. 비밀번호를 입력해주세요:`);
+      if (!password) return;
+    }
+  } catch {}
+
   $.btnRun.disabled = true;
   $.progress.classList.remove('hidden');
   $.progressFill.style.width = '0%';
@@ -118,6 +129,7 @@ $.btnRun.addEventListener('click', async () => {
   fd.append('provider', $.provider.value);
   fd.append('model', $.model.value);
   fd.append('qa_mode', document.getElementById('qa-mode').value);
+  if (password) fd.append('password', password);
 
   try {
     const donePayload = await runReview(
@@ -135,7 +147,11 @@ $.btnRun.addEventListener('click', async () => {
       showResults(donePayload);
     }
   } catch (e) {
-    alert('리뷰 실행 중 오류: ' + e.message);
+    if (e.needsPassword) {
+      alert(e.message);
+    } else {
+      alert('리뷰 실행 중 오류: ' + e.message);
+    }
   }
 
   $.progress.classList.add('hidden');
