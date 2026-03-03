@@ -19,6 +19,7 @@ export const $ = {
   btnBack:      document.getElementById('btn-back'),
   btnSave:      document.getElementById('btn-save'),
   textContent:  document.getElementById('text-content'),
+  usageBadge:   document.getElementById('usage-badge'),
 };
 
 export function updateRunBtn() {
