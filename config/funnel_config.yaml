@@ -1,21 +1,42 @@
+overall:
+  label: "Overall (프로모션 종합)"
+  desc_who: "전체 평가 대상"
+  desc_goal: "프로모션의 전반적인 매력도와 퀄리티를 종합 평가"
+  desc_metrics: "매력도, 퀄리티"
+  individual_items:
+    quantitative:
+      - { key: promotion_attractiveness, label: "프로모션 매력도", scale: "1-5" }
+      - { key: promotion_quality, label: "프로모션 퀄리티", scale: "1-5" }
+    qualitative:
+      - { key: overall_impression, label: "종합 첫인상" }
+      - { key: review_summary, label: "종합 평가" }
+  synthesis_items:
+    qualitative:
+      - { key: executive_summary, label: "핵심 요약" }
+      - { key: go_nogo_recommendation, label: "Go/No-Go 의사결정" }
+      - { key: improvement_priority, label: "최우선 개선 영역" }
+      - { key: actionable_recommendations, label: "프로모션 개선 제안" }
+      - { key: usage_strategy, label: "활용 방안 제안" }
+      - { key: segment_insights, label: "세그먼트 인사이트" }
+      - { key: target_segment_priority, label: "타겟 세그먼트 우선순위" }
+
 funnels:
   upper:
-    label: "Brand (브랜드 자산 구축)"
+    label: "Brand (브랜드 자산)"
     desc_who: "잠재 고객"
     desc_goal: "브랜드를 처음 인지하고 태도·이미지를 형성하는 단계"
-    desc_metrics: "호감도, 메시지 전달력, 감정 반응"
+    desc_metrics: "호감도, 적합성, 명확성, 주목도, 신뢰도"
     individual_items:
       quantitative:
-        - { key: like_dislike, label: "브랜드 호감도", scale: "1-7" }
-        - { key: favorable_unfavorable, label: "브랜드 호의도", scale: "1-7" }
-        - { key: brand_self_congruity, label: "자기적합성", scale: "1-7" }
-        - { key: brand_image_fit, label: "이미지적합성", scale: "1-7" }
-        - { key: message_clarity, label: "메시지 명확성", scale: "1-7" }
-        - { key: attention_grabbing, label: "주목도", scale: "1-7" }
+        - { key: brand_favorability, label: "브랜드 호감도", scale: "1-5" }
+        - { key: brand_fit, label: "브랜드 적합성", scale: "1-5" }
+        - { key: message_clarity, label: "메시지 명확성", scale: "1-5" }
+        - { key: attention_grabbing, label: "주목도", scale: "1-5" }
+        - { key: brand_trust, label: "브랜드 신뢰도", scale: "1-5" }
       qualitative:
-        - { key: first_impression, label: "첫인상" }
         - { key: perceived_message, label: "지각된 메시지" }
-        - { key: emotional_response, label: "감정 반응" }
+        - { key: emotional_response, label: "감정적 반응" }
+        - { key: brand_association, label: "브랜드 연상" }
     synthesis_items:
       quantitative:
         - { key: avg_brand_attitude, label: "평균 브랜드 태도" }
@@ -24,26 +45,28 @@ funnels:
       qualitative:
         - { key: message_gap_analysis, label: "메시지 갭 분석" }
         - { key: emotional_tone_summary, label: "감정 톤 요약" }
+        - { key: brand_association_summary, label: "브랜드 연상 종합" }
     qa_items:
       - { key: qa_rep_brand_attitude, type: replication }
       - { key: qa_trap_skepticism_check, type: trap }
 
   mid:
-    label: "Demand & Acquisition (수요 창출·신규 획득)"
+    label: "Demand & Acquisition (수요 창출)"
     desc_who: "관심을 보인 잠재·신규 고객"
     desc_goal: "수요를 확보하고 신규 고객을 획득하는 단계"
-    desc_metrics: "매력도, 가성비, 경쟁 비교, 추천 의향"
+    desc_metrics: "매력도, 가성비, 가격 적정성, 정보 충분성, 추천 의향"
     individual_items:
       quantitative:
-        - { key: appeal_score, label: "매력도", scale: "1-10" }
-        - { key: value_for_money, label: "가성비", scale: "1-7" }
-        - { key: price_fairness, label: "가격 적정성", scale: "1-7" }
-        - { key: info_sufficiency, label: "정보 충분성", scale: "1-7" }
+        - { key: appeal, label: "매력도", scale: "1-5" }
+        - { key: value_for_money, label: "가성비", scale: "1-5" }
+        - { key: price_fairness, label: "가격 적정성", scale: "1-5" }
+        - { key: info_sufficiency, label: "정보 충분성", scale: "1-5" }
+        - { key: recommendation_intent, label: "추천 의향", scale: "1-5" }
       qualitative:
         - { key: key_positives, label: "긍정 요소" }
         - { key: key_concerns, label: "우려 사항" }
-        - { key: competitive_preference, label: "경쟁 비교" }
-        - { key: recommendation_context, label: "추천 맥락" }
+        - { key: competitive_comparison, label: "경쟁 대안 비교" }
+        - { key: information_gap, label: "정보 부족 사항" }
       categorical:
         - { key: recommendation, label: "관심도", options: ["매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"] }
     synthesis_items:
@@ -51,11 +74,9 @@ funnels:
         - { key: overall_score, label: "종합 매력도" }
         - { key: avg_perceived_value, label: "평균 지각된 가치" }
       qualitative:
-        - { key: consensus_positives, label: "공통 긍정 요소" }
-        - { key: consensus_concerns, label: "공통 우려 사항" }
-        - { key: segment_insights, label: "세그먼트 인사이트" }
+        - { key: demand_trigger_summary, label: "수요 발생 요인" }
+        - { key: consideration_barrier_summary, label: "고려 단계 장벽" }
         - { key: wom_potential, label: "구전 잠재력" }
-        - { key: target_segment_priority, label: "타겟 세그먼트 우선순위" }
     qa_items:
       - { key: qa_rep_value_perception, type: replication }
       - { key: qa_trap_budget_sensitivity, type: trap }
@@ -65,16 +86,18 @@ funnels:
     label: "Sales & Conversion (전환·매출)"
     desc_who: "구매를 고려 중인 고객"
     desc_goal: "최종 전환과 매출로 이어지는 단계"
-    desc_metrics: "구매 확률, 전환 장벽, 가격 민감도"
+    desc_metrics: "구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성"
     individual_items:
       quantitative:
-        - { key: likelihood_high, label: "구매 가능성", scale: "1-7" }
-        - { key: probability_consider_high, label: "고려 확률", scale: "1-7" }
-        - { key: willingness_high, label: "구매 의향", scale: "1-7" }
-        - { key: purchase_probability_juster, label: "구매 확률(Juster)", scale: "0-10" }
+        - { key: purchase_likelihood, label: "구매 가능성", scale: "1-5" }
+        - { key: purchase_consideration, label: "고려 확률", scale: "1-5" }
+        - { key: purchase_willingness, label: "구매 의향", scale: "1-5" }
+        - { key: repurchase_intent, label: "재구매 의향", scale: "1-5" }
+        - { key: purchase_urgency, label: "구매 시급성", scale: "1-5" }
       qualitative:
-        - { key: purchase_trigger_barrier, label: "구매 촉진/장벽" }
-        - { key: review_summary, label: "종합 평가" }
+        - { key: purchase_trigger, label: "구매 촉진 요소" }
+        - { key: purchase_barrier, label: "구매 장벽" }
+        - { key: price_perception, label: "가격 인식" }
     synthesis_items:
       quantitative:
         - { key: avg_purchase_intention, label: "평균 구매 의향" }
@@ -82,10 +105,7 @@ funnels:
         - { key: estimated_conversion_range, label: "예상 전환율" }
       qualitative:
         - { key: key_conversion_barriers, label: "핵심 전환 장벽" }
-        - { key: actionable_recommendations, label: "개선 제안" }
-        - { key: executive_summary, label: "핵심 요약" }
-      categorical:
-        - { key: go_nogo_recommendation, label: "Go/No-Go 의사결정" }
-        - { key: improvement_priority, label: "최우선 개선 영역" }
+        - { key: conversion_driver_analysis, label: "전환 촉진 요소 분석" }
+        - { key: price_perception_summary, label: "가격 인식 종합" }
     qa_items:
       - { key: qa_rep_purchase_intent, type: replication }

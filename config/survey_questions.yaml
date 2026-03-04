@@ -1,0 +1,142 @@
+# 서베이 필드 정의
+# key:      JSON 키 (snake_case)
+# spec:     LLM 출력 타입 지시
+# question: LLM 프롬프트에 포함되는 질문/설명
+# label:    종합 분석 텍스트에서 사용하는 짧은 레이블
+
+sections:
+  - id: overall
+    label: "[Overall] 프로모션 종합"
+    fields:
+      - key: promotion_attractiveness
+        spec: "integer 1-5"
+        label: "매력도"
+        question: "이 프로모션의 전반적인 매력도"
+      - key: promotion_quality
+        spec: "integer 1-5"
+        label: "퀄리티"
+        question: "이 프로모션의 전반적인 퀄리티"
+      - key: overall_impression
+        spec: "string"
+        label: "종합 첫인상"
+        question: "이 프로모션의 종합적인 첫인상을 1-2문장으로 (한국어)"
+      - key: review_summary
+        spec: "string"
+        label: "종합 평가"
+        question: "종합 평가를 간단한 문단으로 (한국어)"
+
+  - id: upper
+    label: "[Upper Funnel] 브랜드 자산"
+    fields:
+      - key: brand_favorability
+        spec: "integer 1-5"
+        label: "호감도"
+        question: "이 브랜드/프로모션에 대한 호감도 (1=매우 비호감 ~ 5=매우 호감)"
+      - key: brand_fit
+        spec: "integer 1-5"
+        label: "적합성"
+        question: "이 프로모션이 브랜드 이미지에 얼마나 어울리는지 (1=전혀 ~ 5=매우)"
+      - key: message_clarity
+        spec: "integer 1-5"
+        label: "메시지 명확성"
+        question: "무엇을 제공하는지 명확하게 이해되는 정도 (1=전혀 ~ 5=매우)"
+      - key: attention_grabbing
+        spec: "integer 1-5"
+        label: "주목도"
+        question: "시선을 끄는 정도 (1=전혀 ~ 5=매우)"
+      - key: brand_trust
+        spec: "integer 1-5"
+        label: "신뢰도"
+        question: "이 브랜드/프로모션에 대한 신뢰도 (1=매우 불신 ~ 5=매우 신뢰)"
+      - key: perceived_message
+        spec: "string"
+        label: "지각된 메시지"
+        question: "이 프로모션이 나에게 전달하는 핵심 메시지는 무엇인가? (한국어)"
+      - key: emotional_response
+        spec: "string"
+        label: "감정적 반응"
+        question: "이 프로모션을 처음 봤을 때 어떤 감정이 드는가? (한국어, 1-2문장)"
+      - key: brand_association
+        spec: "string"
+        label: "브랜드 연상"
+        question: "이 프로모션으로 인해 브랜드에 대해 어떤 이미지가 떠오르는가? (한국어)"
+
+  - id: mid
+    label: "[Mid Funnel] 수요 창출"
+    fields:
+      - key: appeal
+        spec: "integer 1-5"
+        label: "매력도"
+        question: "이 프로모션이 당신에게 얼마나 매력적인지 (1=전혀 ~ 5=매우)"
+      - key: value_for_money
+        spec: "integer 1-5"
+        label: "가성비"
+        question: "가격 대비 가치가 있는 정도 (1=전혀 ~ 5=매우)"
+      - key: price_fairness
+        spec: "integer 1-5"
+        label: "가격 적정성"
+        question: "가격이 적정한 정도 (1=전혀 ~ 5=매우)"
+      - key: info_sufficiency
+        spec: "integer 1-5"
+        label: "정보 충분성"
+        question: "구매 결정에 충분한 정보가 제공된 정도 (1=전혀 ~ 5=매우)"
+      - key: recommendation_intent
+        spec: "integer 1-5"
+        label: "추천 의향"
+        question: "주변에 추천할 의향 (1=전혀 ~ 5=매우)"
+      - key: key_positives
+        spec: "string"
+        label: "긍정 요소"
+        question: "매력적인 요소들과 이유를 세미콜론(;)으로 구분 (한국어)"
+      - key: key_concerns
+        spec: "string"
+        label: "우려 사항"
+        question: "최소 2개 이상의 구체적 우려·거부감 요소를 세미콜론(;)으로 구분 — 이 프로모션이 내 니즈를 충족하지 못하는 이유, 가격 대비 가치 의문, 대안과의 비교 등 실질적 내용으로 (한국어)"
+      - key: competitive_comparison
+        spec: "string"
+        label: "경쟁 비교"
+        question: "비슷한 프로모션이나 대안과 비교했을 때 이 프로모션의 차별점은? (한국어)"
+      - key: information_gap
+        spec: "string"
+        label: "정보 부족"
+        question: "구매 결정을 위해 추가로 알고 싶은 정보는? (한국어)"
+      - key: recommendation
+        spec: "string"
+        label: "관심도"
+        question: '반드시 다음 중 정확히 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"'
+
+  - id: lower
+    label: "[Lower Funnel] 전환·매출"
+    fields:
+      - key: purchase_likelihood
+        spec: "integer 1-5"
+        label: "구매 가능성"
+        question: "이 프로모션을 구매할 가능성 (1=전혀 ~ 5=매우 높음)"
+      - key: purchase_consideration
+        spec: "integer 1-5"
+        label: "고려 확률"
+        question: "이 프로모션을 고려할 확률 (1=전혀 ~ 5=매우 높음)"
+      - key: purchase_willingness
+        spec: "integer 1-5"
+        label: "구매 의향"
+        question: "이 프로모션을 구매할 의향 (1=전혀 ~ 5=매우 높음)"
+      - key: repurchase_intent
+        spec: "integer 1-5"
+        label: "재구매 의향"
+        question: "재구매 의향 (1=전혀 ~ 5=매우 높음)"
+      - key: purchase_urgency
+        spec: "integer 1-5"
+        label: "구매 시급성"
+        question: "구매의 시급성 (1=전혀 ~ 5=매우 시급)"
+      - key: purchase_trigger
+        spec: "string"
+        label: "구매 촉진 요소"
+        question: "무엇이 구매를 결정하게 만드는가? (한국어)"
+      - key: purchase_barrier
+        spec: "string"
+        label: "구매 장벽"
+        question: "무엇이 구매를 망설이게 하는가? (한국어)"
+      - key: price_perception
+        spec: "string"
+        label: "가격 인식"
+        question: "이 가격에 대해 어떻게 느끼는가? 적정한가? (한국어)"

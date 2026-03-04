@@ -10,6 +10,8 @@ export const $ = {
   progressText: document.getElementById('progress-text'),
   progressTime: document.getElementById('progress-time'),
   btnLoad:      document.getElementById('btn-load-personas'),
+  panelSize:    document.getElementById('panel-size'),
+  panelSizeEstimate: document.getElementById('panel-size-estimate'),
   pStatus:      document.getElementById('persona-status'),
   pListWrap:    document.getElementById('persona-list-wrap'),
   provider:     document.getElementById('provider'),
@@ -52,6 +54,11 @@ export function initModelSelectors() {
   $.reviewModel.innerHTML = opts;
   $.summaryModel.innerHTML = opts;
   $.synthesisModel.innerHTML = opts;
+
+  // Default preset: review=mini, summary=mini, synthesis=4o
+  $.reviewModel.value = models.includes('gpt-4o-mini') ? 'gpt-4o-mini' : models[0];
+  $.summaryModel.value = models.includes('gpt-4o-mini') ? 'gpt-4o-mini' : models[0];
+  $.synthesisModel.value = models.includes('gpt-4o') ? 'gpt-4o' : models[0];
 }
 
 // Keep backward compat alias

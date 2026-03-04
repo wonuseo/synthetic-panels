@@ -5,13 +5,13 @@ from app.core.funnel import get_qa_keys
 
 # ── Replication pairs: (replication_field, core_field) ────────────
 REPLICATION_PAIRS_FULL: List[Tuple[str, str]] = [
-    ("qa_rep_brand_attitude", "like_dislike"),
+    ("qa_rep_brand_attitude", "brand_favorability"),
     ("qa_rep_value_perception", "value_for_money"),
-    ("qa_rep_purchase_intent", "likelihood_high"),
+    ("qa_rep_purchase_intent", "purchase_likelihood"),
 ]
 
 REPLICATION_PAIRS_LITE: List[Tuple[str, str]] = [
-    ("qa_rep_brand_attitude", "like_dislike"),
+    ("qa_rep_brand_attitude", "brand_favorability"),
 ]
 
 # ── Trap field lists ──────────────────────────────────────────────
@@ -33,30 +33,30 @@ def get_trap_expected_range(trap_field: str, persona) -> Tuple[int, int]:
     if trap_field == "qa_trap_budget_sensitivity":
         val = (persona.panel_cpc or "").strip().lower()
         if val in ("low", "낮음"):
-            return (5, 7)
+            return (4, 5)
         if val in ("medium", "중간"):
-            return (3, 5)
+            return (2, 4)
         if val in ("high", "높음"):
-            return (1, 3)
-        return (1, 7)  # unknown → always pass
+            return (1, 2)
+        return (1, 5)  # unknown → always pass
 
     if trap_field == "qa_trap_competitor_loyalty":
         val = (persona.panel_competitor_pref or "").strip()
         if val and val.lower() not in ("없음", "none", ""):
-            return (1, 4)
-        return (3, 7)
+            return (1, 3)
+        return (3, 5)
 
     if trap_field == "qa_trap_skepticism_check":
         val = (persona.panel_skepticism or "").strip().lower()
         if val in ("high", "높음"):
-            return (1, 3)
+            return (1, 2)
         if val in ("medium", "중간"):
-            return (2, 5)
+            return (2, 4)
         if val in ("low", "낮음"):
-            return (4, 7)
-        return (1, 7)
+            return (3, 5)
+        return (1, 5)
 
-    return (1, 7)
+    return (1, 5)
 
 
 @dataclass
@@ -87,7 +87,7 @@ class QAResult:
             rep_val = getattr(self, rep_field, 0)
             core_val = getattr(review, core_field, 0)
             if rep_val and core_val:
-                consistency_values.append(1 - abs(core_val - rep_val) / 6)
+                consistency_values.append(1 - abs(core_val - rep_val) / 4)
         self.consistency_score = (
             sum(consistency_values) / len(consistency_values)
             if consistency_values

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/app.css" />
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}" />
 </head>
 <body>
 <div class="app">
@@ -26,27 +26,46 @@
     <div class="intro-guide">
       <p class="intro-desc">가상 페르소나를 활용하여 프로모션 자료에 대한 소비자 반응을 시뮬레이션합니다.<br>브랜드 인지부터 전환까지, 마케팅 퍼널 전 단계의 정량·정성 피드백을 빠르게 확인하세요.</p>
       <div class="intro-steps">
-        <div class="intro-step">
-          <span class="intro-step-num">1</span>
-          <div>
-            <strong>페르소나 로드</strong>
-            <span class="intro-step-desc"><em>페르소나 로드</em> 버튼을 눌러 Google Sheets에서 타겟 페르소나를 불러옵니다</span>
+        <div class="intro-steps-row">
+          <div class="intro-step">
+            <span class="intro-step-num">1</span>
+            <div>
+              <strong>패널 수 설정</strong>
+              <span class="intro-step-desc"><em>패널 수</em>를 10·20·50·100명 중 선택해 평가 규모를 설정합니다</span>
+            </div>
+          </div>
+          <div class="intro-step-arrow"></div>
+          <div class="intro-step">
+            <span class="intro-step-num">2</span>
+            <div>
+              <strong>페르소나 로드</strong>
+              <span class="intro-step-desc"><em>페르소나 로드</em> 버튼을 눌러 Google Sheets에서 타겟 페르소나를 불러옵니다</span>
+            </div>
+          </div>
+          <div class="intro-step-arrow"></div>
+          <div class="intro-step">
+            <span class="intro-step-num">3</span>
+            <div>
+              <strong>LLM 선택</strong>
+              <span class="intro-step-desc"><em>LLM Provider</em>와 모델 조합(리뷰·요약·합성)을 확인합니다</span>
+            </div>
           </div>
         </div>
-        <div class="intro-step-arrow"></div>
-        <div class="intro-step">
-          <span class="intro-step-num">2</span>
-          <div>
-            <strong>자료 업로드</strong>
-            <span class="intro-step-desc">왼쪽 영역에 이미지·PDF를 드래그하거나, 텍스트를 직접 입력합니다</span>
+        <div class="intro-steps-row">
+          <div class="intro-step">
+            <span class="intro-step-num">4</span>
+            <div>
+              <strong>프로모션 자료 업로드</strong>
+              <span class="intro-step-desc">왼쪽 영역에 이미지·PDF를 업로드하거나 텍스트 내용을 입력합니다</span>
+            </div>
           </div>
-        </div>
-        <div class="intro-step-arrow"></div>
-        <div class="intro-step">
-          <span class="intro-step-num">3</span>
-          <div>
-            <strong>리뷰 실행</strong>
-            <span class="intro-step-desc"><em>🚀 Run Panel Review</em>를 눌러 퍼널별 리뷰를 생성합니다</span>
+          <div class="intro-step-arrow"></div>
+          <div class="intro-step">
+            <span class="intro-step-num">5</span>
+            <div>
+              <strong>리뷰 실행</strong>
+              <span class="intro-step-desc"><em>🚀 Run Panel Review</em>를 눌러 퍼널별 리뷰를 생성합니다</span>
+            </div>
           </div>
         </div>
       </div>
@@ -81,6 +100,15 @@
       <!-- Right: settings -->
       <div class="card">
         <h2>⚙️ Settings</h2>
+
+        <label for="panel-size" style="margin-top:4px">패널 수</label>
+        <select id="panel-size">
+          <option value="10" selected>10명</option>
+          <option value="20">20명</option>
+          <option value="50">50명</option>
+          <option value="100">100명</option>
+        </select>
+        <div id="panel-size-estimate" class="panel-size-estimate"></div>
 
         <button class="btn-secondary full-width" style="margin-top:4px" id="btn-load-personas">페르소나 로드</button>
         <button class="btn-secondary full-width btn-secondary--ghost" style="margin-top:8px" onclick="loadDemo()">🔍 데모 미리보기</button>
@@ -120,27 +148,50 @@
         <button class="btn-secondary" id="btn-back">← 돌아가기</button>
         <h2>📊 Panel Review Results</h2>
       </div>
-      <button class="btn-secondary" id="btn-save">💾 Save to Sheets</button>
+      <button class="btn-secondary" id="btn-save">📄 Save PDF Report</button>
     </div>
 
-    <div class="tab-bar" id="tab-bar">
-      <button class="tab-btn active" data-tab="overview">개요</button>
-      <button class="tab-btn" data-tab="upper">브랜드 자산</button>
-      <button class="tab-btn" data-tab="mid">수요 창출</button>
-      <button class="tab-btn" data-tab="lower">전환·매출</button>
-      <button class="tab-btn" data-tab="individual">개별 리뷰</button>
-      <button class="tab-btn" data-tab="qa">품질 검증</button>
+    <div class="tab-hierarchy">
+      <div class="tab-group-bar" id="tab-group-bar">
+        <button class="tab-group-btn active" data-group="summary">요약</button>
+        <button class="tab-group-btn" data-group="funnel">퍼널 별 결과</button>
+        <button class="tab-group-btn" data-group="survey-overview">서베이 개요</button>
+        <button class="tab-group-btn" data-group="qa">품질 검증</button>
+        <button class="tab-group-btn" data-group="individual">개별 응답</button>
+      </div>
+      <div class="tab-sub-bar" id="tab-sub-bar">
+        <div class="tab-sub-group active" data-group="summary">
+          <button class="tab-btn active" data-tab="overview">개요</button>
+        </div>
+        <div class="tab-sub-group" data-group="funnel">
+          <button class="tab-btn" data-tab="upper">브랜드 자산</button>
+          <button class="tab-btn" data-tab="mid">수요 창출</button>
+          <button class="tab-btn" data-tab="lower">전환·매출</button>
+        </div>
+        <div class="tab-sub-group" data-group="survey-overview">
+          <button class="tab-btn" data-tab="survey">설문지</button>
+          <button class="tab-btn" data-tab="panel-stats">패널 통계</button>
+        </div>
+        <div class="tab-sub-group" data-group="qa">
+          <button class="tab-btn" data-tab="qa">품질 검증</button>
+        </div>
+        <div class="tab-sub-group" data-group="individual">
+          <button class="tab-btn" data-tab="individual">개별 응답</button>
+        </div>
+      </div>
     </div>
 
     <div class="tab-panel active" id="tab-overview"></div>
     <div class="tab-panel" id="tab-upper"></div>
     <div class="tab-panel" id="tab-mid"></div>
     <div class="tab-panel" id="tab-lower"></div>
+    <div class="tab-panel" id="tab-survey"></div>
+    <div class="tab-panel" id="tab-panel-stats"></div>
     <div class="tab-panel" id="tab-individual"></div>
     <div class="tab-panel" id="tab-qa"></div>
   </div>
 </div>
 
-<script type="module" src="/static/js/main.js"></script>
+<script type="module" src="/static/js/main.js?v={{ asset_version }}"></script>
 </body>
 </html>

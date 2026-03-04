@@ -2,12 +2,15 @@ import asyncio
 import json
 import time
 import uuid
-from collections import defaultdict
+import re
+from collections import defaultdict, Counter
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from functools import lru_cache
 
 from typing import Optional
+import yaml
 from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
@@ -16,7 +19,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.core import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE, REVIEW_PASSWORD, DAILY_REVIEW_LIMIT
 from app.sheets.client import open_spreadsheet_by_url
-from app.sheets.personas import load_personas, load_panels
+from app.sheets.personas import sample_panels_for_size
 from app.sheets.results import save_reviews, save_synthesis, save_persona_summaries
 from app.llm.claude import call_claude, synthesize_claude, synthesize_persona_claude
 from app.llm.openai_client import call_openai, synthesize_openai, synthesize_persona_openai
@@ -66,13 +69,87 @@ def _git_info() -> tuple[str, str]:
 
 APP_VERSION, LAST_UPDATED = _git_info()
 
+_SURVEY_TEMPLATE_PATH = Path(__file__).parent / "config" / "survey_questions.yaml"
+_SCALE_SPEC_RE = re.compile(r"integer\s+(\d+)\s*-\s*(\d+)", re.IGNORECASE)
+_RECOMMENDATION_OPTIONS = ["매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"]
+
+
+def _to_question_type(field_key: str, spec: str) -> str:
+    if "integer" in spec:
+        return "quantitative"
+    if field_key == "recommendation":
+        return "categorical"
+    return "qualitative"
+
+
+def _parse_scale(spec: str) -> Optional[dict]:
+    match = _SCALE_SPEC_RE.search(spec)
+    if not match:
+        return None
+    lo, hi = int(match.group(1)), int(match.group(2))
+    return {"min": lo, "max": hi}
+
+
+@lru_cache(maxsize=1)
+def _load_survey_template() -> list[dict]:
+    with open(_SURVEY_TEMPLATE_PATH, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    sections = []
+    for section in raw.get("sections", []):
+        fields = []
+        for field in section.get("fields", []):
+            key = str(field.get("key", "")).strip()
+            spec = str(field.get("spec", "")).strip()
+            q_type = _to_question_type(key, spec)
+            normalized = {
+                "key": key,
+                "label": str(field.get("label", "")).strip(),
+                "question": str(field.get("question", "")).strip(),
+                "spec": spec,
+                "type": q_type,
+            }
+            scale = _parse_scale(spec)
+            if scale:
+                normalized["scale"] = scale
+            if q_type == "categorical":
+                normalized["options"] = list(_RECOMMENDATION_OPTIONS)
+            fields.append(normalized)
+
+        sections.append({
+            "id": str(section.get("id", "")).strip(),
+            "label": str(section.get("label", "")).strip(),
+            "fields": fields,
+        })
+
+    return sections
+
+
+@app.middleware("http")
+async def disable_static_cache(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/") or request.url.path == "/":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @app.get("/")
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "version": APP_VERSION, "last_updated": LAST_UPDATED})
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "version": APP_VERSION,
+            "last_updated": LAST_UPDATED,
+            "asset_version": int(time.time() * 1000),
+        },
+    )
 
 
 @app.get("/api/funnel-config")
@@ -82,32 +159,84 @@ async def api_funnel_config():
     return {"ok": True, "funnels": get_funnel_groups()}
 
 
+@app.get("/api/survey-template")
+async def api_survey_template():
+    """프론트엔드용 설문 문항 템플릿 반환"""
+    try:
+        return {"ok": True, "sections": _load_survey_template()}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
+
+
 @app.post("/api/personas")
-async def api_load_personas():
+async def api_load_personas(
+    panel_size: int = 10,
+    sampling_seed: Optional[str] = None,
+):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
     try:
+        def _clean(v) -> str:
+            return str(v or "").strip()
+
+        def _build_distribution(values, top_n: int = 3):
+            cleaned = []
+            for v in values:
+                cv = _clean(v)
+                if cv:
+                    cleaned.append(cv)
+            if not cleaned:
+                return []
+            counter = Counter(cleaned)
+            total = sum(counter.values())
+            return [
+                {
+                    "label": label,
+                    "count": count,
+                    "ratio": round((count / total) * 100, 1),
+                }
+                for label, count in counter.most_common(top_n)
+            ]
+
         spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
-        panels = load_panels(spreadsheet)
+        panels, selected_panel_size, selected_seed = sample_panels_for_size(
+            spreadsheet=spreadsheet,
+            panel_size=panel_size,
+            sampling_seed=sampling_seed,
+        )
         # persona_id별 그룹핑
         grouped = defaultdict(list)
         for p in panels:
             grouped[p.persona_id].append(p)
         personas_info = []
-        for persona_id, panel_list in grouped.items():
+        def _persona_sort_key(pid: str):
+            text = str(pid)
+            return (0, int(text)) if text.isdigit() else (1, text)
+
+        for persona_id in sorted(grouped.keys(), key=_persona_sort_key):
+            panel_list = grouped[persona_id]
             first = panel_list[0]
+            panel_stats = {
+                "gender_distribution": _build_distribution([p.panel_gender for p in panel_list]),
+                "season_distribution": _build_distribution([p.persona_season for p in panel_list]),
+                "budget_distribution": _build_distribution([p.panel_cpc for p in panel_list]),
+                "visit_distribution": _build_distribution([p.panel_visited for p in panel_list]),
+                "visit_experience_distribution": _build_distribution([p.panel_visit_experience for p in panel_list]),
+                "skepticism_distribution": _build_distribution([p.panel_skepticism for p in panel_list]),
+                "potential_distribution": _build_distribution([p.panel_potential for p in panel_list]),
+            }
             personas_info.append({
                 "persona_id": first.persona_id,
                 "persona_name": first.persona_name,
-                "panel_gender": first.panel_gender,
-                "persona_season": first.persona_season,
-                "panel_potential": first.panel_potential,
                 "panel_count": len(panel_list),
+                "panel_stats": panel_stats,
             })
         return {
             "ok": True,
             "personas": personas_info,
             "total_panels": len(panels),
+            "panel_size": selected_panel_size,
+            "sampling_seed": selected_seed,
         }
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
@@ -126,7 +255,9 @@ async def api_review(
     provider: str = Form("OpenAI"),
     review_model: str = Form("gpt-4o-mini"),
     summary_model: str = Form("gpt-4o-mini"),
-    synthesis_model: str = Form("gpt-4o-mini"),
+    synthesis_model: str = Form("gpt-4o"),
+    panel_size: int = Form(10),
+    sampling_seed: Optional[str] = Form(None),
     text_content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     qa_mode: str = Form(QA_MODE),
@@ -153,7 +284,11 @@ async def api_review(
 
     try:
         spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
-        panels = load_panels(spreadsheet)
+        panels, selected_panel_size, selected_seed = sample_panels_for_size(
+            spreadsheet=spreadsheet,
+            panel_size=panel_size,
+            sampling_seed=sampling_seed,
+        )
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
@@ -277,30 +412,30 @@ async def api_review(
         for s in persona_summaries:
             synthesis_input.append({
                 "persona_name": s.persona_name,
-                "appeal_score": s.avg_appeal_score,
+                "promotion_attractiveness": s.avg_promotion_attractiveness,
+                "promotion_quality": s.avg_promotion_quality,
+                "appeal": s.avg_appeal,
                 "first_impression": s.first_impression,
                 "key_positives": s.key_positives,
                 "key_concerns": s.key_concerns,
                 "recommendation": max(s.recommendation_distribution, key=s.recommendation_distribution.get) if s.recommendation_distribution else "보통",
                 "review_summary": s.review_summary,
-                "like_dislike": s.avg_like_dislike,
-                "favorable_unfavorable": s.avg_favorable_unfavorable,
-                "value_for_money": s.avg_value_for_money,
-                "price_fairness": s.avg_price_fairness,
-                "brand_self_congruity": s.avg_brand_self_congruity,
-                "brand_image_fit": s.avg_brand_image_fit,
+                "brand_favorability": s.avg_brand_favorability,
+                "brand_fit": s.avg_brand_fit,
                 "message_clarity": s.avg_message_clarity,
                 "attention_grabbing": s.avg_attention_grabbing,
+                "brand_trust": s.avg_brand_trust,
+                "value_for_money": s.avg_value_for_money,
+                "price_fairness": s.avg_price_fairness,
                 "info_sufficiency": s.avg_info_sufficiency,
-                "competitive_preference": s.competitive_preference,
-                "likelihood_high": s.avg_likelihood_high,
-                "probability_consider_high": s.avg_probability_consider_high,
-                "willingness_high": s.avg_willingness_high,
-                "purchase_probability_juster": s.avg_purchase_probability_juster,
+                "recommendation_intent": s.avg_recommendation_intent,
+                "purchase_likelihood": s.avg_purchase_likelihood,
+                "purchase_consideration": s.avg_purchase_consideration,
+                "purchase_willingness": s.avg_purchase_willingness,
+                "repurchase_intent": s.avg_repurchase_intent,
+                "purchase_urgency": s.avg_purchase_urgency,
                 "perceived_message": s.perceived_message,
-                "emotional_response": s.emotional_response,
                 "purchase_trigger_barrier": s.purchase_trigger_barrier,
-                "recommendation_context": s.recommendation_context,
             })
 
         synthesis_raw = ""
@@ -324,6 +459,8 @@ async def api_review(
                 "panel_reviews": [r.to_dict() for r in reviews],
                 "synthesis": synthesis,
                 "synthesis_raw": synthesis_raw,
+                "panel_size": selected_panel_size,
+                "sampling_seed": selected_seed,
             }),
         }
 
@@ -365,30 +502,33 @@ async def api_save(
                 persona_id=r["persona_id"],
                 persona_name=r["persona_name"],
                 panel_id=r.get("panel_id", ""),
-                appeal_score=r.get("appeal_score", 0),
-                first_impression=r.get("first_impression", ""),
-                key_positives=r.get("key_positives", ""),
-                key_concerns=r.get("key_concerns", ""),
-                recommendation=r.get("recommendation", ""),
-                review_summary=r.get("review_summary", ""),
-                like_dislike=r.get("like_dislike", 0),
-                favorable_unfavorable=r.get("favorable_unfavorable", 0),
-                value_for_money=r.get("value_for_money", 0),
-                price_fairness=r.get("price_fairness", 0),
-                brand_self_congruity=r.get("brand_self_congruity", 0),
-                brand_image_fit=r.get("brand_image_fit", 0),
+                promotion_attractiveness=r.get("promotion_attractiveness", 0),
+                promotion_quality=r.get("promotion_quality", 0),
+                brand_favorability=r.get("brand_favorability", 0),
+                brand_fit=r.get("brand_fit", 0),
                 message_clarity=r.get("message_clarity", 0),
                 attention_grabbing=r.get("attention_grabbing", 0),
+                brand_trust=r.get("brand_trust", 0),
+                appeal=r.get("appeal", 0),
+                value_for_money=r.get("value_for_money", 0),
+                price_fairness=r.get("price_fairness", 0),
                 info_sufficiency=r.get("info_sufficiency", 0),
-                competitive_preference=r.get("competitive_preference", ""),
-                likelihood_high=r.get("likelihood_high", 0),
-                probability_consider_high=r.get("probability_consider_high", 0),
-                willingness_high=r.get("willingness_high", 0),
-                purchase_probability_juster=r.get("purchase_probability_juster", 0),
+                recommendation_intent=r.get("recommendation_intent", 0),
+                purchase_likelihood=r.get("purchase_likelihood", 0),
+                purchase_consideration=r.get("purchase_consideration", 0),
+                purchase_willingness=r.get("purchase_willingness", 0),
+                repurchase_intent=r.get("repurchase_intent", 0),
+                purchase_urgency=r.get("purchase_urgency", 0),
+                first_impression=r.get("first_impression", ""),
                 perceived_message=r.get("perceived_message", ""),
                 emotional_response=r.get("emotional_response", ""),
-                purchase_trigger_barrier=r.get("purchase_trigger_barrier", ""),
+                key_positives=r.get("key_positives", ""),
+                key_concerns=r.get("key_concerns", ""),
+                competitive_preference=r.get("competitive_preference", ""),
                 recommendation_context=r.get("recommendation_context", ""),
+                recommendation=r.get("recommendation", ""),
+                purchase_trigger_barrier=r.get("purchase_trigger_barrier", ""),
+                review_summary=r.get("review_summary", ""),
                 raw_response=r.get("raw_response", ""),
                 error=r.get("error"),
                 qa_result=qa_result,

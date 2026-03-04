@@ -1,12 +1,100 @@
 import { state } from './state.js';
 import { DEMO_FUNNEL_CONFIG, DEMO_PERSONA_SUMMARIES, DEMO_PANEL_REVIEWS, DEMO_SYNTHESIS } from './demo.js';
-import { loadFunnelConfig, loadPersonas, runReview, saveResults, checkReviewLimit } from './api.js';
+import { loadFunnelConfig, loadSurveyTemplate, loadPersonas, runReview, checkReviewLimit } from './api.js';
 import { $, updateRunBtn, handleFile, initModelSelectors } from './ui.js';
 import { renderOverviewTab } from './render/overview.js';
 import { renderFunnelTab } from './render/funnel-tab.js';
 import { renderIndividualTab } from './render/individual.js';
 import { renderQATab } from './render/qa.js';
+import { renderSurveyTab } from './render/survey.js';
+import { renderPanelStatsTab } from './render/panel-stats.js';
 import { esc } from './render/helpers.js';
+
+let surveyTemplatePromise = null;
+const TAB_GROUP_DEFAULT_TAB = {
+  summary: 'overview',
+  funnel: 'upper',
+  'survey-overview': 'survey',
+  qa: 'qa',
+  individual: 'individual',
+};
+const tabSelection = { ...TAB_GROUP_DEFAULT_TAB };
+
+function renderSurveyTabs() {
+  renderSurveyTab(state.surveyTemplate, window.funnelConfig);
+  renderPanelStatsTab(state.lastPanelReviews, state.surveyTemplate, state.lastPersonaSummaries, window.funnelConfig);
+}
+
+async function ensureSurveyTemplate() {
+  if (Array.isArray(state.surveyTemplate) && state.surveyTemplate.length) {
+    return state.surveyTemplate;
+  }
+  if (!surveyTemplatePromise) {
+    surveyTemplatePromise = loadSurveyTemplate()
+      .then((sections) => {
+        state.surveyTemplate = Array.isArray(sections) ? sections : [];
+        if (!$.pageResults.classList.contains('hidden')) renderSurveyTabs();
+        return state.surveyTemplate;
+      })
+      .catch(() => {
+        state.surveyTemplate = [];
+        return state.surveyTemplate;
+      });
+  }
+  return surveyTemplatePromise;
+}
+
+function setActiveGroup(groupKey) {
+  const groupBar = document.getElementById('tab-group-bar');
+  const subBar = document.getElementById('tab-sub-bar');
+  if (!groupBar || !subBar) return;
+
+  groupBar.querySelectorAll('.tab-group-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.group === groupKey);
+  });
+  subBar.querySelectorAll('.tab-sub-group').forEach(group => {
+    group.classList.toggle('active', group.dataset.group === groupKey);
+  });
+
+  const activeSubGroup = subBar.querySelector(`.tab-sub-group[data-group="${groupKey}"]`);
+  const subTabCount = activeSubGroup ? activeSubGroup.querySelectorAll('.tab-btn').length : 0;
+  subBar.classList.toggle('collapsed', subTabCount <= 1);
+}
+
+function setActiveTab(tabKey, { syncGroup = true } = {}) {
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabKey}"]`);
+  const panel = document.getElementById(`tab-${tabKey}`);
+  if (!btn || !panel) return;
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  panel.classList.add('active');
+
+  const groupKey = btn.closest('.tab-sub-group')?.dataset.group;
+  if (!groupKey) return;
+
+  tabSelection[groupKey] = tabKey;
+  if (syncGroup) setActiveGroup(groupKey);
+}
+
+function activateGroup(groupKey) {
+  setActiveGroup(groupKey);
+  const subgroup = document.querySelector(`.tab-sub-group[data-group="${groupKey}"]`);
+  if (!subgroup) return;
+
+  const preferredTab = tabSelection[groupKey] || TAB_GROUP_DEFAULT_TAB[groupKey];
+  const fallbackTab = subgroup.querySelector('.tab-btn')?.dataset.tab;
+  const targetTab = preferredTab || fallbackTab;
+  if (!targetTab) return;
+
+  setActiveTab(targetTab, { syncGroup: false });
+}
+
+function resetTabHierarchy() {
+  Object.assign(tabSelection, TAB_GROUP_DEFAULT_TAB);
+  activateGroup('summary');
+}
 
 /* ── Toggle helpers (exposed on window for inline onclick handlers) ── */
 function toggleCard(idx) {
@@ -33,6 +121,235 @@ function fmtTime(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+const CONSERVATIVE_ESTIMATE = {
+  concurrency: 5,
+  assumedPersonaCount: 10,
+  panelReviewSeconds: [30, 60],
+  personaSummarySeconds: [18, 35],
+  synthesisSeconds: [15, 35],
+  overheadSeconds: [25, 60],
+  safetyFactor: 1.15,
+};
+
+function estimateValidationSeconds(panelCount) {
+  const {
+    concurrency,
+    assumedPersonaCount,
+    panelReviewSeconds,
+    personaSummarySeconds,
+    synthesisSeconds,
+    overheadSeconds,
+    safetyFactor,
+  } = CONSERVATIVE_ESTIMATE;
+
+  const reviewBatches = Math.ceil(panelCount / concurrency);
+  const personaCount = Math.min(assumedPersonaCount, panelCount);
+  const summaryBatches = Math.ceil(personaCount / concurrency);
+
+  const minSeconds = (
+    reviewBatches * panelReviewSeconds[0]
+    + summaryBatches * personaSummarySeconds[0]
+    + synthesisSeconds[0]
+    + overheadSeconds[0]
+  );
+  const maxSeconds = (
+    reviewBatches * panelReviewSeconds[1]
+    + summaryBatches * personaSummarySeconds[1]
+    + synthesisSeconds[1]
+    + overheadSeconds[1]
+  );
+  return {
+    minSeconds: Math.ceil(minSeconds * safetyFactor),
+    maxSeconds: Math.ceil(maxSeconds * safetyFactor),
+  };
+}
+
+function fmtMinuteRange(minSeconds, maxSeconds) {
+  const minMinutes = Math.max(1, Math.ceil(minSeconds / 60));
+  const maxMinutes = Math.max(minMinutes, Math.ceil(maxSeconds / 60));
+  if (minMinutes === maxMinutes) return `약 ${minMinutes}분`;
+  return `약 ${minMinutes}~${maxMinutes}분`;
+}
+
+function renderPanelSizeEstimateGuide() {
+  if (!$.panelSizeEstimate || !$.panelSize) return;
+  const selectedSize = Number($.panelSize.value || 10);
+  const { minSeconds, maxSeconds } = estimateValidationSeconds(selectedSize);
+  const timeLabel = fmtMinuteRange(minSeconds, maxSeconds);
+
+  $.panelSizeEstimate.innerHTML = `
+    <div class="panel-size-est-title">검증 예상 소요 시간</div>
+    <div class="panel-size-est-main">
+      <span class="panel-size-est-size">패널 ${selectedSize}명</span>
+      <span class="panel-size-est-time">${timeLabel}</span>
+    </div>
+    <div class="panel-size-est-note">보수적 추정치이며 입력 자료 길이, 이미지/PDF 페이지 수, 모델 응답 속도에 따라 더 길어질 수 있습니다.</div>
+  `;
+}
+
+function formatPct(v) {
+  return Number.isFinite(v) ? v.toFixed(1).replace(/\.0$/, '') : '0';
+}
+
+const DIST_ORDERS = {
+  visit_distribution: ['방문', '미방문'],
+  visit_experience_distribution: ['긍정 경험', '중립 경험', '부정 경험'],
+  skepticism_distribution: ['높음', '중간', '낮음'],
+};
+
+const DIST_COLORS = {
+  visit_distribution: {
+    방문: '#00b894',
+    미방문: '#95a5a6',
+  },
+  visit_experience_distribution: {
+    '긍정 경험': '#00b894',
+    '중립 경험': '#74b9ff',
+    '부정 경험': '#d63031',
+  },
+  skepticism_distribution: {
+    높음: '#e17055',
+    중간: '#fdcb6e',
+    낮음: '#00b894',
+  },
+};
+
+const DIST_FALLBACK_COLORS = ['#6c5ce7', '#0984e3', '#00b894', '#e84393', '#e17055', '#fdcb6e'];
+
+function getDistOrderIndex(statKey, label) {
+  const order = DIST_ORDERS[statKey];
+  if (!order) return Number.POSITIVE_INFINITY;
+  const idx = order.indexOf(label);
+  return idx >= 0 ? idx : Number.POSITIVE_INFINITY;
+}
+
+function getDistColor(statKey, label, idx) {
+  const map = DIST_COLORS[statKey];
+  if (map && map[label]) return map[label];
+  return DIST_FALLBACK_COLORS[idx % DIST_FALLBACK_COLORS.length];
+}
+
+function normalizeDistLabel(statKey, rawLabel) {
+  const label = String(rawLabel || '기타').trim();
+  const low = label.toLowerCase();
+
+  if (statKey === 'visit_distribution') {
+    if (low === 'yes' || low === 'y') return '방문';
+    if (low === 'no' || low === 'n') return '미방문';
+  }
+  if (statKey === 'visit_experience_distribution') {
+    if (low === 'pos' || low === 'positive') return '긍정 경험';
+    if (low === 'neg' || low === 'negative') return '부정 경험';
+    if (low === 'neu' || low === 'neutral') return '중립 경험';
+  }
+  if (statKey === 'skepticism_distribution') {
+    if (low === 'high') return '높음';
+    if (low === 'mid' || low === 'medium') return '중간';
+    if (low === 'low') return '낮음';
+  }
+  return label;
+}
+
+function normalizeDistribution(statKey, items) {
+  if (!Array.isArray(items) || !items.length) return [];
+  const grouped = new Map();
+
+  items.forEach(item => {
+    const count = Number(item?.count || 0);
+    const ratioRaw = Number(item?.ratio || 0);
+    const ratio = Number.isFinite(ratioRaw) ? ratioRaw : 0;
+    const label = normalizeDistLabel(statKey, item?.label);
+    const prev = grouped.get(label) || { label, count: 0, ratio: 0 };
+    prev.count += count;
+    prev.ratio += ratio;
+    grouped.set(label, prev);
+  });
+
+  const merged = Array.from(grouped.values()).filter(x => x.count > 0 || x.ratio > 0);
+  const totalCount = merged.reduce((sum, item) => sum + item.count, 0);
+  const normalized = merged.map(item => ({
+    label: item.label,
+    count: item.count,
+    ratio: totalCount > 0 ? (item.count / totalCount) * 100 : item.ratio,
+  }));
+
+  return normalized.sort((a, b) => {
+    const aIdx = getDistOrderIndex(statKey, a.label);
+    const bIdx = getDistOrderIndex(statKey, b.label);
+    if (aIdx !== bIdx) return aIdx - bIdx;
+    return b.count - a.count;
+  });
+}
+
+function buildPanelStatRows(persona) {
+  const stats = persona.panel_stats || {};
+  const defs = [
+    ['gender_distribution', '성별 분포'],
+    ['season_distribution', '시즌 분포'],
+    ['budget_distribution', 'CPC'],
+    ['visit_distribution', '방문 여부'],
+    ['visit_experience_distribution', '방문 경험'],
+    ['skepticism_distribution', '회의감 분포'],
+  ];
+
+  return defs.map(([key, label]) => ({
+    key,
+    label,
+    items: normalizeDistribution(key, stats[key]),
+  })).filter(row => row.items.length);
+}
+
+function renderPanelStatChart(statKey, items) {
+  const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+  const prepared = items.map((item, idx) => {
+    const ratio = totalCount > 0 ? (item.count / totalCount) * 100 : Math.max(0, item.ratio || 0);
+    return {
+      ...item,
+      ratio,
+      color: getDistColor(statKey, item.label, idx),
+    };
+  }).filter(item => item.count > 0 || item.ratio > 0);
+
+  return `<div class="p-d-chart">
+    <div class="p-stack-track">${
+      prepared.map(item => `<span class="p-stack-seg" style="width:${item.ratio}%;background:${item.color}"></span>`).join('')
+    }</div>
+    <div class="p-stack-legend">${
+      prepared.map(item => `<span class="p-stack-item">
+        <span class="p-stack-dot" style="background:${item.color}"></span>
+        <span class="p-stack-text"><strong>${esc(item.label)}</strong> ${esc(String(item.count))}명 (${formatPct(item.ratio)}%)</span>
+      </span>`).join('')
+    }</div>
+  </div>`;
+}
+
+function renderPersonaList(personas) {
+  return `<div class="persona-list">${
+    personas.map(persona => {
+      const detailRows = buildPanelStatRows(persona);
+      const detailHtml = detailRows.length
+        ? `<div class="p-detail-grid">${
+            detailRows.map(row => `
+              <div class="p-detail-item">
+                <span class="p-d-label">${row.label}</span>
+                ${renderPanelStatChart(row.key, row.items)}
+              </div>`).join('')
+          }</div>`
+        : '<div class="p-detail-empty">패널 통계 데이터가 없습니다.</div>';
+
+      return `
+        <div class="persona-list-item" tabindex="0">
+          <div class="persona-list-row">
+            <span class="p-name">${esc(persona.persona_name)}</span>
+            ${persona.panel_count ? `<span class="p-tag">${esc(String(persona.panel_count))}패널</span>` : ''}
+            <span class="p-hover-hint">통계</span>
+          </div>
+          <div class="persona-hover-card">${detailHtml}</div>
+        </div>`;
+    }).join('')
+  }</div>`;
+}
+
 /* ── Show results page ── */
 function showResults(payload) {
   const { persona_summaries, panel_reviews, synthesis, synthesis_raw } = payload;
@@ -47,53 +364,62 @@ function showResults(payload) {
     persona_id: s.persona_id,
     persona_name: s.persona_name,
     panel_count: s.panel_count,
-    appeal_score: s.avg_appeal_score,
-    first_impression: s.first_impression,
-    key_positives: s.key_positives,
-    key_concerns: s.key_concerns,
-    recommendation: Object.keys(s.recommendation_distribution || {}).reduce((a, b) =>
-      (s.recommendation_distribution[a] || 0) >= (s.recommendation_distribution[b] || 0) ? a : b, '보통'),
+    promotion_attractiveness: s.avg_promotion_attractiveness,
+    promotion_quality: s.avg_promotion_quality,
+    appeal: s.avg_appeal,
+    // qualitative — overall
+    overall_impression: s.overall_impression,
     review_summary: s.review_summary,
-    like_dislike: s.avg_like_dislike,
-    favorable_unfavorable: s.avg_favorable_unfavorable,
-    value_for_money: s.avg_value_for_money,
-    price_fairness: s.avg_price_fairness,
-    brand_self_congruity: s.avg_brand_self_congruity,
-    brand_image_fit: s.avg_brand_image_fit,
-    message_clarity: s.avg_message_clarity,
-    attention_grabbing: s.avg_attention_grabbing,
-    info_sufficiency: s.avg_info_sufficiency,
-    competitive_preference: s.competitive_preference,
-    likelihood_high: s.avg_likelihood_high,
-    probability_consider_high: s.avg_probability_consider_high,
-    willingness_high: s.avg_willingness_high,
-    purchase_probability_juster: s.avg_purchase_probability_juster,
+    // qualitative — upper
     perceived_message: s.perceived_message,
     emotional_response: s.emotional_response,
-    purchase_trigger_barrier: s.purchase_trigger_barrier,
-    recommendation_context: s.recommendation_context,
+    brand_association: s.brand_association,
+    // qualitative — mid
+    key_positives: s.key_positives,
+    key_concerns: s.key_concerns,
+    competitive_comparison: s.competitive_comparison,
+    information_gap: s.information_gap,
+    recommendation: Object.keys(s.recommendation_distribution || {}).reduce((a, b) =>
+      (s.recommendation_distribution[a] || 0) >= (s.recommendation_distribution[b] || 0) ? a : b, '보통'),
+    // qualitative — lower
+    purchase_trigger: s.purchase_trigger,
+    purchase_barrier: s.purchase_barrier,
+    price_perception: s.price_perception,
+    // quantitative averages
+    brand_favorability: s.avg_brand_favorability,
+    brand_fit: s.avg_brand_fit,
+    message_clarity: s.avg_message_clarity,
+    attention_grabbing: s.avg_attention_grabbing,
+    brand_trust: s.avg_brand_trust,
+    value_for_money: s.avg_value_for_money,
+    price_fairness: s.avg_price_fairness,
+    info_sufficiency: s.avg_info_sufficiency,
+    recommendation_intent: s.avg_recommendation_intent,
+    purchase_likelihood: s.avg_purchase_likelihood,
+    purchase_consideration: s.avg_purchase_consideration,
+    purchase_willingness: s.avg_purchase_willingness,
+    repurchase_intent: s.avg_repurchase_intent,
+    purchase_urgency: s.avg_purchase_urgency,
     error: null,
   }));
 
   $.pageUpload.classList.add('hidden');
   $.pageResults.classList.remove('hidden');
-
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector('.tab-btn[data-tab="overview"]').classList.add('active');
-  document.getElementById('tab-overview').classList.add('active');
+  resetTabHierarchy();
 
   renderOverviewTab(state.lastReviews, synthesis, synthesis_raw);
   renderFunnelTab('upper');
   renderFunnelTab('mid');
   renderFunnelTab('lower');
+  renderSurveyTabs();
   renderIndividualTab(state.lastPersonaSummaries);
   renderQATab(state.lastPanelReviews);
 }
 
 /* ── Demo mode ── */
-function loadDemo() {
+async function loadDemo() {
   window.funnelConfig = DEMO_FUNNEL_CONFIG;
+  await ensureSurveyTemplate();
   showResults({
     persona_summaries: DEMO_PERSONA_SUMMARIES,
     panel_reviews: DEMO_PANEL_REVIEWS,
@@ -123,7 +449,9 @@ async function refreshUsageBadge() {
 
 /* ── Initialize model selectors and load funnel config ── */
 initModelSelectors();
+renderPanelSizeEstimateGuide();
 loadFunnelConfig();
+ensureSurveyTemplate();
 refreshUsageBadge();
 
 /* ── Provider change ── */
@@ -151,29 +479,43 @@ $.fileInput.addEventListener('change', () => {
 /* ── Text content input ── */
 $.textContent.addEventListener('input', updateRunBtn);
 
+/* ── Panel size selection ── */
+$.panelSize.addEventListener('change', () => {
+  const panelSize = Number($.panelSize.value || 10);
+  state.selectedPanelSize = panelSize;
+  renderPanelSizeEstimateGuide();
+  if (!state.personasLoaded) {
+    updateRunBtn();
+    return;
+  }
+
+  state.personasLoaded = false;
+  state.samplingSeed = null;
+  $.pStatus.innerHTML = '<div class="persona-badge" style="color:#636e72">패널 수가 변경되었습니다. 페르소나를 다시 로드하세요.</div>';
+  $.pListWrap.classList.add('hidden');
+  $.pListWrap.innerHTML = '';
+  updateRunBtn();
+});
+
 /* ── Load personas ── */
 $.btnLoad.addEventListener('click', async () => {
   $.pStatus.innerHTML = '<div class="persona-badge" style="color:#636e72">로딩 중...</div>';
   $.pListWrap.classList.add('hidden');
   $.pListWrap.innerHTML = '';
 
-  const result = await loadPersonas();
+  const panelSize = Number($.panelSize.value || 10);
+  const result = await loadPersonas(panelSize);
   if (result.ok) {
     state.personasLoaded = true;
+    state.selectedPanelSize = Number(result.panel_size || panelSize);
+    state.samplingSeed = result.sampling_seed || null;
     const totalPanels = result.total_panels || result.personas.reduce((s, p) => s + (p.panel_count || 1), 0);
     $.pStatus.innerHTML = `<div class="persona-badge ok">✅ ${result.personas.length}명 페르소나 · ${totalPanels}개 패널 로드 완료</div>`;
     $.pListWrap.classList.remove('hidden');
-    $.pListWrap.innerHTML = `<div class="persona-list">${
-      result.personas.map(p => `
-        <div class="persona-list-item">
-          <span class="p-name">${esc(p.persona_name)}</span>
-          ${p.panel_gender ? `<span class="p-tag">${esc(p.panel_gender)}</span>` : ''}
-          ${p.persona_season ? `<span class="p-tag">${esc(p.persona_season)}</span>` : ''}
-          ${p.panel_count ? `<span class="p-tag">${p.panel_count}패널</span>` : ''}
-        </div>`).join('')
-    }</div>`;
+    $.pListWrap.innerHTML = renderPersonaList(result.personas);
   } else {
     state.personasLoaded = false;
+    state.samplingSeed = null;
     $.pStatus.innerHTML = `<div class="persona-badge err">❌ ${result.error}</div>`;
   }
   updateRunBtn();
@@ -208,6 +550,8 @@ $.btnRun.addEventListener('click', async () => {
   fd.append('summary_model', $.summaryModel.value);
   fd.append('synthesis_model', $.synthesisModel.value);
   fd.append('qa_mode', document.getElementById('qa-mode').value);
+  fd.append('panel_size', String(state.selectedPanelSize || Number($.panelSize.value || 10)));
+  if (state.samplingSeed) fd.append('sampling_seed', state.samplingSeed);
   if (password) fd.append('password', password);
 
   try {
@@ -266,38 +610,131 @@ $.btnBack.addEventListener('click', () => {
   $.pageUpload.classList.remove('hidden');
 });
 
-/* ── Save to Sheets ── */
+/* ── Save PDF report (all tabs) ── */
+function buildPdfReportHtml() {
+  const sections = [
+    { key: 'overview', title: '개요' },
+    { key: 'upper', title: '브랜드 자산' },
+    { key: 'mid', title: '수요 창출' },
+    { key: 'lower', title: '전환·매출' },
+    { key: 'survey', title: '설문지' },
+    { key: 'panel-stats', title: '패널 통계' },
+    { key: 'qa', title: '품질 검증' },
+    { key: 'individual', title: '개별 응답' },
+  ];
+
+  const renderedSections = sections.map(section => {
+    const source = document.getElementById(`tab-${section.key}`);
+    if (!source) return '';
+
+    const clone = source.cloneNode(true);
+    clone.classList.remove('tab-panel', 'active');
+    clone.querySelectorAll('.persona-card').forEach(el => el.classList.add('open'));
+    clone.querySelectorAll('.drill-down-header').forEach(el => el.classList.add('open'));
+    clone.querySelectorAll('.drill-down-body').forEach(el => el.classList.add('show'));
+    clone.querySelectorAll('.raw-content').forEach(el => el.classList.add('show'));
+    clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+
+    return `
+      <section class="pdf-report-section">
+        <h2>${section.title}</h2>
+        ${clone.innerHTML || '<p>데이터가 없습니다.</p>'}
+      </section>
+    `;
+  }).join('');
+
+  const generatedAt = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  return `
+    <!doctype html>
+    <html lang="ko">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Synthetic Panels Report</title>
+      <link rel="stylesheet" href="${window.location.origin}/static/app.css" />
+      <style>
+        :root { color-scheme: light; }
+        body { background: #fff; margin: 0; }
+        .pdf-report-wrap { max-width: 1120px; margin: 0 auto; padding: 24px 24px 40px; }
+        .pdf-report-head { margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }
+        .pdf-report-head h1 { margin: 0; font-size: 1.5rem; }
+        .pdf-report-head p { margin: 8px 0 0; color: #6b7280; font-size: 0.9rem; }
+        .pdf-report-section { margin: 0 0 28px; page-break-inside: avoid; }
+        .pdf-report-section > h2 {
+          margin: 0 0 12px;
+          font-size: 1.08rem;
+          border-left: 4px solid #6c5ce7;
+          padding-left: 10px;
+        }
+        .tab-panel, .persona-card-body, .drill-down-body, .raw-content { display: block !important; }
+        .tab-hierarchy, .raw-toggle, .chevron { display: none !important; }
+        @page { size: A4; margin: 12mm; }
+      </style>
+    </head>
+    <body>
+      <div class="pdf-report-wrap">
+        <header class="pdf-report-head">
+          <h1>Synthetic Panels 분석 리포트</h1>
+          <p>생성 시각: ${generatedAt} (KST)</p>
+        </header>
+        ${renderedSections}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function openPdfPrintWindow() {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return false;
+
+  const html = buildPdfReportHtml();
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+
+  const printNow = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  printWindow.onload = () => setTimeout(printNow, 350);
+  return true;
+}
+
 $.btnSave.addEventListener('click', async () => {
   if (!state.lastPanelReviews.length && !state.lastReviews.length) return;
   $.btnSave.disabled = true;
-  $.btnSave.textContent = '저장 중...';
+  $.btnSave.textContent = 'PDF 생성 중...';
 
-  const result = await saveResults(
-    JSON.stringify(state.lastPanelReviews.length ? state.lastPanelReviews : state.lastReviews),
-    state.lastSynthesis ? JSON.stringify(state.lastSynthesis) : null,
-    state.lastPersonaSummaries.length ? JSON.stringify(state.lastPersonaSummaries) : null
-  );
-
-  if (result.ok) {
-    $.btnSave.textContent = `✅ ${result.count}건 저장 완료`;
-    setTimeout(() => {
-      $.btnSave.textContent = '💾 Save to Sheets';
-      $.btnSave.disabled = false;
-    }, 3000);
-  } else {
-    alert('저장 실패: ' + result.error);
-    $.btnSave.textContent = '💾 Save to Sheets';
+  const opened = openPdfPrintWindow();
+  if (!opened) {
+    alert('팝업이 차단되어 PDF 창을 열 수 없습니다. 팝업 허용 후 다시 시도해주세요.');
+    $.btnSave.textContent = '📄 Save PDF Report';
     $.btnSave.disabled = false;
+    return;
   }
+
+  $.btnSave.textContent = '✅ PDF 인쇄 창 열림';
+  setTimeout(() => {
+    $.btnSave.textContent = '📄 Save PDF Report';
+    $.btnSave.disabled = false;
+  }, 2500);
 });
 
-/* ── Tab switching ── */
-document.getElementById('tab-bar').addEventListener('click', e => {
+/* ── Hierarchical tab switching ── */
+document.getElementById('tab-group-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-group-btn');
+  if (!btn) return;
+  const group = btn.dataset.group;
+  if (!group) return;
+  activateGroup(group);
+});
+
+document.getElementById('tab-sub-bar').addEventListener('click', e => {
   const btn = e.target.closest('.tab-btn');
   if (!btn) return;
   const tab = btn.dataset.tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
+  if (!tab) return;
+  setActiveTab(tab);
 });

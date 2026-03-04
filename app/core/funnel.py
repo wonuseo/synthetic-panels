@@ -29,14 +29,31 @@ def load_funnel_config() -> dict:
         return yaml.safe_load(f)
 
 
-def get_individual_keys() -> list[str]:
-    """퍼널 순서대로 individual_items의 key 목록 반환.
+def get_overall_keys() -> list[str]:
+    """overall 섹션의 individual_items key 목록 반환."""
+    cfg = load_funnel_config()
+    overall = cfg.get("overall", {})
+    items = overall.get("individual_items", {})
+    keys: list[str] = []
+    for item_type in _ITEM_TYPE_ORDER:
+        for item in items.get(item_type, []):
+            keys.append(item["key"])
+    return keys
 
-    Upper quant → Upper qual → Mid quant → Mid qual → Mid categorical
-    → Lower quant → Lower qual
-    """
+
+def get_individual_keys() -> list[str]:
+    """overall + 퍼널 순서대로 individual_items의 key 목록 반환."""
     cfg = load_funnel_config()
     keys: list[str] = []
+
+    # Overall items first
+    overall = cfg.get("overall", {})
+    items = overall.get("individual_items", {})
+    for item_type in _ITEM_TYPE_ORDER:
+        for item in items.get(item_type, []):
+            keys.append(item["key"])
+
+    # Funnel items
     for funnel_name in _FUNNEL_ORDER:
         funnel = cfg["funnels"].get(funnel_name, {})
         items = funnel.get("individual_items", {})
@@ -58,9 +75,15 @@ def get_qa_keys() -> list[str]:
 
 
 def get_synthesis_keys() -> list[str]:
-    """퍼널 순서대로 synthesis_items의 key 목록 반환"""
+    """overall + 퍼널 순서대로 synthesis_items의 key 목록 반환"""
     cfg = load_funnel_config()
     keys: list[str] = []
+    # Overall synthesis items
+    overall = cfg.get("overall", {})
+    for item_type in _ITEM_TYPE_ORDER:
+        for item in overall.get("synthesis_items", {}).get(item_type, []):
+            keys.append(item["key"])
+    # Funnel synthesis items
     for funnel_name in _FUNNEL_ORDER:
         funnel = cfg["funnels"].get(funnel_name, {})
         items = funnel.get("synthesis_items", {})
@@ -84,11 +107,22 @@ def get_results_headers() -> list[str]:
 def get_field_scales() -> dict[str, tuple[int, int]]:
     """개별 항목별 유효 스케일 범위를 dict로 반환.
 
-    반환 형태: {"like_dislike": (1, 7), "appeal_score": (1, 10), ...}
+    반환 형태: {"brand_favorability": (1, 5), "appeal": (1, 5), ...}
     scale이 없는(정성적) 항목은 제외된다.
     """
     cfg = load_funnel_config()
     scales: dict[str, tuple[int, int]] = {}
+
+    # Overall items
+    overall = cfg.get("overall", {})
+    overall_items = overall.get("individual_items", {})
+    for item in overall_items.get("quantitative", []):
+        scale_str = item.get("scale", "")
+        if scale_str and "-" in scale_str:
+            lo, hi = scale_str.split("-", 1)
+            scales[item["key"]] = (int(lo), int(hi))
+
+    # Funnel items
     for funnel_name in _FUNNEL_ORDER:
         funnel = cfg["funnels"].get(funnel_name, {})
         items = funnel.get("individual_items", {})
@@ -97,9 +131,9 @@ def get_field_scales() -> dict[str, tuple[int, int]]:
             if scale_str and "-" in scale_str:
                 lo, hi = scale_str.split("-", 1)
                 scales[item["key"]] = (int(lo), int(hi))
-        # QA 항목 (모두 1-7)
+        # QA 항목 (모두 1-5)
         for item in funnel.get("qa_items", []):
-            scales[item["key"]] = (1, 7)
+            scales[item["key"]] = (1, 5)
     return scales
 
 
@@ -121,9 +155,45 @@ _init_scales_cache()
 
 
 def get_funnel_groups() -> dict:
-    """프론트엔드용: {funnel_name: {label, description, individual_items, synthesis_items, qa_items}} 형태"""
+    """프론트엔드용: {funnel_name: {label, description, individual_items, synthesis_items, qa_items}} 형태
+    overall 섹션도 포함."""
     cfg = load_funnel_config()
     groups: dict = {}
+
+    # Overall section
+    overall = cfg.get("overall", {})
+    if overall:
+        individual_list: list[dict] = []
+        ind = overall.get("individual_items", {})
+        for item_type in _ITEM_TYPE_ORDER:
+            for item in ind.get(item_type, []):
+                individual_list.append({
+                    "key": item["key"],
+                    "label": item["label"],
+                    "scale": item.get("scale", ""),
+                    "type": item_type,
+                })
+        synthesis_list_overall: list[dict] = []
+        syn_overall = overall.get("synthesis_items", {})
+        for item_type in _ITEM_TYPE_ORDER:
+            for item in syn_overall.get(item_type, []):
+                synthesis_list_overall.append({
+                    "key": item["key"],
+                    "label": item["label"],
+                    "type": item_type,
+                })
+        groups["overall"] = {
+            "label": overall.get("label", "Overall"),
+            "description": overall.get("description", ""),
+            "desc_who": overall.get("desc_who", ""),
+            "desc_goal": overall.get("desc_goal", ""),
+            "desc_metrics": overall.get("desc_metrics", ""),
+            "individual_items": individual_list,
+            "synthesis_items": synthesis_list_overall,
+            "qa_items": [],
+        }
+
+    # Funnel sections
     for funnel_name in _FUNNEL_ORDER:
         funnel = cfg["funnels"].get(funnel_name, {})
 

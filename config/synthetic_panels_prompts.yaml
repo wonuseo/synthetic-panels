@@ -17,10 +17,10 @@ individual_review:
     2. If the promotion price, style, or benefits do not closely match your persona's KSF and preferences, express genuine resistance — not mild concern.
     3. key_concerns MUST contain at least 2 substantive, specific objections. Vague concerns like "가격이 약간 부담될 수 있음" are not acceptable — explain exactly WHY it doesn't work for your persona.
     4. Consider what you would do instead: stay at a competitor hotel, skip the trip, or book a different package. Mention it if relevant.
-    5. appeal_score and purchase scores must honestly reflect your persona's fit. A persona who prefers a competitor brand or has a tight budget should score LOW (1-4 range) unless the promotion genuinely addresses their core needs.
+    5. All quantitative scores use a 1-5 Likert scale. A persona who prefers a competitor brand or has a tight budget should score LOW (1-2 range) unless the promotion genuinely addresses their core needs.
     6. Avoid sycophantic language. Do not praise the promotion simply because it is a luxury brand.
 
-    IMPORTANT: All text responses (first_impression, key_positives, key_concerns, recommendation, review_summary, and all qualitative comments) MUST be written in Korean (한국어).
+    IMPORTANT: All text responses (overall_impression, emotional_response, brand_association, perceived_message, key_positives, key_concerns, competitive_comparison, information_gap, purchase_trigger, purchase_barrier, price_perception, recommendation, review_summary, and all qualitative comments) MUST be written in Korean (한국어).
 
   # 리뷰 요청 본문 — {material_description} 자리에 자료 설명이 삽입됩니다.
   user_base: |
@@ -32,43 +32,15 @@ individual_review:
     Every key is English snake_case. The funnel section comments below are for context only; do NOT create nested objects for them.
 
     STRICT FORMAT RULES:
-    1. ALL numeric fields must be plain integers (e.g., 5). NOT strings ("5"), NOT fractions (5/7), NOT floats (5.0), NOT text ("약 4점").
+    1. ALL numeric fields must be plain integers (e.g., 3). NOT strings ("3"), NOT fractions (3/5), NOT floats (3.0), NOT text ("약 3점").
     2. ALL string fields must be plain strings. Do NOT use arrays/lists for string fields.
     3. EVERY field listed below is REQUIRED — do NOT omit any field.
     4. Output ONLY the JSON object. No markdown code blocks (```), no commentary, no text before or after the JSON.
 
-    --- [Upper Funnel] 브랜드 자산 ---
-    "like_dislike": integer 1-7, 이 브랜드/프로모션이 싫다(1) ~ 좋다(7)
-    "favorable_unfavorable": integer 1-7, 이 브랜드/프로모션이 비호의적(1) ~ 호의적(7)
-    "brand_self_congruity": integer 1-7, 나 같은 사람을 위한 것이다
-    "brand_image_fit": integer 1-7, 프로모션 이미지가 브랜드에 어울린다
-    "message_clarity": integer 1-7, 무엇을 제공하는지 명확하게 이해된다
-    "attention_grabbing": integer 1-7, 시선을 끈다
-    "first_impression": string, 첫인상을 1-2문장으로 (한국어)
-    "perceived_message": string, 이 프로모션이 나에게 전달하는 핵심 메시지는 무엇인가? (한국어)
-    "emotional_response": string, 이 프로모션을 보고 든 솔직한 감정과 느낌 (한국어)
-
-    --- [Mid Funnel] 수요 창출 ---
-    "appeal_score": integer 1-10, 이 프로모션이 당신에게 얼마나 매력적인지
-    "value_for_money": integer 1-7, 가격 대비 가치가 있다
-    "price_fairness": integer 1-7, 가격이 적정하다
-    "info_sufficiency": integer 1-7, 구매 결정에 충분한 정보가 제공되었다
-    "key_positives": string, 매력적인 요소들과 이유를 세미콜론(;)으로 구분 (한국어)
-    "key_concerns": string, 최소 2개 이상의 구체적 우려·거부감 요소를 세미콜론(;)으로 구분 — 이 프로모션이 내 니즈를 충족하지 못하는 이유, 가격 대비 가치 의문, 대안과의 비교 등 실질적 내용으로 (한국어)
-    "competitive_preference": string, 경쟁 브랜드 대비 이 프로모션의 장단점 비교 (한국어)
-    "recommendation_context": string, 주변에 이 프로모션을 추천한다면 누구에게 어떻게 설명하겠는가? 추천하지 않겠다면 그 이유 (한국어)
-    "recommendation": string, 반드시 다음 중 정확히 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"
-
-    --- [Lower Funnel] 전환·매출 ---
-    "likelihood_high": integer 1-7, 이 프로모션을 구매할 가능성이 높다
-    "probability_consider_high": integer 1-7, 이 프로모션을 고려할 확률이 높다
-    "willingness_high": integer 1-7, 이 프로모션을 구매할 의향이 높다
-    "purchase_probability_juster": integer 0-10, 향후 이 프로모션을 실제로 구매할 확률 (0=전혀 가능성 없음 ~ 10=확실)
-    "purchase_trigger_barrier": string, 구매를 결정하게 만들려면 무엇이 추가/변경되어야 하는가? (한국어)
-    "review_summary": string, 종합 평가를 간단한 문단으로 (한국어)
+    {survey_questions}
 
     Example (structure only — values are placeholders):
-    {{"like_dislike":4,"favorable_unfavorable":3,"brand_self_congruity":5,"brand_image_fit":4,"message_clarity":5,"attention_grabbing":3,"first_impression":"...","perceived_message":"...","emotional_response":"...","appeal_score":6,"value_for_money":4,"price_fairness":3,"info_sufficiency":5,"key_positives":"항목1; 항목2","key_concerns":"우려1; 우려2","competitive_preference":"...","recommendation_context":"...","recommendation":"보통","likelihood_high":3,"probability_consider_high":4,"willingness_high":3,"purchase_probability_juster":4,"purchase_trigger_barrier":"...","review_summary":"..."}}
+    {example_json}
 
     Respond ONLY with the JSON object. No markdown, no commentary.
 
@@ -77,17 +49,17 @@ individual_review:
     full: |
 
       --- QA 검증 항목 (아래 항목도 JSON에 포함해 주세요) ---
-      - "qa_rep_brand_attitude": integer 1-7, 이 프로모션에 대한 전반적인 호감도
-      - "qa_rep_value_perception": integer 1-7, 이 프로모션의 가격 대비 만족도
-      - "qa_rep_purchase_intent": integer 1-7, 이 프로모션을 실제로 이용할 가능성
-      - "qa_trap_budget_sensitivity": integer 1-7, 가격이 나의 예산에 부담이 된다
-      - "qa_trap_competitor_loyalty": integer 1-7, 경쟁 브랜드보다 이 프로모션이 더 매력적이다
-      - "qa_trap_skepticism_check": integer 1-7, 이 프로모션의 혜택이 과장되지 않고 신뢰할 수 있다
+      - "qa_rep_brand_attitude": integer 1-5, 이 프로모션에 대한 전반적인 호감도
+      - "qa_rep_value_perception": integer 1-5, 이 프로모션의 가격 대비 만족도
+      - "qa_rep_purchase_intent": integer 1-5, 이 프로모션을 실제로 이용할 가능성
+      - "qa_trap_budget_sensitivity": integer 1-5, 가격이 나의 예산에 부담이 된다
+      - "qa_trap_competitor_loyalty": integer 1-5, 경쟁 브랜드보다 이 프로모션이 더 매력적이다
+      - "qa_trap_skepticism_check": integer 1-5, 이 프로모션의 혜택이 과장되지 않고 신뢰할 수 있다
     lite: |
 
       --- QA 검증 항목 (아래 항목도 JSON에 포함해 주세요) ---
-      - "qa_rep_brand_attitude": integer 1-7, 이 프로모션에 대한 전반적인 호감도
-      - "qa_trap_budget_sensitivity": integer 1-7, 가격이 나의 예산에 부담이 된다
+      - "qa_rep_brand_attitude": integer 1-5, 이 프로모션에 대한 전반적인 호감도
+      - "qa_trap_budget_sensitivity": integer 1-5, 가격이 나의 예산에 부담이 된다
 
   # 자료 유형별 설명 문구
   material_sources:

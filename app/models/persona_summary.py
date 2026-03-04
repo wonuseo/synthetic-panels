@@ -5,19 +5,21 @@ from collections import Counter
 
 # 정량 필드 목록 (Review 모델의 _INT_FIELDS와 동일)
 _QUANT_FIELDS = [
-    "appeal_score", "like_dislike", "favorable_unfavorable",
-    "value_for_money", "price_fairness", "brand_self_congruity",
-    "brand_image_fit", "message_clarity", "attention_grabbing",
-    "info_sufficiency", "likelihood_high", "probability_consider_high",
-    "willingness_high", "purchase_probability_juster",
+    "promotion_attractiveness", "promotion_quality",
+    "brand_favorability", "brand_fit", "message_clarity",
+    "attention_grabbing", "brand_trust",
+    "appeal", "value_for_money", "price_fairness",
+    "info_sufficiency", "recommendation_intent",
+    "purchase_likelihood", "purchase_consideration",
+    "purchase_willingness", "repurchase_intent", "purchase_urgency",
 ]
 
 # 정성 필드 목록 (Phase 3 LLM으로 채움)
 _QUAL_FIELDS = [
-    "first_impression", "key_positives", "key_concerns",
-    "review_summary", "perceived_message", "emotional_response",
-    "purchase_trigger_barrier", "recommendation_context",
-    "competitive_preference",
+    "overall_impression", "review_summary",
+    "perceived_message", "emotional_response", "brand_association",
+    "key_positives", "key_concerns", "competitive_comparison", "information_gap",
+    "purchase_trigger", "purchase_barrier", "price_perception",
 ]
 
 
@@ -28,34 +30,40 @@ class PersonaSummary:
     panel_count: int = 0
 
     # 정량 평균값
-    avg_appeal_score: float = 0.0
-    avg_like_dislike: float = 0.0
-    avg_favorable_unfavorable: float = 0.0
-    avg_value_for_money: float = 0.0
-    avg_price_fairness: float = 0.0
-    avg_brand_self_congruity: float = 0.0
-    avg_brand_image_fit: float = 0.0
+    avg_promotion_attractiveness: float = 0.0
+    avg_promotion_quality: float = 0.0
+    avg_brand_favorability: float = 0.0
+    avg_brand_fit: float = 0.0
     avg_message_clarity: float = 0.0
     avg_attention_grabbing: float = 0.0
+    avg_brand_trust: float = 0.0
+    avg_appeal: float = 0.0
+    avg_value_for_money: float = 0.0
+    avg_price_fairness: float = 0.0
     avg_info_sufficiency: float = 0.0
-    avg_likelihood_high: float = 0.0
-    avg_probability_consider_high: float = 0.0
-    avg_willingness_high: float = 0.0
-    avg_purchase_probability_juster: float = 0.0
+    avg_recommendation_intent: float = 0.0
+    avg_purchase_likelihood: float = 0.0
+    avg_purchase_consideration: float = 0.0
+    avg_purchase_willingness: float = 0.0
+    avg_repurchase_intent: float = 0.0
+    avg_purchase_urgency: float = 0.0
 
     # 추천 분포
     recommendation_distribution: dict = field(default_factory=dict)
 
     # 정성 필드 (Phase 3 LLM 호출로 채움)
-    first_impression: str = ""
-    key_positives: str = ""
-    key_concerns: str = ""
+    overall_impression: str = ""
     review_summary: str = ""
     perceived_message: str = ""
     emotional_response: str = ""
-    purchase_trigger_barrier: str = ""
-    recommendation_context: str = ""
-    competitive_preference: str = ""
+    brand_association: str = ""
+    key_positives: str = ""
+    key_concerns: str = ""
+    competitive_comparison: str = ""
+    information_gap: str = ""
+    purchase_trigger: str = ""
+    purchase_barrier: str = ""
+    price_perception: str = ""
 
     # 개별 패널 리뷰 (드릴다운용)
     panel_reviews: List[dict] = field(default_factory=list)

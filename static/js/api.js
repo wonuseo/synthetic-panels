@@ -10,12 +10,32 @@ export async function loadFunnelConfig() {
   }
 }
 
-export async function loadPersonas() {
+export async function loadSurveyTemplate() {
   try {
-    const res = await fetch('/api/personas', { method: 'POST' });
+    const res = await fetch('/api/survey-template');
+    const data = await res.json();
+    if (data.ok) return data.sections || [];
+    return [];
+  } catch (e) {
+    console.error('Failed to load survey template:', e);
+    return [];
+  }
+}
+
+export async function loadPersonas(panelSize = 10, samplingSeed = null) {
+  try {
+    const params = new URLSearchParams({ panel_size: String(panelSize) });
+    if (samplingSeed) params.set('sampling_seed', samplingSeed);
+    const res = await fetch(`/api/personas?${params.toString()}`, { method: 'POST' });
     const data = await res.json();
     if (data.ok) {
-      return { ok: true, personas: data.personas, total_panels: data.total_panels };
+      return {
+        ok: true,
+        personas: data.personas,
+        total_panels: data.total_panels,
+        panel_size: data.panel_size,
+        sampling_seed: data.sampling_seed,
+      };
     } else {
       return { ok: false, error: data.error };
     }
