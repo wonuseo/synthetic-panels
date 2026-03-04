@@ -20,7 +20,7 @@ class Persona:
     persona_id: str
     persona_name: str
     panel_gender: str
-    panel_sex: str
+    panel_age: str
     persona_season: str
     panel_cpc: str
     panel_potential: str
@@ -45,7 +45,7 @@ class Persona:
             persona_id=str(row.get("persona_id", "")),
             persona_name=str(row.get("persona_name", "")),
             panel_gender=str(row.get("panel_gender", "")),
-            panel_sex=str(row.get("panel_sex", "")),
+            panel_age=str(row.get("panel_age", "")),
             persona_season=str(row.get("persona_season", "")),
             panel_cpc=str(row.get("panel_cpc", "")),
             panel_potential=str(row.get("panel_potential", "")),

@@ -6,8 +6,8 @@ fields:
     label: "이름"
   - key: panel_gender
     label: "성별"
-  - key: panel_sex
-    label: "성"
+  - key: panel_age
+    label: "나이"
   - key: persona_season
     label: "선호 시즌"
   - key: panel_cpc
@@ -46,7 +46,7 @@ fields:
 profile_template: |
   이름: {persona_name}
   성별: {panel_gender}
-  성: {panel_sex}
+  나이: {panel_age}
   선호 시즌: {persona_season}
   예산 등급(CPC): {panel_cpc}
   잠재 가치: {panel_potential}

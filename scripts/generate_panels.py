@@ -128,14 +128,14 @@ def generate_variation() -> dict:
 # 고정 필드 (페르소나에서 상속)
 # ---------------------------------------------------------------------------
 INHERITED_FIELDS = [
-    "persona_name", "panel_gender", "panel_sex", "persona_season",
+    "persona_name", "panel_gender", "panel_age", "persona_season",
     "panel_cpc", "panel_potential", "panel_room_pref", "panel_bed_pref",
     "panel_activity_pref_1", "panel_activity_pref_2", "panel_activity_pref_3",
     "panel_cuisine_1", "panel_cuisine_2", "persona_ksf",
 ]
 
 PANEL_HEADERS = [
-    "panel_id", "persona_id", "persona_name", "panel_gender", "panel_sex",
+    "panel_id", "persona_id", "persona_name", "panel_gender", "panel_age",
     "persona_season", "panel_cpc", "panel_potential", "panel_room_pref",
     "panel_bed_pref", "panel_activity_pref_1", "panel_activity_pref_2",
     "panel_activity_pref_3", "panel_cuisine_1", "panel_cuisine_2",
