@@ -4,6 +4,8 @@ import os
 import time
 import uuid
 import re
+import logging
+import threading
 from collections import defaultdict, Counter
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +34,9 @@ from app.models.qa import QAResult
 from zoneinfo import ZoneInfo
 
 app = FastAPI(title="Synthetic Panels")
+logger = logging.getLogger(__name__)
+_active_executors: set[ThreadPoolExecutor] = set()
+_active_executors_lock = threading.Lock()
 
 # ── Daily review counter (KST) ──
 _review_counts: dict[str, int] = {}  # {"2026-03-03": 5, ...}
@@ -154,6 +159,19 @@ async def set_cache_headers(request: Request, call_next):
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+@app.on_event("shutdown")
+async def _shutdown_active_executors():
+    with _active_executors_lock:
+        executors = list(_active_executors)
+        _active_executors.clear()
+
+    for executor in executors:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    if executors:
+        logger.info("Shutdown: cancelled %d active thread pools", len(executors))
 
 
 @app.get("/")
@@ -313,173 +331,246 @@ async def api_review(
     _increment_today_count()
 
     async def event_generator():
-        loop = asyncio.get_event_loop()
-        executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_CALLS)
+        loop = asyncio.get_running_loop()
+        executor = ThreadPoolExecutor(max_workers=max(1, MAX_CONCURRENT_CALLS))
+        with _active_executors_lock:
+            _active_executors.add(executor)
+        reviews = []
+        persona_summaries = []
 
-        # ═══ Phase 1: 100패널 개별 LLM 호출 ═══
-        phase1_start = time.time()
+        def _cancel_futures(future_map: dict):
+            for future in list(future_map.keys()):
+                future.cancel()
 
-        def run_single(panel):
-            if provider == "Claude":
-                return call_claude(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
-            else:
+        try:
+            # ═══ Phase 1: 패널별 개별 LLM 호출 ═══
+            phase1_start = time.time()
+
+            def run_single(panel):
+                if provider == "Claude":
+                    return call_claude(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
                 return call_openai(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
 
-        futures = {executor.submit(run_single, p): p for p in panels}
-        reviews = []
-        completed = 0
+            futures = {executor.submit(run_single, p): p for p in panels}
+            completed = 0
 
-        while futures:
-            done = []
-            for f in list(futures.keys()):
-                if f.done():
-                    done.append(f)
-            if not done:
-                await asyncio.sleep(0.3)
-                continue
-            for f in done:
-                review = f.result()
-                reviews.append(review)
-                completed += 1
-                del futures[f]
-                elapsed = time.time() - phase1_start
-                yield {
-                    "event": "progress",
-                    "data": json.dumps({
-                        "phase": "panel_review",
-                        "completed": completed,
-                        "total": total_panels,
-                        "persona_name": review.persona_name,
-                        "panel_id": review.panel_id,
-                        "review": review.to_dict(),
-                        "elapsed_seconds": round(elapsed, 1),
-                    }),
-                }
+            while futures:
+                if await request.is_disconnected():
+                    logger.info("SSE disconnected during panel review; cancelling %d tasks", len(futures))
+                    _cancel_futures(futures)
+                    return
 
-        # ═══ Phase 2: persona_id별 그룹핑 + 정량 평균 ═══
-        yield {"event": "status", "data": json.dumps({"message": "페르소나별 집계 중..."})}
+                done = []
+                for f in list(futures.keys()):
+                    if f.done():
+                        done.append(f)
+                if not done:
+                    await asyncio.sleep(0.3)
+                    continue
 
-        grouped = defaultdict(list)
-        for r in reviews:
-            if not r.error:
-                grouped[r.persona_id].append(r)
+                for f in done:
+                    panel = futures.pop(f)
+                    try:
+                        review = f.result()
+                    except Exception as e:
+                        logger.exception(
+                            "Panel review future failed [persona=%s, panel=%s]: %s",
+                            panel.persona_name,
+                            panel.panel_id,
+                            e,
+                        )
+                        review = Review(
+                            persona_id=panel.persona_id,
+                            persona_name=panel.persona_name,
+                            panel_id=panel.panel_id,
+                            error=f"Panel review future failed: {e}",
+                        )
 
-        persona_summaries = []
-        for persona_id, persona_reviews in grouped.items():
-            persona_name = persona_reviews[0].persona_name
-            summary = PersonaSummary.from_reviews(persona_id, persona_name, persona_reviews)
-            persona_summaries.append(summary)
+                    reviews.append(review)
+                    completed += 1
+                    elapsed = time.time() - phase1_start
+                    yield {
+                        "event": "progress",
+                        "data": json.dumps({
+                            "phase": "panel_review",
+                            "completed": completed,
+                            "total": total_panels,
+                            "persona_name": review.persona_name,
+                            "panel_id": review.panel_id,
+                            "review": review.to_dict(),
+                            "elapsed_seconds": round(elapsed, 1),
+                        }),
+                    }
 
-        total_personas = len(persona_summaries)
+            # ═══ Phase 2: persona_id별 그룹핑 + 정량 평균 ═══
+            yield {"event": "status", "data": json.dumps({"message": "페르소나별 집계 중..."})}
 
-        # ═══ Phase 3: 페르소나별 정성 요약 LLM 호출 ═══
-        yield {"event": "status", "data": json.dumps({"message": "페르소나별 정성 요약 생성 중..."})}
-        phase3_start = time.time()
+            grouped = defaultdict(list)
+            for r in reviews:
+                if not r.error:
+                    grouped[r.persona_id].append(r)
 
-        def run_persona_synthesis(summary):
-            reviews_data = []
-            for pr in summary.panel_reviews:
-                reviews_data.append(pr)
-            if provider == "Claude":
-                return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model)
-            else:
+            for persona_id, persona_reviews in grouped.items():
+                persona_name = persona_reviews[0].persona_name
+                summary = PersonaSummary.from_reviews(persona_id, persona_name, persona_reviews)
+                persona_summaries.append(summary)
+
+            total_personas = len(persona_summaries)
+
+            # ═══ Phase 3: 페르소나별 정성 요약 LLM 호출 ═══
+            yield {"event": "status", "data": json.dumps({"message": "페르소나별 정성 요약 생성 중..."})}
+            phase3_start = time.time()
+
+            def run_persona_synthesis(summary):
+                reviews_data = []
+                for pr in summary.panel_reviews:
+                    reviews_data.append(pr)
+                if provider == "Claude":
+                    return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model)
                 return summary.persona_id, synthesize_persona_openai(summary.persona_name, reviews_data, summary_model)
 
-        p3_futures = {executor.submit(run_persona_synthesis, s): s for s in persona_summaries}
-        p3_completed = 0
+            p3_futures = {executor.submit(run_persona_synthesis, s): s for s in persona_summaries}
+            p3_completed = 0
 
-        while p3_futures:
-            done = []
-            for f in list(p3_futures.keys()):
-                if f.done():
-                    done.append(f)
-            if not done:
-                await asyncio.sleep(0.3)
-                continue
-            for f in done:
-                persona_id, raw_result = f.result()
-                p3_completed += 1
-                del p3_futures[f]
+            while p3_futures:
+                if await request.is_disconnected():
+                    logger.info("SSE disconnected during persona synthesis; cancelling %d tasks", len(p3_futures))
+                    _cancel_futures(p3_futures)
+                    return
 
-                # Fill qualitative fields
-                parsed = extract_json_or_none(raw_result)
-                if parsed:
-                    for s in persona_summaries:
-                        if s.persona_id == persona_id:
-                            s.fill_qualitative(parsed)
-                            break
+                done = []
+                for f in list(p3_futures.keys()):
+                    if f.done():
+                        done.append(f)
+                if not done:
+                    await asyncio.sleep(0.3)
+                    continue
 
-                elapsed = time.time() - phase3_start
-                yield {
-                    "event": "progress",
-                    "data": json.dumps({
-                        "phase": "persona_synthesis",
-                        "completed": p3_completed,
-                        "total": total_personas,
-                        "persona_name": next((s.persona_name for s in persona_summaries if s.persona_id == persona_id), ""),
-                        "elapsed_seconds": round(elapsed, 1),
-                    }),
-                }
+                for f in done:
+                    summary = p3_futures.pop(f)
+                    persona_id = summary.persona_id
+                    raw_result = ""
+                    try:
+                        persona_id_result, raw_result = f.result()
+                        if persona_id_result:
+                            persona_id = persona_id_result
+                    except Exception as e:
+                        logger.exception(
+                            "Persona synthesis future failed [persona=%s]: %s",
+                            summary.persona_name,
+                            e,
+                        )
+                        raw_result = json.dumps({"error": str(e)})
 
-        # ═══ Phase 4: 전체 합성 ═══
-        yield {"event": "status", "data": json.dumps({"message": "통합 분석 생성 중..."})}
+                    p3_completed += 1
 
-        # 합성 입력: 페르소나 요약 데이터
-        synthesis_input = []
-        for s in persona_summaries:
-            synthesis_input.append({
-                "persona_name": s.persona_name,
-                "promotion_attractiveness": s.avg_promotion_attractiveness,
-                "promotion_quality": s.avg_promotion_quality,
-                "appeal": s.avg_appeal,
-                "first_impression": s.first_impression,
-                "key_positives": s.key_positives,
-                "key_concerns": s.key_concerns,
-                "recommendation": max(s.recommendation_distribution, key=s.recommendation_distribution.get) if s.recommendation_distribution else "보통",
-                "review_summary": s.review_summary,
-                "brand_favorability": s.avg_brand_favorability,
-                "brand_fit": s.avg_brand_fit,
-                "message_clarity": s.avg_message_clarity,
-                "attention_grabbing": s.avg_attention_grabbing,
-                "brand_trust": s.avg_brand_trust,
-                "value_for_money": s.avg_value_for_money,
-                "price_fairness": s.avg_price_fairness,
-                "info_sufficiency": s.avg_info_sufficiency,
-                "recommendation_intent": s.avg_recommendation_intent,
-                "purchase_likelihood": s.avg_purchase_likelihood,
-                "purchase_consideration": s.avg_purchase_consideration,
-                "purchase_willingness": s.avg_purchase_willingness,
-                "repurchase_intent": s.avg_repurchase_intent,
-                "purchase_urgency": s.avg_purchase_urgency,
-                "perceived_message": s.perceived_message,
-                "purchase_trigger_barrier": s.purchase_trigger_barrier,
-            })
+                    parsed = extract_json_or_none(raw_result)
+                    if parsed:
+                        for s in persona_summaries:
+                            if s.persona_id == persona_id:
+                                s.fill_qualitative(parsed)
+                                break
 
-        synthesis_raw = ""
-        if synthesis_input:
-            def do_synthesize():
-                if provider == "Claude":
-                    return synthesize_claude(synthesis_input, synthesis_model)
-                else:
+                    elapsed = time.time() - phase3_start
+                    yield {
+                        "event": "progress",
+                        "data": json.dumps({
+                            "phase": "persona_synthesis",
+                            "completed": p3_completed,
+                            "total": total_personas,
+                            "persona_name": next((s.persona_name for s in persona_summaries if s.persona_id == persona_id), ""),
+                            "elapsed_seconds": round(elapsed, 1),
+                        }),
+                    }
+
+            if await request.is_disconnected():
+                logger.info("SSE disconnected before synthesis")
+                return
+
+            # ═══ Phase 4: 전체 합성 ═══
+            yield {"event": "status", "data": json.dumps({"message": "통합 분석 생성 중..."})}
+
+            synthesis_input = []
+            for s in persona_summaries:
+                recommendation = "보통"
+                if s.recommendation_distribution:
+                    recommendation = max(s.recommendation_distribution, key=s.recommendation_distribution.get)
+
+                synthesis_input.append({
+                    "persona_name": s.persona_name,
+                    "promotion_attractiveness": s.avg_promotion_attractiveness,
+                    "promotion_quality": s.avg_promotion_quality,
+                    "overall_impression": s.overall_impression,
+                    "review_summary": s.review_summary,
+                    "brand_favorability": s.avg_brand_favorability,
+                    "brand_fit": s.avg_brand_fit,
+                    "message_clarity": s.avg_message_clarity,
+                    "attention_grabbing": s.avg_attention_grabbing,
+                    "brand_trust": s.avg_brand_trust,
+                    "perceived_message": s.perceived_message,
+                    "emotional_response": s.emotional_response,
+                    "brand_association": s.brand_association,
+                    "appeal": s.avg_appeal,
+                    "value_for_money": s.avg_value_for_money,
+                    "price_fairness": s.avg_price_fairness,
+                    "info_sufficiency": s.avg_info_sufficiency,
+                    "recommendation_intent": s.avg_recommendation_intent,
+                    "key_positives": s.key_positives,
+                    "key_concerns": s.key_concerns,
+                    "competitive_comparison": s.competitive_comparison,
+                    "information_gap": s.information_gap,
+                    "recommendation": recommendation,
+                    "purchase_likelihood": s.avg_purchase_likelihood,
+                    "purchase_consideration": s.avg_purchase_consideration,
+                    "purchase_willingness": s.avg_purchase_willingness,
+                    "repurchase_intent": s.avg_repurchase_intent,
+                    "purchase_urgency": s.avg_purchase_urgency,
+                    "purchase_trigger": s.purchase_trigger,
+                    "purchase_barrier": s.purchase_barrier,
+                    "price_perception": s.price_perception,
+                })
+
+            synthesis_raw = ""
+            if synthesis_input:
+                def do_synthesize():
+                    if provider == "Claude":
+                        return synthesize_claude(synthesis_input, synthesis_model)
                     return synthesize_openai(synthesis_input, synthesis_model)
 
-            synthesis_raw = await loop.run_in_executor(None, do_synthesize)
+                synthesis_raw = await loop.run_in_executor(None, do_synthesize)
 
-        synthesis = _parse_synthesis(synthesis_raw)
+            synthesis = _parse_synthesis(synthesis_raw)
 
-        executor.shutdown(wait=False)
-
-        yield {
-            "event": "done",
-            "data": json.dumps({
-                "persona_summaries": [s.to_dict() for s in persona_summaries],
-                "panel_reviews": [r.to_dict() for r in reviews],
-                "synthesis": synthesis,
-                "synthesis_raw": synthesis_raw,
-                "panel_size": selected_panel_size,
-                "sampling_seed": selected_seed,
-            }),
-        }
+            yield {
+                "event": "done",
+                "data": json.dumps({
+                    "persona_summaries": [s.to_dict() for s in persona_summaries],
+                    "panel_reviews": [r.to_dict() for r in reviews],
+                    "synthesis": synthesis,
+                    "synthesis_raw": synthesis_raw,
+                    "panel_size": selected_panel_size,
+                    "sampling_seed": selected_seed,
+                }),
+            }
+        except asyncio.CancelledError:
+            logger.info("SSE request cancelled")
+            raise
+        except Exception as e:
+            logger.exception("SSE event_generator failed: %s", e)
+            try:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({
+                        "message": "리뷰 처리 중 서버 오류가 발생했습니다.",
+                        "error": str(e),
+                    }),
+                }
+            except Exception:
+                pass
+        finally:
+            with _active_executors_lock:
+                _active_executors.discard(executor)
+            executor.shutdown(wait=False, cancel_futures=True)
 
     return EventSourceResponse(event_generator())
 
@@ -515,6 +606,13 @@ async def api_save(
                     qa_mode=str(qa_data.get("qa_mode", "off")),
                 )
 
+            overall_impression = r.get("overall_impression") or r.get("first_impression", "")
+            competitive_comparison = r.get("competitive_comparison") or r.get("competitive_preference", "")
+            recommendation = r.get("recommendation") or r.get("recommendation_context", "")
+            combined_trigger_barrier = r.get("purchase_trigger_barrier", "")
+            purchase_trigger = r.get("purchase_trigger") or combined_trigger_barrier
+            purchase_barrier = r.get("purchase_barrier") or combined_trigger_barrier
+
             reviews.append(Review(
                 persona_id=r["persona_id"],
                 persona_name=r["persona_name"],
@@ -536,16 +634,19 @@ async def api_save(
                 purchase_willingness=r.get("purchase_willingness", 0),
                 repurchase_intent=r.get("repurchase_intent", 0),
                 purchase_urgency=r.get("purchase_urgency", 0),
-                first_impression=r.get("first_impression", ""),
+                overall_impression=overall_impression,
+                review_summary=r.get("review_summary", ""),
                 perceived_message=r.get("perceived_message", ""),
                 emotional_response=r.get("emotional_response", ""),
+                brand_association=r.get("brand_association", ""),
                 key_positives=r.get("key_positives", ""),
                 key_concerns=r.get("key_concerns", ""),
-                competitive_preference=r.get("competitive_preference", ""),
-                recommendation_context=r.get("recommendation_context", ""),
-                recommendation=r.get("recommendation", ""),
-                purchase_trigger_barrier=r.get("purchase_trigger_barrier", ""),
-                review_summary=r.get("review_summary", ""),
+                competitive_comparison=competitive_comparison,
+                information_gap=r.get("information_gap", ""),
+                recommendation=recommendation,
+                purchase_trigger=purchase_trigger,
+                purchase_barrier=purchase_barrier,
+                price_perception=r.get("price_perception", ""),
                 raw_response=r.get("raw_response", ""),
                 error=r.get("error"),
                 qa_result=qa_result,

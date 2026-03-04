@@ -55,6 +55,23 @@ export async function runReview(fd, onProgress, onStatus) {
     const err = await res.json();
     throw { needsPassword: err.needs_password, message: err.error };
   }
+  if (!res.ok) {
+    let message = `서버 오류 (HTTP ${res.status})`;
+    try {
+      const err = await res.json();
+      if (err && (err.error || err.message)) {
+        message = err.error || err.message;
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) message = text;
+      } catch {}
+    }
+    throw new Error(message);
+  }
+  if (!res.body) throw new Error('SSE 응답 본문이 비어 있습니다.');
+
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -73,20 +90,31 @@ export async function runReview(fd, onProgress, onStatus) {
       } else if (line.startsWith('data:')) {
         const raw = line.slice(5).trim();
         if (!raw) continue;
+        let payload;
         try {
-          const payload = JSON.parse(raw);
-          if (eventType === 'progress') {
-            onProgress(payload);
-          } else if (eventType === 'status') {
-            onStatus(payload);
-          } else if (eventType === 'done') {
-            donePayload = payload;
-          }
-        } catch {}
+          payload = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+        if (eventType === 'progress') {
+          onProgress(payload);
+        } else if (eventType === 'status') {
+          onStatus(payload);
+        } else if (eventType === 'done') {
+          donePayload = payload;
+        } else if (eventType === 'error') {
+          throw new Error(payload.error || payload.message || '리뷰 처리 중 서버 오류가 발생했습니다.');
+        }
       }
     }
   }
 
+  if (!donePayload) {
+    throw new Error('완료 이벤트를 받지 못했습니다. 서버 로그를 확인하세요.');
+  }
+  if (donePayload.error) {
+    throw new Error(donePayload.error);
+  }
   return donePayload;
 }
 
