@@ -71,6 +71,7 @@
         <div class="progress-area hidden" id="progress-area">
           <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
           <div class="progress-text" id="progress-text">준비 중...</div>
+          <div class="progress-time" id="progress-time"></div>
         </div>
 
         <div id="usage-badge" class="usage-badge hidden"></div>
@@ -93,8 +94,14 @@
         </select>
         <div id="provider-warning" class="provider-warning hidden">Claude는 현재 지원되지 않습니다. OpenAI를 선택해 주세요.</div>
 
-        <label for="model">Model</label>
-        <select id="model"></select>
+        <label for="review-model">리뷰 모델 (패널 개별 리뷰)</label>
+        <select id="review-model"></select>
+
+        <label for="summary-model">요약 모델 (페르소나 종합)</label>
+        <select id="summary-model"></select>
+
+        <label for="synthesis-model">합성 모델 (전체 분석)</label>
+        <select id="synthesis-model"></select>
 
         <label for="qa-mode">QA Mode</label>
         <select id="qa-mode">

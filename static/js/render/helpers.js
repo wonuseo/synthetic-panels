@@ -10,10 +10,11 @@ export function esc(s) {
 
 export function scaleBar(label, value, max, cls) {
   const pct = max > 0 ? (value / max) * 100 : 0;
+  const display = typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value;
   return `<div class="scale-item">
     <span class="scale-label">${label}</span>
     <div class="scale-bar"><div class="scale-fill ${cls}" style="width:${pct}%"></div></div>
-    <span class="scale-val">${value}/${max}</span>
+    <span class="scale-val">${display}/${max}</span>
   </div>`;
 }
 

@@ -2015,3 +2015,92 @@ select {
   .step-item { grid-template-columns: 34px 1fr; }
   .step-content { padding-left: 8px; }
 }
+
+/* ═══ Drill-down & Panel sub-cards ═══ */
+.drill-down-header {
+  cursor: pointer;
+  padding: 10px 14px;
+  margin-top: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--accent);
+  transition: background 0.15s;
+  user-select: none;
+}
+.drill-down-header:hover { background: var(--accent-dim); }
+.drill-down-header.open { background: var(--accent-dim); border-color: var(--accent-2); }
+
+.drill-down-body {
+  display: none;
+  padding: 8px 0 0 16px;
+}
+.drill-down-body.show { display: block; }
+
+.panel-sub-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.panel-sub-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.panel-sub-id {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.panel-sub-comment {
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-size: 0.84rem;
+}
+.panel-sub-summary {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+/* ── Panel count badge ── */
+.panel-count-badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* ── Recommendation distribution ── */
+.rec-dist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+.rec-dist-item {
+  font-size: 0.84rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Progress time estimate ── */
+.progress-time {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  text-align: center;
+}

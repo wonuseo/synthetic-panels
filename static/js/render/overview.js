@@ -176,9 +176,11 @@ function renderAppealChart(reviews) {
   if (!scored.length) return '';
   let html = `<div class="card chart-area"><h2>📈 매력도 점수 분포</h2><div>`;
   html += scored.map(r => {
-    const pct = r.appeal_score * 10;
-    const cls = r.appeal_score >= 7 ? 'high' : r.appeal_score >= 4 ? 'mid' : 'low';
-    return `<div class="bar-row"><div class="name">${esc(r.persona_name)}</div><div class="bar"><div class="bar-fill ${cls}" style="width:${pct}%">${r.appeal_score}</div></div></div>`;
+    const score = typeof r.appeal_score === 'number' ? r.appeal_score : parseFloat(r.appeal_score) || 0;
+    const pct = score * 10;
+    const cls = score >= 7 ? 'high' : score >= 4 ? 'mid' : 'low';
+    const display = Number.isInteger(score) ? score : score.toFixed(1);
+    return `<div class="bar-row"><div class="name">${esc(r.persona_name)}</div><div class="bar"><div class="bar-fill ${cls}" style="width:${pct}%">${display}</div></div></div>`;
   }).join('');
   html += '</div></div>';
   return html;
@@ -333,7 +335,8 @@ function renderTargetDeepDive(valid) {
   const concerns  = (r.key_concerns  || '').split('; ').filter(Boolean);
 
   let html = '<div class="card target-deep-dive"><h2>🔍 타겟 세그먼트 심층 분석</h2>';
-  html += `<div class="target-persona-header"><span style="font-size:1.4rem">${emoji}</span><span style="font-size:1.05rem;font-weight:700">${esc(r.persona_name)}</span><span class="score-badge ${cls}">${r.appeal_score}/10</span><span class="rec-text">핵심 타겟 세그먼트 · 최고 관심도</span></div>`;
+  const scoreDisplay = typeof r.appeal_score === 'number' && !Number.isInteger(r.appeal_score) ? r.appeal_score.toFixed(1) : r.appeal_score;
+  html += `<div class="target-persona-header"><span style="font-size:1.4rem">${emoji}</span><span style="font-size:1.05rem;font-weight:700">${esc(r.persona_name)}</span><span class="score-badge ${cls}">${scoreDisplay}/10</span><span class="rec-text">핵심 타겟 세그먼트 · 최고 관심도</span></div>`;
   if (r.first_impression) html += `<div class="impression" style="margin:14px 0 8px">"${esc(r.first_impression)}"</div>`;
   if (r.review_summary) html += `<div class="review-summary" style="margin-bottom:14px"><strong>종합 평가:</strong> ${esc(r.review_summary)}</div>`;
   if (positives.length || concerns.length) {

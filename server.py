@@ -1,6 +1,8 @@
 import asyncio
 import json
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -14,12 +16,13 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.core import MAX_CONCURRENT_CALLS, SHEETS_URL, WORKSHEET_NAME, QA_MODE, REVIEW_PASSWORD, DAILY_REVIEW_LIMIT
 from app.sheets.client import open_spreadsheet_by_url
-from app.sheets.personas import load_personas
-from app.sheets.results import save_reviews, save_synthesis
-from app.llm.claude import call_claude, synthesize_claude
-from app.llm.openai_client import call_openai, synthesize_openai
+from app.sheets.personas import load_personas, load_panels
+from app.sheets.results import save_reviews, save_synthesis, save_persona_summaries
+from app.llm.claude import call_claude, synthesize_claude, synthesize_persona_claude
+from app.llm.openai_client import call_openai, synthesize_openai, synthesize_persona_openai
 from app.llm.parse import extract_json_or_none
 from app.models.review import Review
+from app.models.persona_summary import PersonaSummary
 from app.models.qa import QAResult
 
 from zoneinfo import ZoneInfo
@@ -85,19 +88,26 @@ async def api_load_personas():
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
     try:
         spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
-        personas = load_personas(spreadsheet, WORKSHEET_NAME)
+        panels = load_panels(spreadsheet)
+        # persona_id별 그룹핑
+        grouped = defaultdict(list)
+        for p in panels:
+            grouped[p.persona_id].append(p)
+        personas_info = []
+        for persona_id, panel_list in grouped.items():
+            first = panel_list[0]
+            personas_info.append({
+                "persona_id": first.persona_id,
+                "persona_name": first.persona_name,
+                "panel_gender": first.panel_gender,
+                "persona_season": first.persona_season,
+                "panel_potential": first.panel_potential,
+                "panel_count": len(panel_list),
+            })
         return {
             "ok": True,
-            "personas": [
-                {
-                    "persona_id": p.persona_id,
-                    "persona_name": p.persona_name,
-                    "panel_gender": p.panel_gender,
-                    "persona_season": p.persona_season,
-                    "panel_potential": p.panel_potential,
-                }
-                for p in personas
-            ],
+            "personas": personas_info,
+            "total_panels": len(panels),
         }
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
@@ -114,7 +124,9 @@ async def api_review_limit():
 @app.post("/api/review")
 async def api_review(
     provider: str = Form("OpenAI"),
-    model: str = Form("gpt-4o-mini"),
+    review_model: str = Form("gpt-4o-mini"),
+    summary_model: str = Form("gpt-4o-mini"),
+    synthesis_model: str = Form("gpt-4o-mini"),
     text_content: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     qa_mode: str = Form(QA_MODE),
@@ -141,24 +153,27 @@ async def api_review(
 
     try:
         spreadsheet = open_spreadsheet_by_url(SHEETS_URL)
-        personas = load_personas(spreadsheet, WORKSHEET_NAME)
+        panels = load_panels(spreadsheet)
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
-    total = len(personas)
+    total_panels = len(panels)
     _increment_today_count()
 
     async def event_generator():
         loop = asyncio.get_event_loop()
         executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_CALLS)
 
-        def run_single(persona):
-            if provider == "Claude":
-                return call_claude(persona, file_bytes, filename, model, text_content, qa_mode=qa_mode)
-            else:
-                return call_openai(persona, file_bytes, filename, model, text_content, qa_mode=qa_mode)
+        # ═══ Phase 1: 100패널 개별 LLM 호출 ═══
+        phase1_start = time.time()
 
-        futures = {executor.submit(run_single, p): p for p in personas}
+        def run_single(panel):
+            if provider == "Claude":
+                return call_claude(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
+            else:
+                return call_openai(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
+
+        futures = {executor.submit(run_single, p): p for p in panels}
         reviews = []
         completed = 0
 
@@ -175,70 +190,138 @@ async def api_review(
                 reviews.append(review)
                 completed += 1
                 del futures[f]
+                elapsed = time.time() - phase1_start
                 yield {
                     "event": "progress",
                     "data": json.dumps({
+                        "phase": "panel_review",
                         "completed": completed,
-                        "total": total,
+                        "total": total_panels,
                         "persona_name": review.persona_name,
+                        "panel_id": review.panel_id,
                         "review": review.to_dict(),
+                        "elapsed_seconds": round(elapsed, 1),
                     }),
                 }
 
-        executor.shutdown(wait=False)
+        # ═══ Phase 2: persona_id별 그룹핑 + 정량 평균 ═══
+        yield {"event": "status", "data": json.dumps({"message": "페르소나별 집계 중..."})}
 
-        # Synthesize
+        grouped = defaultdict(list)
+        for r in reviews:
+            if not r.error:
+                grouped[r.persona_id].append(r)
+
+        persona_summaries = []
+        for persona_id, persona_reviews in grouped.items():
+            persona_name = persona_reviews[0].persona_name
+            summary = PersonaSummary.from_reviews(persona_id, persona_name, persona_reviews)
+            persona_summaries.append(summary)
+
+        total_personas = len(persona_summaries)
+
+        # ═══ Phase 3: 페르소나별 정성 요약 LLM 호출 ═══
+        yield {"event": "status", "data": json.dumps({"message": "페르소나별 정성 요약 생성 중..."})}
+        phase3_start = time.time()
+
+        def run_persona_synthesis(summary):
+            reviews_data = []
+            for pr in summary.panel_reviews:
+                reviews_data.append(pr)
+            if provider == "Claude":
+                return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model)
+            else:
+                return summary.persona_id, synthesize_persona_openai(summary.persona_name, reviews_data, summary_model)
+
+        p3_futures = {executor.submit(run_persona_synthesis, s): s for s in persona_summaries}
+        p3_completed = 0
+
+        while p3_futures:
+            done = []
+            for f in list(p3_futures.keys()):
+                if f.done():
+                    done.append(f)
+            if not done:
+                await asyncio.sleep(0.3)
+                continue
+            for f in done:
+                persona_id, raw_result = f.result()
+                p3_completed += 1
+                del p3_futures[f]
+
+                # Fill qualitative fields
+                parsed = extract_json_or_none(raw_result)
+                if parsed:
+                    for s in persona_summaries:
+                        if s.persona_id == persona_id:
+                            s.fill_qualitative(parsed)
+                            break
+
+                elapsed = time.time() - phase3_start
+                yield {
+                    "event": "progress",
+                    "data": json.dumps({
+                        "phase": "persona_synthesis",
+                        "completed": p3_completed,
+                        "total": total_personas,
+                        "persona_name": next((s.persona_name for s in persona_summaries if s.persona_id == persona_id), ""),
+                        "elapsed_seconds": round(elapsed, 1),
+                    }),
+                }
+
+        # ═══ Phase 4: 전체 합성 ═══
         yield {"event": "status", "data": json.dumps({"message": "통합 분석 생성 중..."})}
 
-        reviews_data = [
-            {
-                "persona_name": r.persona_name,
-                "appeal_score": r.appeal_score,
-                "first_impression": r.first_impression,
-                "key_positives": r.key_positives,
-                "key_concerns": r.key_concerns,
-                "recommendation": r.recommendation,
-                "review_summary": r.review_summary,
-                "like_dislike": r.like_dislike,
-                "favorable_unfavorable": r.favorable_unfavorable,
-                "value_for_money": r.value_for_money,
-                "price_fairness": r.price_fairness,
-                "brand_self_congruity": r.brand_self_congruity,
-                "brand_image_fit": r.brand_image_fit,
-                "message_clarity": r.message_clarity,
-                "attention_grabbing": r.attention_grabbing,
-                "info_sufficiency": r.info_sufficiency,
-                "competitive_preference": r.competitive_preference,
-                "likelihood_high": r.likelihood_high,
-                "probability_consider_high": r.probability_consider_high,
-                "willingness_high": r.willingness_high,
-                "purchase_probability_juster": r.purchase_probability_juster,
-                "perceived_message": r.perceived_message,
-                "emotional_response": r.emotional_response,
-                "purchase_trigger_barrier": r.purchase_trigger_barrier,
-                "recommendation_context": r.recommendation_context,
-            }
-            for r in reviews
-            if not r.error
-        ]
+        # 합성 입력: 페르소나 요약 데이터
+        synthesis_input = []
+        for s in persona_summaries:
+            synthesis_input.append({
+                "persona_name": s.persona_name,
+                "appeal_score": s.avg_appeal_score,
+                "first_impression": s.first_impression,
+                "key_positives": s.key_positives,
+                "key_concerns": s.key_concerns,
+                "recommendation": max(s.recommendation_distribution, key=s.recommendation_distribution.get) if s.recommendation_distribution else "보통",
+                "review_summary": s.review_summary,
+                "like_dislike": s.avg_like_dislike,
+                "favorable_unfavorable": s.avg_favorable_unfavorable,
+                "value_for_money": s.avg_value_for_money,
+                "price_fairness": s.avg_price_fairness,
+                "brand_self_congruity": s.avg_brand_self_congruity,
+                "brand_image_fit": s.avg_brand_image_fit,
+                "message_clarity": s.avg_message_clarity,
+                "attention_grabbing": s.avg_attention_grabbing,
+                "info_sufficiency": s.avg_info_sufficiency,
+                "competitive_preference": s.competitive_preference,
+                "likelihood_high": s.avg_likelihood_high,
+                "probability_consider_high": s.avg_probability_consider_high,
+                "willingness_high": s.avg_willingness_high,
+                "purchase_probability_juster": s.avg_purchase_probability_juster,
+                "perceived_message": s.perceived_message,
+                "emotional_response": s.emotional_response,
+                "purchase_trigger_barrier": s.purchase_trigger_barrier,
+                "recommendation_context": s.recommendation_context,
+            })
 
         synthesis_raw = ""
-        if reviews_data:
-
+        if synthesis_input:
             def do_synthesize():
                 if provider == "Claude":
-                    return synthesize_claude(reviews_data, model)
+                    return synthesize_claude(synthesis_input, synthesis_model)
                 else:
-                    return synthesize_openai(reviews_data, model)
+                    return synthesize_openai(synthesis_input, synthesis_model)
 
             synthesis_raw = await loop.run_in_executor(None, do_synthesize)
 
         synthesis = _parse_synthesis(synthesis_raw)
 
+        executor.shutdown(wait=False)
+
         yield {
             "event": "done",
             "data": json.dumps({
-                "reviews": [r.to_dict() for r in reviews],
+                "persona_summaries": [s.to_dict() for s in persona_summaries],
+                "panel_reviews": [r.to_dict() for r in reviews],
                 "synthesis": synthesis,
                 "synthesis_raw": synthesis_raw,
             }),
@@ -251,6 +334,7 @@ async def api_review(
 async def api_save(
     reviews_json: str = Form(...),
     synthesis_json: Optional[str] = Form(None),
+    persona_summaries_json: Optional[str] = Form(None),
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
@@ -280,6 +364,7 @@ async def api_save(
             reviews.append(Review(
                 persona_id=r["persona_id"],
                 persona_name=r["persona_name"],
+                panel_id=r.get("panel_id", ""),
                 appeal_score=r.get("appeal_score", 0),
                 first_impression=r.get("first_impression", ""),
                 key_positives=r.get("key_positives", ""),
@@ -314,6 +399,10 @@ async def api_save(
             synthesis_data = json.loads(synthesis_json)
             if synthesis_data and isinstance(synthesis_data, dict):
                 save_synthesis(spreadsheet, synthesis_data, run_id)
+        if persona_summaries_json:
+            summaries_data = json.loads(persona_summaries_json)
+            if summaries_data and isinstance(summaries_data, list):
+                save_persona_summaries(spreadsheet, summaries_data, run_id)
         return {"ok": True, "run_id": run_id, "count": len(reviews)}
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})

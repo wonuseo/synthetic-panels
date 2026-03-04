@@ -112,7 +112,9 @@ export function renderFunnelTab(funnelKey) {
   [...state.lastReviews].sort((a, b) => b.appeal_score - a.appeal_score).forEach((r, i) => {
     const idx = `${funnelKey}-${i}`;
     const emoji = recEmoji(r.recommendation);
-    const cls = r.appeal_score >= 7 ? 'high' : r.appeal_score >= 4 ? 'mid' : 'low';
+    const score = typeof r.appeal_score === 'number' ? r.appeal_score : parseFloat(r.appeal_score) || 0;
+    const cls = score >= 7 ? 'high' : score >= 4 ? 'mid' : 'low';
+    const scoreDisplay = Number.isInteger(score) ? score : score.toFixed(1);
     const cardSteps = [
       { label: '정량 평가',   html: renderScaleBarsForFunnel(r, funnelKey) },
       { label: '정성 코멘트', html: renderQualItemsForFunnel(r, funnelKey) },
@@ -121,7 +123,7 @@ export function renderFunnelTab(funnelKey) {
       <div class="persona-card-header" onclick="toggleCard('${idx}')">
         <span class="emoji">${emoji}</span>
         <span class="name">${esc(r.persona_name)}</span>
-        <span class="score-badge ${cls}">${r.appeal_score}/10</span>
+        <span class="score-badge ${cls}">${scoreDisplay}/10</span>
         <span class="chevron">▶</span>
       </div>
       <div class="persona-card-body">

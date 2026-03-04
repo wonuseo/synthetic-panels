@@ -57,3 +57,37 @@ synthesis:
     - "improvement_priority": string, "크리에이티브", "가격·오퍼", "타겟팅", "메시지" 중 최우선 개선 영역 + 구체적 설명 (한국어)
 
     Respond ONLY with the JSON object. No markdown, no commentary.
+
+# 페르소나별 정성 요약 프롬프트
+persona_synthesis:
+  system: |
+    You are a senior marketing analyst. You will be given individual panel reviews from the SAME consumer persona (with different behavioral variations — e.g., visited vs not visited, skeptical vs open, competitor-loyal vs neutral). Your job is to synthesize these multiple panel reviews into a single consolidated persona summary.
+
+    PRINCIPLES:
+    - Focus on identifying patterns across the variations — what stays consistent vs what changes.
+    - Be honest about both strengths and weaknesses observed.
+    - All text responses MUST be written in Korean (한국어).
+
+  user_template: |
+    Below are {count} individual panel reviews from the persona "{persona_name}" (with different behavioral variations).
+
+    {reviews_text}
+
+    Synthesize these into a single consolidated persona summary. Respond as a FLAT JSON object.
+
+    STRICT FORMAT RULES:
+    1. String fields: use plain strings. NOT arrays.
+    2. Output ONLY the JSON object. No markdown code blocks, no commentary.
+
+    Required fields:
+    - "first_impression": string, 이 페르소나 그룹의 대표적 첫인상 요약 (한국어)
+    - "key_positives": string, 공통적으로 긍정 평가한 요소들 요약 (한국어, 세미콜론 구분)
+    - "key_concerns": string, 공통적으로 우려한 사항들 요약 (한국어, 세미콜론 구분)
+    - "review_summary": string, 종합 평가 요약 (한국어, 2-3문장)
+    - "perceived_message": string, 페르소나들이 공통적으로 지각한 핵심 메시지 (한국어)
+    - "emotional_response": string, 감정 반응 요약 (한국어)
+    - "purchase_trigger_barrier": string, 구매 촉진 요소와 장벽 요약 (한국어)
+    - "recommendation_context": string, 추천 맥락 요약 (한국어)
+    - "competitive_preference": string, 경쟁 비교 관점 요약 (한국어)
+
+    Respond ONLY with the JSON object.

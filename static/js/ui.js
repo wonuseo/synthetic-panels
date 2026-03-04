@@ -8,12 +8,15 @@ export const $ = {
   progress:     document.getElementById('progress-area'),
   progressFill: document.getElementById('progress-fill'),
   progressText: document.getElementById('progress-text'),
+  progressTime: document.getElementById('progress-time'),
   btnLoad:      document.getElementById('btn-load-personas'),
   pStatus:      document.getElementById('persona-status'),
   pListWrap:    document.getElementById('persona-list-wrap'),
   provider:     document.getElementById('provider'),
   providerWarn: document.getElementById('provider-warning'),
-  model:        document.getElementById('model'),
+  reviewModel:  document.getElementById('review-model'),
+  summaryModel: document.getElementById('summary-model'),
+  synthesisModel: document.getElementById('synthesis-model'),
   pageUpload:   document.getElementById('page-upload'),
   pageResults:  document.getElementById('page-results'),
   btnBack:      document.getElementById('btn-back'),
@@ -43,6 +46,13 @@ export function handleFile(file) {
   updateRunBtn();
 }
 
-export function initModelSelector() {
-  $.model.innerHTML = OPENAI_MODELS.map(m => `<option value="${m}">${m}</option>`).join('');
+export function initModelSelectors() {
+  const models = OPENAI_MODELS;
+  const opts = models.map(m => `<option value="${m}">${m}</option>`).join('');
+  $.reviewModel.innerHTML = opts;
+  $.summaryModel.innerHTML = opts;
+  $.synthesisModel.innerHTML = opts;
 }
+
+// Keep backward compat alias
+export const initModelSelector = initModelSelectors;

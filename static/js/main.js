@@ -1,7 +1,7 @@
 import { state } from './state.js';
-import { DEMO_FUNNEL_CONFIG, DEMO_REVIEWS, DEMO_SYNTHESIS } from './demo.js';
+import { DEMO_FUNNEL_CONFIG, DEMO_PERSONA_SUMMARIES, DEMO_PANEL_REVIEWS, DEMO_SYNTHESIS } from './demo.js';
 import { loadFunnelConfig, loadPersonas, runReview, saveResults, checkReviewLimit } from './api.js';
-import { $, updateRunBtn, handleFile, initModelSelector } from './ui.js';
+import { $, updateRunBtn, handleFile, initModelSelectors } from './ui.js';
 import { renderOverviewTab } from './render/overview.js';
 import { renderFunnelTab } from './render/funnel-tab.js';
 import { renderIndividualTab } from './render/individual.js';
@@ -15,15 +15,65 @@ function toggleCard(idx) {
 function toggleRaw(idx) {
   document.getElementById('raw-' + idx).classList.toggle('show');
 }
+function toggleDrillDown(personaId) {
+  const el = document.getElementById('drill-' + personaId);
+  if (el) el.classList.toggle('show');
+  const header = document.getElementById('drill-header-' + personaId);
+  if (header) header.classList.toggle('open');
+}
 window.toggleCard = toggleCard;
 window.toggleRaw = toggleRaw;
+window.toggleDrillDown = toggleDrillDown;
+
+/* ── Format seconds as m:ss ── */
+function fmtTime(sec) {
+  if (sec < 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 /* ── Show results page ── */
 function showResults(payload) {
-  const { reviews, synthesis, synthesis_raw } = payload;
-  state.lastReviews = reviews;
+  const { persona_summaries, panel_reviews, synthesis, synthesis_raw } = payload;
+  state.lastPersonaSummaries = persona_summaries || [];
+  state.lastPanelReviews = panel_reviews || [];
   state.lastSynthesis = synthesis;
   state.lastSynthesisRaw = synthesis_raw;
+
+  // Build lastReviews from persona_summaries for backward compat with overview/funnel tabs
+  // Map persona summaries to review-like objects with float averages
+  state.lastReviews = persona_summaries.map(s => ({
+    persona_id: s.persona_id,
+    persona_name: s.persona_name,
+    panel_count: s.panel_count,
+    appeal_score: s.avg_appeal_score,
+    first_impression: s.first_impression,
+    key_positives: s.key_positives,
+    key_concerns: s.key_concerns,
+    recommendation: Object.keys(s.recommendation_distribution || {}).reduce((a, b) =>
+      (s.recommendation_distribution[a] || 0) >= (s.recommendation_distribution[b] || 0) ? a : b, '보통'),
+    review_summary: s.review_summary,
+    like_dislike: s.avg_like_dislike,
+    favorable_unfavorable: s.avg_favorable_unfavorable,
+    value_for_money: s.avg_value_for_money,
+    price_fairness: s.avg_price_fairness,
+    brand_self_congruity: s.avg_brand_self_congruity,
+    brand_image_fit: s.avg_brand_image_fit,
+    message_clarity: s.avg_message_clarity,
+    attention_grabbing: s.avg_attention_grabbing,
+    info_sufficiency: s.avg_info_sufficiency,
+    competitive_preference: s.competitive_preference,
+    likelihood_high: s.avg_likelihood_high,
+    probability_consider_high: s.avg_probability_consider_high,
+    willingness_high: s.avg_willingness_high,
+    purchase_probability_juster: s.avg_purchase_probability_juster,
+    perceived_message: s.perceived_message,
+    emotional_response: s.emotional_response,
+    purchase_trigger_barrier: s.purchase_trigger_barrier,
+    recommendation_context: s.recommendation_context,
+    error: null,
+  }));
 
   $.pageUpload.classList.add('hidden');
   $.pageResults.classList.remove('hidden');
@@ -33,18 +83,23 @@ function showResults(payload) {
   document.querySelector('.tab-btn[data-tab="overview"]').classList.add('active');
   document.getElementById('tab-overview').classList.add('active');
 
-  renderOverviewTab(reviews, synthesis, synthesis_raw);
+  renderOverviewTab(state.lastReviews, synthesis, synthesis_raw);
   renderFunnelTab('upper');
   renderFunnelTab('mid');
   renderFunnelTab('lower');
-  renderIndividualTab(reviews);
-  renderQATab(reviews);
+  renderIndividualTab(state.lastPersonaSummaries);
+  renderQATab(state.lastPanelReviews);
 }
 
 /* ── Demo mode ── */
 function loadDemo() {
   window.funnelConfig = DEMO_FUNNEL_CONFIG;
-  showResults({ reviews: DEMO_REVIEWS, synthesis: DEMO_SYNTHESIS, synthesis_raw: null });
+  showResults({
+    persona_summaries: DEMO_PERSONA_SUMMARIES,
+    panel_reviews: DEMO_PANEL_REVIEWS,
+    synthesis: DEMO_SYNTHESIS,
+    synthesis_raw: null,
+  });
 }
 window.loadDemo = loadDemo;
 
@@ -66,15 +121,15 @@ async function refreshUsageBadge() {
   } catch {}
 }
 
-/* ── Initialize model selector and load funnel config ── */
-initModelSelector();
+/* ── Initialize model selectors and load funnel config ── */
+initModelSelectors();
 loadFunnelConfig();
 refreshUsageBadge();
 
 /* ── Provider change ── */
 $.provider.addEventListener('change', () => {
   $.providerWarn.classList.toggle('hidden', $.provider.value !== 'Claude');
-  initModelSelector();
+  initModelSelectors();
 });
 
 /* ── File drop zone ── */
@@ -105,7 +160,8 @@ $.btnLoad.addEventListener('click', async () => {
   const result = await loadPersonas();
   if (result.ok) {
     state.personasLoaded = true;
-    $.pStatus.innerHTML = `<div class="persona-badge ok">✅ ${result.personas.length}명 로드 완료</div>`;
+    const totalPanels = result.total_panels || result.personas.reduce((s, p) => s + (p.panel_count || 1), 0);
+    $.pStatus.innerHTML = `<div class="persona-badge ok">✅ ${result.personas.length}명 페르소나 · ${totalPanels}개 패널 로드 완료</div>`;
     $.pListWrap.classList.remove('hidden');
     $.pListWrap.innerHTML = `<div class="persona-list">${
       result.personas.map(p => `
@@ -113,6 +169,7 @@ $.btnLoad.addEventListener('click', async () => {
           <span class="p-name">${esc(p.persona_name)}</span>
           ${p.panel_gender ? `<span class="p-tag">${esc(p.panel_gender)}</span>` : ''}
           ${p.persona_season ? `<span class="p-tag">${esc(p.persona_season)}</span>` : ''}
+          ${p.panel_count ? `<span class="p-tag">${p.panel_count}패널</span>` : ''}
         </div>`).join('')
     }</div>`;
   } else {
@@ -141,12 +198,15 @@ $.btnRun.addEventListener('click', async () => {
   $.progress.classList.remove('hidden');
   $.progressFill.style.width = '0%';
   $.progressText.textContent = '리뷰를 시작합니다...';
+  $.progressTime.textContent = '';
 
   const fd = new FormData();
   if (state.selectedFile) fd.append('file', state.selectedFile);
   if (textVal) fd.append('text_content', textVal);
   fd.append('provider', $.provider.value);
-  fd.append('model', $.model.value);
+  fd.append('review_model', $.reviewModel.value);
+  fd.append('summary_model', $.summaryModel.value);
+  fd.append('synthesis_model', $.synthesisModel.value);
   fd.append('qa_mode', document.getElementById('qa-mode').value);
   if (password) fd.append('password', password);
 
@@ -154,12 +214,34 @@ $.btnRun.addEventListener('click', async () => {
     const donePayload = await runReview(
       fd,
       (payload) => {
-        const pct = (payload.completed / payload.total) * 100;
-        $.progressFill.style.width = pct + '%';
-        $.progressText.textContent = `${payload.completed}/${payload.total} 완료 — ${payload.persona_name}`;
+        if (payload.phase === 'panel_review') {
+          const pct = (payload.completed / payload.total) * 100;
+          $.progressFill.style.width = pct + '%';
+          $.progressText.textContent = `패널 리뷰 ${payload.completed}/${payload.total} — ${payload.persona_name}`;
+          // Time estimate
+          if (payload.elapsed_seconds && payload.completed >= 3) {
+            const perItem = payload.elapsed_seconds / payload.completed;
+            const remaining = perItem * (payload.total - payload.completed);
+            $.progressTime.textContent = `경과 ${fmtTime(payload.elapsed_seconds)} | 남은 시간 약 ${fmtTime(remaining)}`;
+          } else if (payload.elapsed_seconds) {
+            $.progressTime.textContent = `경과 ${fmtTime(payload.elapsed_seconds)} | 추정 중...`;
+          }
+        } else if (payload.phase === 'persona_synthesis') {
+          const pct = (payload.completed / payload.total) * 100;
+          $.progressFill.style.width = pct + '%';
+          $.progressText.textContent = `페르소나 종합 ${payload.completed}/${payload.total} — ${payload.persona_name}`;
+          if (payload.elapsed_seconds && payload.completed >= 2) {
+            const perItem = payload.elapsed_seconds / payload.completed;
+            const remaining = perItem * (payload.total - payload.completed);
+            $.progressTime.textContent = `경과 ${fmtTime(payload.elapsed_seconds)} | 남은 시간 약 ${fmtTime(remaining)}`;
+          } else if (payload.elapsed_seconds) {
+            $.progressTime.textContent = `경과 ${fmtTime(payload.elapsed_seconds)} | 추정 중...`;
+          }
+        }
       },
       (payload) => {
         $.progressText.textContent = payload.message;
+        $.progressTime.textContent = '';
       }
     );
     if (donePayload) {
@@ -186,13 +268,14 @@ $.btnBack.addEventListener('click', () => {
 
 /* ── Save to Sheets ── */
 $.btnSave.addEventListener('click', async () => {
-  if (!state.lastReviews.length) return;
+  if (!state.lastPanelReviews.length && !state.lastReviews.length) return;
   $.btnSave.disabled = true;
   $.btnSave.textContent = '저장 중...';
 
   const result = await saveResults(
-    JSON.stringify(state.lastReviews),
-    state.lastSynthesis ? JSON.stringify(state.lastSynthesis) : null
+    JSON.stringify(state.lastPanelReviews.length ? state.lastPanelReviews : state.lastReviews),
+    state.lastSynthesis ? JSON.stringify(state.lastSynthesis) : null,
+    state.lastPersonaSummaries.length ? JSON.stringify(state.lastPersonaSummaries) : null
   );
 
   if (result.ok) {

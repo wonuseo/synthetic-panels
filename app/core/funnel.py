@@ -73,7 +73,7 @@ def get_synthesis_keys() -> list[str]:
 def get_results_headers() -> list[str]:
     """['run_id', 'persona_id', 'persona_name'] + individual_keys + ['error'] + qa_keys + QA_COMPUTED"""
     return (
-        ["run_id", "persona_id", "persona_name"]
+        ["run_id", "persona_id", "persona_name", "panel_id"]
         + get_individual_keys()
         + ["error"]
         + get_qa_keys()

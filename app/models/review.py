@@ -88,6 +88,7 @@ def _validate_recommendation(value) -> str:
 class Review:
     persona_id: str
     persona_name: str
+    panel_id: str = ""
     appeal_score: int = 0
     first_impression: str = ""
     key_positives: str = ""
@@ -145,14 +146,14 @@ class Review:
     }
 
     @classmethod
-    def from_llm_response(cls, persona_id: str, persona_name: str, response_text: str) -> "Review":
+    def from_llm_response(cls, persona_id: str, persona_name: str, response_text: str, panel_id: str = "") -> "Review":
         try:
             data = extract_json(response_text)
 
             # 스케일 맵 로드
             scales = get_field_scales_cached()
 
-            kwargs: dict = {"persona_id": persona_id, "persona_name": persona_name, "raw_response": response_text}
+            kwargs: dict = {"persona_id": persona_id, "persona_name": persona_name, "panel_id": panel_id, "raw_response": response_text}
 
             # 필드 존재 여부 추적
             missing_int = []
@@ -214,7 +215,7 @@ class Review:
         return asdict(self)
 
     def to_sheet_row(self, run_id: str) -> list:
-        row = [run_id, self.persona_id, self.persona_name]
+        row = [run_id, self.persona_id, self.persona_name, self.panel_id]
         for key in get_individual_keys():
             row.append(getattr(self, key, ""))
         row.append(self.error or "")

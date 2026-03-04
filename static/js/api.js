@@ -15,7 +15,7 @@ export async function loadPersonas() {
     const res = await fetch('/api/personas', { method: 'POST' });
     const data = await res.json();
     if (data.ok) {
-      return { ok: true, personas: data.personas };
+      return { ok: true, personas: data.personas, total_panels: data.total_panels };
     } else {
       return { ok: false, error: data.error };
     }
@@ -70,11 +70,12 @@ export async function runReview(fd, onProgress, onStatus) {
   return donePayload;
 }
 
-export async function saveResults(reviewsJson, synthesisJson) {
+export async function saveResults(reviewsJson, synthesisJson, personaSummariesJson) {
   try {
     const fd = new FormData();
     fd.append('reviews_json', reviewsJson);
     if (synthesisJson) fd.append('synthesis_json', synthesisJson);
+    if (personaSummariesJson) fd.append('persona_summaries_json', personaSummariesJson);
     const res = await fetch('/api/save', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.ok) {

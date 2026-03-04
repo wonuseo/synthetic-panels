@@ -20,7 +20,9 @@ def _load_synthesis_prompts() -> dict:
 _prompts = _load_prompts()
 _individual = _prompts["individual_review"]
 _qa_items = _individual.get("qa_items", {})
-_synthesis = _load_synthesis_prompts()["synthesis"]
+_synthesis_prompts = _load_synthesis_prompts()
+_synthesis = _synthesis_prompts["synthesis"]
+_persona_synthesis = _synthesis_prompts["persona_synthesis"]
 
 
 def build_system_prompt(persona: Persona) -> str:
@@ -44,6 +46,41 @@ def build_user_prompt(has_image: bool = True, text_content: str = "", qa_mode: s
 
 
 SYNTHESIS_SYSTEM_PROMPT: str = _synthesis["system"]
+PERSONA_SYNTHESIS_SYSTEM_PROMPT: str = _persona_synthesis["system"]
+
+
+def build_persona_synthesis_prompt(persona_name: str, reviews_data: List[dict]) -> str:
+    _defaults = {
+        "like_dislike": "-", "favorable_unfavorable": "-",
+        "value_for_money": "-", "price_fairness": "-",
+        "brand_self_congruity": "-", "brand_image_fit": "-",
+        "message_clarity": "-", "attention_grabbing": "-",
+        "info_sufficiency": "-", "competitive_preference": "-",
+        "likelihood_high": "-", "probability_consider_high": "-",
+        "willingness_high": "-", "purchase_probability_juster": "-",
+        "perceived_message": "-", "emotional_response": "-",
+        "purchase_trigger_barrier": "-", "recommendation_context": "-",
+    }
+    parts = []
+    for r in reviews_data:
+        data = {**_defaults, **r}
+        panel_id = data.get("panel_id", "?")
+        parts.append(
+            f"--- Panel {panel_id} (매력도: {data['appeal_score']}/10, {data['recommendation']}) ---\n"
+            f"첫인상: {data.get('first_impression', '-')}\n"
+            f"긍정: {data.get('key_positives', '-')}\n"
+            f"우려: {data.get('key_concerns', '-')}\n"
+            f"종합: {data.get('review_summary', '-')}\n"
+            f"지각된 메시지: {data['perceived_message']}\n"
+            f"감정 반응: {data['emotional_response']}\n"
+            f"구매촉진/장벽: {data['purchase_trigger_barrier']}\n"
+            f"추천맥락: {data['recommendation_context']}\n"
+            f"경쟁비교: {data['competitive_preference']}\n"
+        )
+    reviews_text = "\n".join(parts)
+    return _persona_synthesis["user_template"].format(
+        count=len(reviews_data), persona_name=persona_name, reviews_text=reviews_text
+    )
 
 
 def build_synthesis_prompt(reviews_data: List[dict]) -> str:
