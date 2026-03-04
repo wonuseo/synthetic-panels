@@ -3,6 +3,7 @@ from typing import List
 
 from app.core.funnel import get_results_headers, get_synthesis_keys
 from app.models.review import Review
+from app.models.persona_summary import PersonaSummary
 
 RESULTS_HEADERS = get_results_headers()
 
@@ -46,3 +47,30 @@ def save_synthesis(
             val = "; ".join(str(v) for v in val)
         row.append(val)
     worksheet.append_row(row)
+
+
+def save_persona_summaries(
+    spreadsheet: gspread.Spreadsheet,
+    summaries_data: List[dict],
+    run_id: str,
+    worksheet_name: str = "persona_summaries",
+) -> None:
+    headers = PersonaSummary.sheet_headers()
+
+    try:
+        worksheet = spreadsheet.worksheet(worksheet_name)
+    except gspread.WorksheetNotFound:
+        worksheet = spreadsheet.add_worksheet(title=worksheet_name, rows=1000, cols=len(headers))
+        worksheet.append_row(headers)
+
+    rows = []
+    for sd in summaries_data:
+        row = [run_id, sd.get("persona_id", ""), sd.get("persona_name", ""), sd.get("panel_count", 0)]
+        from app.models.persona_summary import _QUANT_FIELDS, _QUAL_FIELDS
+        for qf in _QUANT_FIELDS:
+            row.append(sd.get(f"avg_{qf}", 0))
+        for qf in _QUAL_FIELDS:
+            row.append(sd.get(qf, ""))
+        rows.append(row)
+    if rows:
+        worksheet.append_rows(rows)

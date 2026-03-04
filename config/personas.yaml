@@ -30,6 +30,10 @@ fields:
     label: "선호 음식 2"
   - key: persona_ksf
     label: "핵심 성공 요인 (KSF)"
+  - key: panel_visited
+    label: "방문 유무"
+  - key: panel_visit_experience
+    label: "방문 경험"
   - key: panel_skepticism
     label: "마케팅 회의도"
   - key: panel_competitor_pref
@@ -51,6 +55,8 @@ profile_template: |
   선호 활동: {panel_activity_pref_1}, {panel_activity_pref_2}, {panel_activity_pref_3}
   선호 음식: {panel_cuisine_1}, {panel_cuisine_2}
   핵심 성공 요인(KSF): {persona_ksf}
+  방문 유무: {panel_visited}
+  방문 경험: {panel_visit_experience}
   마케팅 회의도: {panel_skepticism}
   선호 경쟁 브랜드: {panel_competitor_pref}
   과거 마찰/불만: {panel_past_friction}

@@ -22,6 +22,8 @@ from app.llm.prompt import (
     build_user_prompt,
     SYNTHESIS_SYSTEM_PROMPT,
     build_synthesis_prompt,
+    PERSONA_SYNTHESIS_SYSTEM_PROMPT,
+    build_persona_synthesis_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -153,7 +155,7 @@ def call_openai(
             ),
         )
         response_text = response.choices[0].message.content
-        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text)
+        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text, panel_id=persona.panel_id)
         if qa_mode != "off" and review.qa_result:
             review.qa_result.compute_scores(review, persona, qa_mode)
         return review
@@ -162,9 +164,32 @@ def call_openai(
         return Review(
             persona_id=persona.persona_id,
             persona_name=persona.persona_name,
+            panel_id=persona.panel_id,
             error=str(e),
             raw_response="",
         )
+
+
+def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model: str = "gpt-4o") -> str:
+    client = _get_client()
+
+    try:
+        response = _call_with_retry(
+            lambda: client.chat.completions.create(
+                model=model,
+                max_tokens=2048,
+                temperature=0.3,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": PERSONA_SYNTHESIS_SYSTEM_PROMPT},
+                    {"role": "user", "content": build_persona_synthesis_prompt(persona_name, reviews_data)},
+                ],
+            ),
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error("synthesize_persona_openai 실패 [%s]: %s", persona_name, e)
+        return f'{{"error": "{e}"}}'
 
 
 def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o") -> str:

@@ -7,21 +7,52 @@ from app.models.persona import Persona
 _config_dir = Path(__file__).parent.parent.parent / "config"
 
 
-def _load_prompts() -> dict:
-    with open(_config_dir / "synthetic_panels_prompts.yaml", encoding="utf-8") as f:
+def _load_yaml(filename: str) -> dict:
+    with open(_config_dir / filename, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
-def _load_synthesis_prompts() -> dict:
-    with open(_config_dir / "synthesis_analysis_prompts.yaml", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-_prompts = _load_prompts()
+_prompts = _load_yaml("synthetic_panels_prompts.yaml")
 _individual = _prompts["individual_review"]
 _qa_items = _individual.get("qa_items", {})
-_synthesis = _load_synthesis_prompts()["synthesis"]
 
+_synthesis_prompts = _load_yaml("synthesis_analysis_prompts.yaml")
+_synthesis = _synthesis_prompts["synthesis"]
+_persona_synthesis = _synthesis_prompts["persona_synthesis"]
+
+_survey_q = _load_yaml("survey_questions.yaml")
+_survey_sections = _survey_q["sections"]
+
+
+# ── 서베이 질문 블록 빌더 ─────────────────────────────────────────────────────
+
+def _build_survey_questions() -> str:
+    """survey_questions.yaml → LLM 프롬프트용 필드 정의 블록"""
+    lines = []
+    for section in _survey_sections:
+        lines.append(f'\n    --- {section["label"]} ---')
+        for f in section["fields"]:
+            lines.append(f'    "{f["key"]}": {f["spec"]}, {f["question"]}')
+    return "\n".join(lines)
+
+
+def _build_example_json() -> str:
+    """survey_questions.yaml → Example JSON 플레이스홀더"""
+    pairs = []
+    for section in _survey_sections:
+        for f in section["fields"]:
+            if "integer" in f["spec"]:
+                pairs.append(f'"{f["key"]}":3')
+            else:
+                pairs.append(f'"{f["key"]}":"..."')
+    return "{{" + ",".join(pairs) + "}}"
+
+
+_SURVEY_QUESTIONS_BLOCK = _build_survey_questions()
+_EXAMPLE_JSON = _build_example_json()
+
+
+# ── 개별 리뷰 프롬프트 ────────────────────────────────────────────────────────
 
 def build_system_prompt(persona: Persona) -> str:
     return _individual["system"].format(profile=persona.to_profile_text())
@@ -37,51 +68,67 @@ def build_user_prompt(has_image: bool = True, text_content: str = "", qa_mode: s
     if not parts:
         parts.append(sources["default"])
     material_description = "\n\n".join(parts)
-    prompt = _individual["user_base"].format(material_description=material_description)
+
+    prompt = _individual["user_base"].format(
+        material_description=material_description,
+        survey_questions=_SURVEY_QUESTIONS_BLOCK,
+        example_json=_EXAMPLE_JSON,
+    )
     if qa_mode != "off" and qa_mode in _qa_items:
         prompt += _qa_items[qa_mode]
     return prompt
 
 
+# ── 종합 분석 프롬프트 ────────────────────────────────────────────────────────
+
 SYNTHESIS_SYSTEM_PROMPT: str = _synthesis["system"]
+PERSONA_SYNTHESIS_SYSTEM_PROMPT: str = _persona_synthesis["system"]
+
+
+def _build_review_text_block(data: dict) -> str:
+    """survey_questions.yaml 섹션 구조로 리뷰 데이터를 텍스트로 변환"""
+    lines = []
+    for section in _survey_sections:
+        quant_parts = []
+        qual_lines = []
+        for f in section["fields"]:
+            val = data.get(f["key"], "-")
+            if not val or val == "-":
+                continue
+            if "integer" in f["spec"]:
+                quant_parts.append(f'{f["label"]}({val})')
+            else:
+                qual_lines.append(f'{f["label"]}: {val}')
+        if quant_parts or qual_lines:
+            lines.append(f'\n{section["label"]}')
+            if quant_parts:
+                lines.append("  " + ", ".join(quant_parts))
+            lines.extend(f"  {ql}" for ql in qual_lines)
+    return "\n".join(lines)
+
+
+def build_persona_synthesis_prompt(persona_name: str, reviews_data: List[dict]) -> str:
+    parts = []
+    for r in reviews_data:
+        panel_id = r.get("panel_id", "?")
+        header = (
+            f"--- Panel {panel_id} "
+            f"(매력도: {r.get('appeal', '-')}/5, {r.get('recommendation', '-')}) ---"
+        )
+        parts.append(header + _build_review_text_block(r))
+    reviews_text = "\n".join(parts)
+    return _persona_synthesis["user_template"].format(
+        count=len(reviews_data), persona_name=persona_name, reviews_text=reviews_text
+    )
 
 
 def build_synthesis_prompt(reviews_data: List[dict]) -> str:
-    _defaults = {
-        "like_dislike": "-", "favorable_unfavorable": "-",
-        "value_for_money": "-", "price_fairness": "-",
-        "brand_self_congruity": "-", "brand_image_fit": "-",
-        "message_clarity": "-", "attention_grabbing": "-",
-        "info_sufficiency": "-", "competitive_preference": "-",
-        "likelihood_high": "-", "probability_consider_high": "-",
-        "willingness_high": "-", "purchase_probability_juster": "-",
-        "perceived_message": "-", "emotional_response": "-",
-        "purchase_trigger_barrier": "-", "recommendation_context": "-",
-    }
     parts = []
     for r in reviews_data:
-        data = {**_defaults, **r}
-        parts.append(
-            f"--- {data['persona_name']} (매력도: {data['appeal_score']}/10, {data['recommendation']}) ---\n"
-            f"\n[Upper Funnel] 브랜드 자산\n"
-            f"브랜드 태도: 호감({data['like_dislike']}), 호의({data['favorable_unfavorable']})\n"
-            f"브랜드 적합성: 자기적합({data['brand_self_congruity']}), 이미지적합({data['brand_image_fit']})\n"
-            f"광고 효과: 명확성({data['message_clarity']}), 주목도({data['attention_grabbing']})\n"
-            f"첫인상: {data['first_impression']}\n"
-            f"지각된 메시지: {data['perceived_message']}\n"
-            f"감정 반응: {data['emotional_response']}\n"
-            f"\n[Mid Funnel] 수요 창출\n"
-            f"지각된 가치: 가성비({data['value_for_money']}), 가격적정성({data['price_fairness']})\n"
-            f"정보 충분성: {data['info_sufficiency']}\n"
-            f"긍정 요소: {data['key_positives']}\n"
-            f"우려 사항: {data['key_concerns']}\n"
-            f"경쟁비교: {data['competitive_preference']}\n"
-            f"추천 맥락: {data['recommendation_context']}\n"
-            f"\n[Lower Funnel] 전환·매출\n"
-            f"구매 의향: 가능성({data['likelihood_high']}), 고려확률({data['probability_consider_high']}), 의향({data['willingness_high']})\n"
-            f"구매 확률(Juster): {data['purchase_probability_juster']}/10\n"
-            f"구매 촉진/장벽: {data['purchase_trigger_barrier']}\n"
-            f"종합 평가: {data['review_summary']}\n"
+        header = (
+            f"--- {r.get('persona_name', '?')} "
+            f"(매력도: {r.get('appeal', '-')}/5, {r.get('recommendation', '-')}) ---"
         )
+        parts.append(header + _build_review_text_block(r))
     reviews_text = "\n".join(parts)
     return _synthesis["user_template"].format(count=len(reviews_data), reviews_text=reviews_text)

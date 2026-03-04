@@ -22,6 +22,8 @@ from app.llm.prompt import (
     build_user_prompt,
     SYNTHESIS_SYSTEM_PROMPT,
     build_synthesis_prompt,
+    PERSONA_SYNTHESIS_SYSTEM_PROMPT,
+    build_persona_synthesis_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,7 +140,7 @@ def call_claude(
             ),
         )
         response_text = response.content[0].text
-        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text)
+        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text, panel_id=persona.panel_id)
         if qa_mode != "off" and review.qa_result:
             review.qa_result.compute_scores(review, persona, qa_mode)
         return review
@@ -147,9 +149,29 @@ def call_claude(
         return Review(
             persona_id=persona.persona_id,
             persona_name=persona.persona_name,
+            panel_id=persona.panel_id,
             error=str(e),
             raw_response="",
         )
+
+
+def synthesize_persona_claude(persona_name: str, reviews_data: List[dict], model: str = "claude-sonnet-4-20250514") -> str:
+    client = _get_client()
+
+    try:
+        response = _call_with_retry(
+            lambda: client.messages.create(
+                model=model,
+                max_tokens=2048,
+                temperature=0.3,
+                system=PERSONA_SYNTHESIS_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": build_persona_synthesis_prompt(persona_name, reviews_data)}],
+            ),
+        )
+        return response.content[0].text
+    except Exception as e:
+        logger.error("synthesize_persona_claude 실패 [%s]: %s", persona_name, e)
+        return f'{{"error": "{e}"}}'
 
 
 def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20250514") -> str:

@@ -32,9 +32,12 @@ class Persona:
     panel_cuisine_1: str
     panel_cuisine_2: str
     persona_ksf: str
+    panel_visited: str
+    panel_visit_experience: str
     panel_skepticism: str
     panel_competitor_pref: str
     panel_past_friction: str
+    panel_id: str = ""
 
     @classmethod
     def from_sheet_row(cls, row: dict) -> "Persona":
@@ -54,9 +57,12 @@ class Persona:
             panel_cuisine_1=str(row.get("panel_cuisine_1", "")),
             panel_cuisine_2=str(row.get("panel_cuisine_2", "")),
             persona_ksf=str(row.get("persona_ksf", "")),
+            panel_visited=str(row.get("panel_visited", "")),
+            panel_visit_experience=str(row.get("panel_visit_experience", "")),
             panel_skepticism=str(row.get("panel_skepticism", "")),
             panel_competitor_pref=str(row.get("panel_competitor_pref", "")),
             panel_past_friction=str(row.get("panel_past_friction", "")),
+            panel_id=str(row.get("panel_id", "")),
         )
 
     def to_profile_text(self) -> str:
