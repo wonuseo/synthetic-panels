@@ -121,26 +121,47 @@ function fmtTime(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-const CONSERVATIVE_ESTIMATE = {
+const BASE_ESTIMATE = {
   concurrency: 5,
   assumedPersonaCount: 10,
-  panelReviewSeconds: [30, 60],
-  personaSummarySeconds: [18, 35],
-  synthesisSeconds: [15, 35],
+  defaultPanelReviewSeconds: [30, 60],
+  defaultPersonaSummarySeconds: [18, 35],
+  defaultSynthesisSeconds: [15, 35],
   overheadSeconds: [25, 60],
   safetyFactor: 1.15,
 };
 
-function estimateValidationSeconds(panelCount) {
+const MODEL_ESTIMATE_PROFILE = {
+  'gpt-4o-mini': {
+    review: [28, 55],
+    summary: [16, 32],
+    synthesis: [14, 30],
+  },
+  'gpt-4o': {
+    review: [45, 95],
+    summary: [28, 60],
+    synthesis: [24, 55],
+  },
+};
+
+function getModelEstimateRange(modelName, phase) {
+  const fromModel = MODEL_ESTIMATE_PROFILE[modelName];
+  if (fromModel && Array.isArray(fromModel[phase])) return fromModel[phase];
+  if (phase === 'review') return BASE_ESTIMATE.defaultPanelReviewSeconds;
+  if (phase === 'summary') return BASE_ESTIMATE.defaultPersonaSummarySeconds;
+  return BASE_ESTIMATE.defaultSynthesisSeconds;
+}
+
+function estimateValidationSeconds(panelCount, modelSelection = {}) {
   const {
     concurrency,
     assumedPersonaCount,
-    panelReviewSeconds,
-    personaSummarySeconds,
-    synthesisSeconds,
     overheadSeconds,
     safetyFactor,
-  } = CONSERVATIVE_ESTIMATE;
+  } = BASE_ESTIMATE;
+  const panelReviewSeconds = getModelEstimateRange(modelSelection.reviewModel, 'review');
+  const personaSummarySeconds = getModelEstimateRange(modelSelection.summaryModel, 'summary');
+  const synthesisSeconds = getModelEstimateRange(modelSelection.synthesisModel, 'synthesis');
 
   const reviewBatches = Math.ceil(panelCount / concurrency);
   const personaCount = Math.min(assumedPersonaCount, panelCount);
@@ -174,7 +195,14 @@ function fmtMinuteRange(minSeconds, maxSeconds) {
 function renderPanelSizeEstimateGuide() {
   if (!$.panelSizeEstimate || !$.panelSize) return;
   const selectedSize = Number($.panelSize.value || 10);
-  const { minSeconds, maxSeconds } = estimateValidationSeconds(selectedSize);
+  const reviewModel = $.reviewModel?.value || 'gpt-4o-mini';
+  const summaryModel = $.summaryModel?.value || 'gpt-4o-mini';
+  const synthesisModel = $.synthesisModel?.value || 'gpt-4o';
+  const { minSeconds, maxSeconds } = estimateValidationSeconds(selectedSize, {
+    reviewModel,
+    summaryModel,
+    synthesisModel,
+  });
   const timeLabel = fmtMinuteRange(minSeconds, maxSeconds);
 
   $.panelSizeEstimate.innerHTML = `
@@ -183,7 +211,7 @@ function renderPanelSizeEstimateGuide() {
       <span class="panel-size-est-size">패널 ${selectedSize}명</span>
       <span class="panel-size-est-time">${timeLabel}</span>
     </div>
-    <div class="panel-size-est-note">보수적 추정치이며 입력 자료 길이, 이미지/PDF 페이지 수, 모델 응답 속도에 따라 더 길어질 수 있습니다.</div>
+    <div class="panel-size-est-note">리뷰 ${esc(reviewModel)} · 요약 ${esc(summaryModel)} · 합성 ${esc(synthesisModel)} 기준의 보수적 추정치입니다.</div>
   `;
 }
 
@@ -427,6 +455,7 @@ async function loadDemo() {
     synthesis_raw: null,
   });
 }
+if ($.btnDemo) $.btnDemo.addEventListener('click', () => loadDemo());
 window.loadDemo = loadDemo;
 
 /* ── Usage badge ── */
@@ -458,6 +487,11 @@ refreshUsageBadge();
 $.provider.addEventListener('change', () => {
   $.providerWarn.classList.toggle('hidden', $.provider.value !== 'Claude');
   initModelSelectors();
+  renderPanelSizeEstimateGuide();
+});
+
+[$.reviewModel, $.summaryModel, $.synthesisModel].forEach(sel => {
+  sel.addEventListener('change', renderPanelSizeEstimateGuide);
 });
 
 /* ── File drop zone ── */

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import time
 import uuid
 import re
@@ -69,6 +70,19 @@ def _git_info() -> tuple[str, str]:
 
 APP_VERSION, LAST_UPDATED = _git_info()
 
+
+def _resolve_asset_version() -> str:
+    render_commit = os.getenv("RENDER_GIT_COMMIT", "").strip()
+    if render_commit:
+        return render_commit[:12]
+    if APP_VERSION and APP_VERSION != "dev":
+        return APP_VERSION
+    # Fallback: startup timestamp (changes on each deploy/restart)
+    return str(int(time.time()))
+
+
+ASSET_VERSION = _resolve_asset_version()
+
 _SURVEY_TEMPLATE_PATH = Path(__file__).parent / "config" / "survey_questions.yaml"
 _SCALE_SPEC_RE = re.compile(r"integer\s+(\d+)\s*-\s*(\d+)", re.IGNORECASE)
 _RECOMMENDATION_OPTIONS = ["매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"]
@@ -126,12 +140,15 @@ def _load_survey_template() -> list[dict]:
 
 
 @app.middleware("http")
-async def disable_static_cache(request: Request, call_next):
+async def set_cache_headers(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/static/") or request.url.path == "/":
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
+    path = request.url.path
+    if path == "/":
+        # Always revalidate HTML to pick up latest deploy/versioned assets.
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif path.startswith("/static/"):
+        # Static files are versioned via query string, so keep them cacheable.
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 
 
@@ -147,7 +164,7 @@ async def index(request: Request):
             "request": request,
             "version": APP_VERSION,
             "last_updated": LAST_UPDATED,
-            "asset_version": int(time.time() * 1000),
+            "asset_version": ASSET_VERSION,
         },
     )
 

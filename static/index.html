@@ -108,10 +108,17 @@
           <option value="50">50명</option>
           <option value="100">100명</option>
         </select>
-        <div id="panel-size-estimate" class="panel-size-estimate"></div>
+        <div id="panel-size-estimate" class="panel-size-estimate">
+          <div class="panel-size-est-title">검증 예상 소요 시간</div>
+          <div class="panel-size-est-main">
+            <span class="panel-size-est-size">패널 10명</span>
+            <span class="panel-size-est-time">약 3~6분</span>
+          </div>
+          <div class="panel-size-est-note">보수적 추정치이며 입력 자료 길이, 이미지/PDF 페이지 수, 모델 응답 속도에 따라 더 길어질 수 있습니다.</div>
+        </div>
 
         <button class="btn-secondary full-width" style="margin-top:4px" id="btn-load-personas">페르소나 로드</button>
-        <button class="btn-secondary full-width btn-secondary--ghost" style="margin-top:8px" onclick="loadDemo()">🔍 데모 미리보기</button>
+        <button class="btn-secondary full-width btn-secondary--ghost" style="margin-top:8px" id="btn-demo">🔍 데모 미리보기</button>
         <div id="persona-status"></div>
         <div id="persona-list-wrap" class="hidden"></div>
 
@@ -123,13 +130,22 @@
         <div id="provider-warning" class="provider-warning hidden">Claude는 현재 지원되지 않습니다. OpenAI를 선택해 주세요.</div>
 
         <label for="review-model">리뷰 모델 (패널 개별 리뷰)</label>
-        <select id="review-model"></select>
+        <select id="review-model">
+          <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
+          <option value="gpt-4o">gpt-4o</option>
+        </select>
 
         <label for="summary-model">요약 모델 (페르소나 종합)</label>
-        <select id="summary-model"></select>
+        <select id="summary-model">
+          <option value="gpt-4o-mini" selected>gpt-4o-mini</option>
+          <option value="gpt-4o">gpt-4o</option>
+        </select>
 
         <label for="synthesis-model">합성 모델 (전체 분석)</label>
-        <select id="synthesis-model"></select>
+        <select id="synthesis-model">
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+          <option value="gpt-4o" selected>gpt-4o</option>
+        </select>
 
         <label for="qa-mode">QA Mode</label>
         <select id="qa-mode">

@@ -14,6 +14,7 @@ export const $ = {
   panelSizeEstimate: document.getElementById('panel-size-estimate'),
   pStatus:      document.getElementById('persona-status'),
   pListWrap:    document.getElementById('persona-list-wrap'),
+  btnDemo:      document.getElementById('btn-demo'),
   provider:     document.getElementById('provider'),
   providerWarn: document.getElementById('provider-warning'),
   reviewModel:  document.getElementById('review-model'),
@@ -49,6 +50,9 @@ export function handleFile(file) {
 }
 
 export function initModelSelectors() {
+  const prevReview = $.reviewModel.value;
+  const prevSummary = $.summaryModel.value;
+  const prevSynthesis = $.synthesisModel.value;
   const models = OPENAI_MODELS;
   const opts = models.map(m => `<option value="${m}">${m}</option>`).join('');
   $.reviewModel.innerHTML = opts;
@@ -56,9 +60,13 @@ export function initModelSelectors() {
   $.synthesisModel.innerHTML = opts;
 
   // Default preset: review=mini, summary=mini, synthesis=4o
-  $.reviewModel.value = models.includes('gpt-4o-mini') ? 'gpt-4o-mini' : models[0];
-  $.summaryModel.value = models.includes('gpt-4o-mini') ? 'gpt-4o-mini' : models[0];
-  $.synthesisModel.value = models.includes('gpt-4o') ? 'gpt-4o' : models[0];
+  const defaultReview = models.includes('gpt-4o-mini') ? 'gpt-4o-mini' : models[0];
+  const defaultSummary = models.includes('gpt-4o-mini') ? 'gpt-4o-mini' : models[0];
+  const defaultSynthesis = models.includes('gpt-4o') ? 'gpt-4o' : models[0];
+
+  $.reviewModel.value = models.includes(prevReview) ? prevReview : defaultReview;
+  $.summaryModel.value = models.includes(prevSummary) ? prevSummary : defaultSummary;
+  $.synthesisModel.value = models.includes(prevSynthesis) ? prevSynthesis : defaultSynthesis;
 }
 
 // Keep backward compat alias
