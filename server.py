@@ -287,6 +287,7 @@ async def api_review_limit():
 
 @app.post("/api/review")
 async def api_review(
+    request: Request,
     provider: str = Form("OpenAI"),
     review_model: str = Form("gpt-4o-mini"),
     summary_model: str = Form("gpt-4o-mini"),
