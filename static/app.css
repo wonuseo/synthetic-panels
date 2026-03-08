@@ -1089,6 +1089,71 @@ select {
   color: var(--text);
 }
 
+/* ── QA field sub-label in detail groups ── */
+.qp-field {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+/* ── QA Persona group (grouped individual results) ── */
+.qa-persona-group {
+  margin-bottom: 16px;
+}
+
+.qa-persona-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  padding: 14px 18px;
+  border-bottom: none;
+}
+
+.qa-persona-group > .persona-card {
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  margin-top: 0;
+}
+
+.qa-persona-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qa-persona-summary-name {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.qa-panel-quality {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* ── QA Explainer field rows ── */
+.qa-field-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qa-field-human {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.qa-field-compare {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
 /* ── QA Explainer ── */
 .qa-explainer {
   background: var(--surface);

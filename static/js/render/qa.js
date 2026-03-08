@@ -13,8 +13,7 @@ function renderQAExplainer() {
   </div>
 
   <div class="qa-explainer-purpose">
-    <strong>목적 — LLM 응답 일관성 확보</strong>
-    <p>같은 개념을 다르게 표현한 질문에도 일관된 점수를 매기는지(일관성 검증), 페르소나의 속성(예산·경쟁사 선호·회의주의)에 맞는 응답을 하는지(트랩 검증)를 확인합니다. QA 점수가 <strong>70% 미만</strong>인 응답은 페르소나가 충실하게 시뮬레이션되지 않은 것으로 판단해 <strong>QA FAIL</strong>로 표기됩니다.</p>
+    <strong>목적</strong> — 같은 질문을 다른 형식으로 반복했을 때 점수 차이가 없는지(일관성), 페르소나 속성에 맞는 편향을 보이는지(트랩) 확인. 품질 70% 미만은 QA FAIL.
   </div>
 
   <div class="qa-mode-grid">
@@ -24,13 +23,25 @@ function renderQAExplainer() {
       <div class="qa-mode-section">
         <div class="qa-mode-section-label">일관성 검증 (Replication) × 1</div>
         <ul class="qa-mode-list">
-          <li><code>qa_rep_brand_attitude</code> ↔ <code>brand_favorability</code><br><span class="qa-mode-note">브랜드 호감도를 다른 질문 형식으로 재측정해 점수 차이 확인</span></li>
+          <li>
+            <div class="qa-field-row">
+              <span class="qa-field-human">브랜드 호감도 재측정</span>
+              <code>qa_rep_brand_attitude</code>
+            </div>
+            <div class="qa-field-compare">↔ 본 응답 <code>brand_favorability</code> 와 점수 차이 비교</div>
+          </li>
         </ul>
       </div>
       <div class="qa-mode-section">
         <div class="qa-mode-section-label">트랩 항목 (Trap) × 1</div>
         <ul class="qa-mode-list">
-          <li><code>qa_trap_budget_sensitivity</code><br><span class="qa-mode-note">페르소나의 지출 성향에 맞는 예산 민감도를 응답하는지 확인</span></li>
+          <li>
+            <div class="qa-field-row">
+              <span class="qa-field-human">예산 민감도</span>
+              <code>qa_trap_budget_sensitivity</code>
+            </div>
+            <div class="qa-field-compare">페르소나 지출 성향(고지출/중간/절약형)에서 예측한 기대 범위와 응답값 비교</div>
+          </li>
         </ul>
       </div>
       <div class="qa-mode-formula">품질 점수 = 일관성(50%) + 트랩 통과율(50%) · 합격 기준 ≥ 70%</div>
@@ -42,17 +53,35 @@ function renderQAExplainer() {
       <div class="qa-mode-section">
         <div class="qa-mode-section-label">일관성 검증 (Replication) × 3</div>
         <ul class="qa-mode-list">
-          <li><code>qa_rep_brand_attitude</code> ↔ <code>brand_favorability</code></li>
-          <li><code>qa_rep_value_perception</code> ↔ <code>value_for_money</code></li>
-          <li><code>qa_rep_purchase_intent</code> ↔ <code>purchase_likelihood</code></li>
+          <li>
+            <div class="qa-field-row"><span class="qa-field-human">브랜드 호감도 재측정</span><code>qa_rep_brand_attitude</code></div>
+            <div class="qa-field-compare">↔ 본 응답 <code>brand_favorability</code></div>
+          </li>
+          <li>
+            <div class="qa-field-row"><span class="qa-field-human">가치 인식 재측정</span><code>qa_rep_value_perception</code></div>
+            <div class="qa-field-compare">↔ 본 응답 <code>value_for_money</code></div>
+          </li>
+          <li>
+            <div class="qa-field-row"><span class="qa-field-human">구매 의향 재측정</span><code>qa_rep_purchase_intent</code></div>
+            <div class="qa-field-compare">↔ 본 응답 <code>purchase_likelihood</code></div>
+          </li>
         </ul>
       </div>
       <div class="qa-mode-section">
         <div class="qa-mode-section-label">트랩 항목 (Trap) × 3</div>
         <ul class="qa-mode-list">
-          <li><code>qa_trap_budget_sensitivity</code> — 지출 성향 검증</li>
-          <li><code>qa_trap_competitor_loyalty</code> — 경쟁사 선호 검증</li>
-          <li><code>qa_trap_skepticism_check</code> — 회의주의 성향 검증</li>
+          <li>
+            <div class="qa-field-row"><span class="qa-field-human">예산 민감도</span><code>qa_trap_budget_sensitivity</code></div>
+            <div class="qa-field-compare">페르소나 지출 성향(고지출/중간/절약형) 기반 기대 범위와 비교</div>
+          </li>
+          <li>
+            <div class="qa-field-row"><span class="qa-field-human">경쟁사 충성도</span><code>qa_trap_competitor_loyalty</code></div>
+            <div class="qa-field-compare">경쟁 브랜드 선호 여부 기반 기대 범위와 비교</div>
+          </li>
+          <li>
+            <div class="qa-field-row"><span class="qa-field-human">회의주의 수준</span><code>qa_trap_skepticism_check</code></div>
+            <div class="qa-field-compare">페르소나 회의주의 성향(높음/중간/낮음) 기반 기대 범위와 비교</div>
+          </li>
         </ul>
       </div>
       <div class="qa-mode-formula">품질 점수 = 일관성(50%) + 트랩 통과율(50%) · 합격 기준 ≥ 70%</div>
@@ -62,15 +91,15 @@ function renderQAExplainer() {
   <div class="qa-score-legend">
     <div class="qa-score-legend-item">
       <span class="qa-score-legend-dot good"></span>
-      <span><strong>일관성 점수</strong> — 재확인 항목과 핵심 항목의 차이(0~4)를 1 − diff/4로 정규화. 차이가 없으면 1.0, 클수록 낮아짐.</span>
+      <span><strong>일관성 점수</strong> — 재측정값과 본 응답값의 차이를 1 − diff/4로 정규화. 점수 차이가 없으면 1.0.</span>
     </div>
     <div class="qa-score-legend-item">
       <span class="qa-score-legend-dot warn"></span>
-      <span><strong>트랩 통과율</strong> — 페르소나 속성에서 도출한 예상 범위 내 응답 비율. 범위를 벗어나면 페르소나와 응답이 불일치함을 의미.</span>
+      <span><strong>트랩 통과율</strong> — 페르소나 속성에서 도출한 예상 범위 내 응답 비율. 범위 이탈 = 페르소나 불일치.</span>
     </div>
     <div class="qa-score-legend-item">
       <span class="qa-score-legend-dot bad"></span>
-      <span><strong>QA FAIL 기준</strong> — 품질 점수 70% 미만. 해당 응답은 참고용으로만 활용하고 분석 집계에서 제외를 권고.</span>
+      <span><strong>QA FAIL</strong> — 품질 점수 70% 미만. 해당 응답은 분석 집계 제외 권고.</span>
     </div>
   </div>
 </div>`;
@@ -114,19 +143,67 @@ export function renderQATab(reviews) {
     }
     html += `</div>`;
 
-    html += `<h3 style="font-size:1.05rem;margin:20px 0 12px">🧑‍🤝‍🧑 개별 QA 결과</h3><div class="persona-cards">`;
-    withQA.forEach((r, i) => {
-      const idx = `qa-${i}`;
-      html += `<div class="persona-card" id="pc-${idx}">
-        <div class="persona-card-header" onclick="toggleCard('${idx}')">
-          <span class="name">${esc(r.persona_name)}</span>
-          <span class="qa-badge ${r.qa_result.qa_passed ? 'pass' : 'fail'}">${r.qa_result.qa_passed ? 'QA PASS' : 'QA FAIL'}</span>
+    // ── 페르소나별 그룹 ──
+    const personaMap = new Map();
+    withQA.forEach(r => {
+      if (!personaMap.has(r.persona_name)) personaMap.set(r.persona_name, []);
+      personaMap.get(r.persona_name).push(r);
+    });
+
+    html += `<h3 style="font-size:1.05rem;margin:28px 0 14px">🧑‍🤝‍🧑 페르소나별 QA 결과</h3>`;
+
+    let pgIdx = 0;
+    for (const [personaName, panels] of personaMap) {
+      const avgC = avg(panels.map(r => r.qa_result.consistency_score || 0));
+      const avgT = avg(panels.map(r => r.qa_result.trap_pass_rate || 0));
+      const avgQ = avg(panels.map(r => r.qa_result.persona_quality || 0));
+      const passN = panels.filter(r => r.qa_result.qa_passed).length;
+      const mode = panels[0].qa_result.qa_mode;
+      const pgId = `qa-pg-${pgIdx}`;
+
+      html += `<div class="qa-persona-group">`;
+
+      // 페르소나 요약 (항상 표시)
+      html += `<div class="qa-persona-summary">
+        <div class="qa-persona-summary-left">
+          <span class="qa-persona-summary-name">${esc(personaName)}</span>
+          <span class="qa-mode-badge qa-mode-badge--${mode}">${mode === 'full' ? 'Full' : 'Lite'}</span>
+        </div>
+        <div class="qa-summary" style="margin-top:10px">
+          <div class="qa-score-card"><div class="qa-s-label">평균 일관성</div><div class="qa-s-value ${qCls(avgC)}">${(avgC * 100).toFixed(0)}%</div></div>
+          <div class="qa-score-card"><div class="qa-s-label">트랩 통과율</div><div class="qa-s-value ${qCls(avgT)}">${(avgT * 100).toFixed(0)}%</div></div>
+          <div class="qa-score-card"><div class="qa-s-label">페르소나 품질</div><div class="qa-s-value ${qCls(avgQ)}">${(avgQ * 100).toFixed(0)}%</div></div>
+          <div class="qa-score-card"><div class="qa-s-label">PASS / 전체</div><div class="qa-s-value ${passN === panels.length ? 'good' : 'warn'}">${passN} / ${panels.length}</div></div>
+        </div>
+      </div>`;
+
+      // 개별 패널 리뷰 (collapsible)
+      html += `<div class="persona-card" id="pc-${pgId}">
+        <div class="persona-card-header" onclick="toggleCard('${pgId}')">
+          <span>📋 개별 패널 리뷰 (${panels.length}건)</span>
           <span class="chevron">▶</span>
         </div>
-        <div class="persona-card-body">${renderQA(r.qa_result)}</div>
-      </div>`;
-    });
-    html += `</div>`;
+        <div class="persona-card-body"><div class="persona-cards">`;
+
+      panels.forEach((r, i) => {
+        const cardId = `qa-${pgIdx}-${i}`;
+        const panelNum = r.panel_id ? String(r.panel_id).split('-').pop() : String(i + 1).padStart(2, '0');
+        html += `<div class="persona-card" id="pc-${cardId}">
+          <div class="persona-card-header" onclick="toggleCard('${cardId}')">
+            <span class="name">#${panelNum}</span>
+            <span class="qa-badge ${r.qa_result.qa_passed ? 'pass' : 'fail'}">${r.qa_result.qa_passed ? 'QA PASS' : 'QA FAIL'}</span>
+            <span class="qa-panel-quality">품질 ${(r.qa_result.persona_quality * 100).toFixed(0)}%</span>
+            <span class="chevron">▶</span>
+          </div>
+          <div class="persona-card-body">${renderQA(r.qa_result)}</div>
+        </div>`;
+      });
+
+      html += `</div></div></div>`; // persona-cards, persona-card-body, persona-card
+      html += `</div>`; // qa-persona-group
+
+      pgIdx++;
+    }
   } else {
     html += `<p style="color:#636e72">QA 데이터가 없습니다 (QA mode가 off이거나 유효 응답이 없습니다).</p>`;
   }
