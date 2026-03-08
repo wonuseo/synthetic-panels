@@ -3971,6 +3971,30 @@ select {
 }
 .foc-kpi-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
 
+/* ── L1 Step 02: Dual Column (정량 left + 정성 right) ── */
+.l1-dual-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.l1-dual-left, .l1-dual-right { min-width: 0; }
+@media (max-width: 900px) {
+  .l1-dual-col { grid-template-columns: 1fr; }
+}
+
+/* ── Segment Rank (pst-rank) ── */
+.pst-rank-th { width: 36px; text-align: center; }
+.pst-rank {
+  font-weight: 800;
+  text-align: center;
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+}
+tr:nth-child(1) .pst-rank { color: var(--primary); }
+tr:nth-child(2) .pst-rank { color: var(--primary); opacity: 0.7; }
+tr:nth-child(3) .pst-rank { color: var(--primary); opacity: 0.5; }
+
 /* ── Section 1 Step 03: Synthesis Qualitative (syn-qual-*) ── */
 .syn-qual-section { padding: 20px; }
 .syn-qual-section h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }

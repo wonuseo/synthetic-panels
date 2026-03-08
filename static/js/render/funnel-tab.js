@@ -379,21 +379,23 @@ function renderPersonaSummaryTable(funnelKey, valid) {
   }
 
   let html = `<div class="card persona-summary-table-card">`;
-  html += `<h3>👥 페르소나 요약 비교</h3>`;
+  html += `<h3>👥 세그먼트 순위</h3>`;
   html += `<div class="pst-wrap"><table class="persona-summary-tbl">`;
-  html += `<thead><tr><th>페르소나</th><th>추천</th>`;
+  html += `<thead><tr><th class="pst-rank-th">#</th><th>세그먼트</th><th>추천</th>`;
   for (const grp of groups) html += `<th>${esc(grp.label)}</th>`;
   html += `<th>전체 평균</th></tr></thead><tbody>`;
 
-  for (const { r, funnelAvg, groupAvgs } of rows) {
+  rows.forEach(({ r, funnelAvg, groupAvgs }, idx) => {
     const emoji = recEmoji(r.recommendation);
+    const rank = idx + 1;
     html += `<tr>`;
+    html += `<td class="pst-rank">${rank}</td>`;
     html += `<td class="pst-name">${esc(r.persona_name)}</td>`;
     html += `<td class="pst-emoji">${emoji}</td>`;
     for (const avg of groupAvgs) html += `<td>${scoreCell(avg)}</td>`;
     html += `<td>${scoreCell(funnelAvg)}</td>`;
     html += `</tr>`;
-  }
+  });
   html += `</tbody></table></div>`;
   html += `</div>`;
   return html;
@@ -413,48 +415,54 @@ export function renderFunnelTab(funnelKey) {
 
   let html = '';
 
-  // ── Section 1: 전체 지표 (Funnel Overview)
+  // ── L1: 퍼널 종합 (Overview — 큰 그림)
+  // 세그먼트: 퍼널 개요 | 정량: 레이더 차트 | 세그먼트 비교: 페르소나 요약 테이블
   html += hierHeader('l1', 'L1', `${esc(funnel.label.split('(')[0].trim())} 종합 분석`);
   html += `<div class="level-zone l1">`;
-  html += buildStepTrack([
+  // Step 02: 정량 (left) + 정성 (right) 2-column layout
+  const radarHtml = `<div class="card funnel-radar-card"><h3>🕸️ 퍼널 정량 지표 레이더</h3><div class="funnel-radar-wrap">${renderRadarChart(valid, funnelKey)}</div></div>`;
+  const synQualHtml = renderSynthesisQualSection(funnelKey, funnel);
+  let dualHtml = '';
+  if (synQualHtml.trim()) {
+    dualHtml = `<div class="l1-dual-col"><div class="l1-dual-left">${radarHtml}</div><div class="l1-dual-right">${synQualHtml}</div></div>`;
+  } else {
+    dualHtml = radarHtml;
+  }
+
+  const l1Steps = [
     {
       label: '퍼널 개요',
       html: renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages),
     },
     {
-      label: '종합 레이더 차트',
-      html: `<div class="card funnel-radar-card"><h3>🕸️ 퍼널 정량 지표 레이더</h3><div class="funnel-radar-wrap">${renderRadarChart(valid, funnelKey)}</div></div>`,
+      label: '정량 · 정성 종합',
+      html: dualHtml,
     },
-    {
-      label: '종합 정성 인사이트',
-      html: renderSynthesisQualSection(funnelKey, funnel),
-    },
-  ].filter(s => s.html.trim()));
+  ];
+  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
+  if (tableHtml.trim()) l1Steps.push({ label: '세그먼트 비교', html: tableHtml });
+  html += buildStepTrack(l1Steps.filter(s => s.html.trim()));
   html += `</div>`;
 
-  html += hierConnector('그룹 단위 결과');
+  html += hierConnector('세부 분석');
 
-  // ── Section 2: 그룹 단위 결과
-  html += hierHeader('l2', 'L2', '그룹 단위 결과');
+  // ── L2: 세부 분석 (Group-Level — 중간 깊이)
+  // 정량: 그룹별 bars + 편차 + best/worst
+  html += hierHeader('l2', 'L2', '세부 분석');
   html += `<div class="level-zone l2">`;
-  html += buildStepTrack(
-    groups.map(grp => ({
-      label: grp.label,
-      html: renderGroupSection(funnelKey, funnel, valid, grp),
-    })).filter(s => s.html.trim())
-  );
+  const l2Steps = groups.map(grp => ({
+    label: grp.label,
+    html: renderGroupSection(funnelKey, funnel, valid, grp),
+  })).filter(s => s.html.trim());
+  html += buildStepTrack(l2Steps);
   html += `</div>`;
 
   html += hierConnector('페르소나별 결과');
 
-  // ── Section 3: 페르소나별 결과 요약
+  // ── L3: 페르소나별 결과 (Individual — 가장 상세)
+  // 세그먼트: 개별 프로필 | 정량: 개인별 bars | 정성: 개인별 코멘트
   html += hierHeader('l3', 'L3', `페르소나별 결과 · ${esc(funnel.label.split('(')[0].trim())}`);
   html += `<div class="level-zone l3">`;
-
-  const personaSteps = [];
-
-  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
-  if (tableHtml.trim()) personaSteps.push({ label: '요약 비교', html: tableHtml });
 
   // Individual cards sorted by funnel avg
   const sortedReviews = [...state.lastReviews].sort(
@@ -498,9 +506,7 @@ export function renderFunnelTab(funnelKey) {
   });
   cardsHtml += `</div>`;
 
-  if (valid.length) personaSteps.push({ label: '개별 페르소나', html: cardsHtml });
-
-  html += buildStepTrack(personaSteps);
+  if (valid.length) html += buildStepTrack([{ label: '개별 페르소나', html: cardsHtml }]);
   html += `</div>`;
 
   $panel.innerHTML = html;
