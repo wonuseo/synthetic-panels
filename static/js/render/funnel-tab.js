@@ -413,48 +413,46 @@ export function renderFunnelTab(funnelKey) {
 
   let html = '';
 
-  // ── Section 1: 전체 지표 (Funnel Overview)
+  // ── L1: 퍼널 종합 (Overview — 큰 그림)
+  // 세그먼트: 퍼널 개요 | 정량: 레이더 차트 | 세그먼트 비교: 페르소나 요약 테이블
   html += hierHeader('l1', 'L1', `${esc(funnel.label.split('(')[0].trim())} 종합 분석`);
   html += `<div class="level-zone l1">`;
-  html += buildStepTrack([
+  const l1Steps = [
     {
       label: '퍼널 개요',
       html: renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages),
     },
     {
-      label: '종합 레이더 차트',
+      label: '정량 종합',
       html: `<div class="card funnel-radar-card"><h3>🕸️ 퍼널 정량 지표 레이더</h3><div class="funnel-radar-wrap">${renderRadarChart(valid, funnelKey)}</div></div>`,
     },
-    {
-      label: '종합 정성 인사이트',
-      html: renderSynthesisQualSection(funnelKey, funnel),
-    },
-  ].filter(s => s.html.trim()));
+  ];
+  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
+  if (tableHtml.trim()) l1Steps.push({ label: '세그먼트 비교', html: tableHtml });
+  html += buildStepTrack(l1Steps.filter(s => s.html.trim()));
   html += `</div>`;
 
-  html += hierConnector('그룹 단위 결과');
+  html += hierConnector('세부 분석');
 
-  // ── Section 2: 그룹 단위 결과
-  html += hierHeader('l2', 'L2', '그룹 단위 결과');
+  // ── L2: 세부 분석 (Group-Level — 중간 깊이)
+  // 정량: 그룹별 bars + 편차 + best/worst | 정성: 종합 정성 인사이트
+  html += hierHeader('l2', 'L2', '세부 분석');
   html += `<div class="level-zone l2">`;
-  html += buildStepTrack(
-    groups.map(grp => ({
-      label: grp.label,
-      html: renderGroupSection(funnelKey, funnel, valid, grp),
-    })).filter(s => s.html.trim())
-  );
+  const l2Steps = groups.map(grp => ({
+    label: grp.label,
+    html: renderGroupSection(funnelKey, funnel, valid, grp),
+  })).filter(s => s.html.trim());
+  const synQualHtml = renderSynthesisQualSection(funnelKey, funnel);
+  if (synQualHtml.trim()) l2Steps.push({ label: '정성 종합 인사이트', html: synQualHtml });
+  html += buildStepTrack(l2Steps);
   html += `</div>`;
 
   html += hierConnector('페르소나별 결과');
 
-  // ── Section 3: 페르소나별 결과 요약
+  // ── L3: 페르소나별 결과 (Individual — 가장 상세)
+  // 세그먼트: 개별 프로필 | 정량: 개인별 bars | 정성: 개인별 코멘트
   html += hierHeader('l3', 'L3', `페르소나별 결과 · ${esc(funnel.label.split('(')[0].trim())}`);
   html += `<div class="level-zone l3">`;
-
-  const personaSteps = [];
-
-  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
-  if (tableHtml.trim()) personaSteps.push({ label: '요약 비교', html: tableHtml });
 
   // Individual cards sorted by funnel avg
   const sortedReviews = [...state.lastReviews].sort(
@@ -498,9 +496,7 @@ export function renderFunnelTab(funnelKey) {
   });
   cardsHtml += `</div>`;
 
-  if (valid.length) personaSteps.push({ label: '개별 페르소나', html: cardsHtml });
-
-  html += buildStepTrack(personaSteps);
+  if (valid.length) html += buildStepTrack([{ label: '개별 페르소나', html: cardsHtml }]);
   html += `</div>`;
 
   $panel.innerHTML = html;
