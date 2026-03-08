@@ -193,17 +193,17 @@ export function renderQA(qa) {
   html += `<div class="qa-score-card"><div class="qa-s-label">페르소나 품질</div><div class="qa-s-value ${qCls(qa.persona_quality)}">${(qa.persona_quality * 100).toFixed(0)}%</div></div>`;
   html += `<div class="qa-score-card"><div class="qa-s-label">판정</div><div class="qa-s-value ${qa.qa_passed ? 'good' : 'bad'}">${qa.qa_passed ? 'PASS' : 'FAIL'}</div></div>`;
   html += `</div><div class="qa-detail">`;
-  html += `<div class="qa-detail-group"><h6>일관성 검증 (Core vs Replication)</h6>`;
-  html += `<div class="qa-pair"><span class="qp-label">브랜드 호감도 (Rep)</span><span class="qp-val">${qa.qa_rep_brand_attitude || '-'}</span></div>`;
+  html += `<div class="qa-detail-group"><h6>일관성 검증 — 재측정값 vs 본 응답</h6>`;
+  html += `<div class="qa-pair"><span class="qp-label">브랜드 호감도 재측정<br><span class="qp-field">qa_rep_brand_attitude ↔ brand_favorability</span></span><span class="qp-val">${qa.qa_rep_brand_attitude || '-'}</span></div>`;
   if (!isLite) {
-    html += `<div class="qa-pair"><span class="qp-label">가치 인식 (Rep)</span><span class="qp-val">${qa.qa_rep_value_perception || '-'}</span></div>`;
-    html += `<div class="qa-pair"><span class="qp-label">구매 의향 (Rep)</span><span class="qp-val">${qa.qa_rep_purchase_intent || '-'}</span></div>`;
+    html += `<div class="qa-pair"><span class="qp-label">가치 인식 재측정<br><span class="qp-field">qa_rep_value_perception ↔ value_for_money</span></span><span class="qp-val">${qa.qa_rep_value_perception || '-'}</span></div>`;
+    html += `<div class="qa-pair"><span class="qp-label">구매 의향 재측정<br><span class="qp-field">qa_rep_purchase_intent ↔ purchase_likelihood</span></span><span class="qp-val">${qa.qa_rep_purchase_intent || '-'}</span></div>`;
   }
-  html += `</div><div class="qa-detail-group"><h6>트랩 항목 (페르소나 적합성)</h6>`;
-  html += `<div class="qa-pair"><span class="qp-label">예산 민감도</span><span class="qp-val">${qa.qa_trap_budget_sensitivity || '-'}</span></div>`;
+  html += `</div><div class="qa-detail-group"><h6>트랩 항목 — 페르소나 속성 기반 예측 범위 검증</h6>`;
+  html += `<div class="qa-pair"><span class="qp-label">예산 민감도 (지출 성향 기반 예측)<br><span class="qp-field">qa_trap_budget_sensitivity</span></span><span class="qp-val">${qa.qa_trap_budget_sensitivity || '-'}</span></div>`;
   if (!isLite) {
-    html += `<div class="qa-pair"><span class="qp-label">경쟁사 충성도</span><span class="qp-val">${qa.qa_trap_competitor_loyalty || '-'}</span></div>`;
-    html += `<div class="qa-pair"><span class="qp-label">회의감 체크</span><span class="qp-val">${qa.qa_trap_skepticism_check || '-'}</span></div>`;
+    html += `<div class="qa-pair"><span class="qp-label">경쟁사 충성도 (경쟁 선호 여부 기반)<br><span class="qp-field">qa_trap_competitor_loyalty</span></span><span class="qp-val">${qa.qa_trap_competitor_loyalty || '-'}</span></div>`;
+    html += `<div class="qa-pair"><span class="qp-label">회의주의 수준 (회의주의 성향 기반)<br><span class="qp-field">qa_trap_skepticism_check</span></span><span class="qp-val">${qa.qa_trap_skepticism_check || '-'}</span></div>`;
   }
   html += `</div></div></div>`;
   return html;
