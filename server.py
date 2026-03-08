@@ -30,11 +30,35 @@ from app.llm.parse import extract_json_or_none
 from app.models.review import Review
 from app.models.persona_summary import PersonaSummary
 from app.models.qa import QAResult
+from app.core.funnel import FUNNEL_QUANT_GROUPS
 
 from zoneinfo import ZoneInfo
 
 app = FastAPI(title="Synthetic Panels")
 logger = logging.getLogger(__name__)
+
+
+def _compute_cross_persona_quant_groups(persona_summaries: list) -> dict:
+    """모든 페르소나의 funnel_quant_groups를 다시 평균하여 반환."""
+    result: dict = {}
+    for funnel_key, groups in FUNNEL_QUANT_GROUPS.items():
+        result[funnel_key] = []
+        for grp_def in groups:
+            grp_avgs = []
+            for s in persona_summaries:
+                for grp in s.funnel_quant_groups.get(funnel_key, []):
+                    if grp["label"] == grp_def["label"]:
+                        if grp["avg"] > 0:
+                            grp_avgs.append(grp["avg"])
+                        break
+            avg = round(sum(grp_avgs) / len(grp_avgs), 1) if grp_avgs else 0.0
+            result[funnel_key].append({
+                "label": grp_def["label"],
+                "sublabels": grp_def["sublabels"],
+                "avg": avg,
+                "pct": round((avg / 5) * 100),
+            })
+    return result
 _active_executors: set[ThreadPoolExecutor] = set()
 _active_executors_lock = threading.Lock()
 
@@ -551,6 +575,7 @@ async def api_review(
                     "synthesis_raw": synthesis_raw,
                     "panel_size": selected_panel_size,
                     "sampling_seed": selected_seed,
+                    "funnel_quant_group_averages": _compute_cross_persona_quant_groups(persona_summaries),
                 }),
             }
         except asyncio.CancelledError:

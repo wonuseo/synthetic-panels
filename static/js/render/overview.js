@@ -88,7 +88,7 @@ function renderFunnelDiagram(funnelAverages) {
 }
 
 /* ── Radar Chart (SVG) ── */
-function renderRadarChart(valid, funnelKey) {
+export function renderRadarChart(valid, funnelKey) {
   if (!window.funnelConfig) return '';
   const funnel = window.funnelConfig[funnelKey];
   if (!funnel) return '';

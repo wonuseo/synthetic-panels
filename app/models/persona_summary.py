@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from collections import Counter
 
+from app.core.funnel import FUNNEL_QUANT_GROUPS
+
 
 # 정량 필드 목록 (Review 모델의 _INT_FIELDS와 동일)
 _QUANT_FIELDS = [
@@ -65,6 +67,9 @@ class PersonaSummary:
     purchase_barrier: str = ""
     price_perception: str = ""
 
+    # 퍼널별 정량 그룹 평균 (Python 계산)
+    funnel_quant_groups: dict = field(default_factory=dict)
+
     # 개별 패널 리뷰 (드릴다운용)
     panel_reviews: List[dict] = field(default_factory=list)
 
@@ -82,6 +87,25 @@ class PersonaSummary:
         # 추천 분포
         recs = [r.recommendation for r in reviews if r.recommendation]
         summary.recommendation_distribution = dict(Counter(recs))
+
+        # 퍼널별 정량 그룹 평균 계산
+        fqg: dict = {}
+        for funnel_key, groups in FUNNEL_QUANT_GROUPS.items():
+            fqg[funnel_key] = []
+            for grp in groups:
+                vals = [
+                    getattr(summary, f"avg_{k}")
+                    for k in grp["keys"]
+                    if getattr(summary, f"avg_{k}", 0) > 0
+                ]
+                avg = round(sum(vals) / len(vals), 1) if vals else 0.0
+                fqg[funnel_key].append({
+                    "label": grp["label"],
+                    "sublabels": grp["sublabels"],
+                    "avg": avg,
+                    "pct": round((avg / 5) * 100),
+                })
+        summary.funnel_quant_groups = fqg
 
         # 패널 리뷰 저장
         summary.panel_reviews = [r.to_dict() for r in reviews]
@@ -102,6 +126,7 @@ class PersonaSummary:
             "panel_count": self.panel_count,
             **{f"avg_{qf}": getattr(self, f"avg_{qf}") for qf in _QUANT_FIELDS},
             "recommendation_distribution": self.recommendation_distribution,
+            "funnel_quant_groups": self.funnel_quant_groups,
             **{qf: getattr(self, qf) for qf in _QUAL_FIELDS},
             "panel_reviews": self.panel_reviews,
         }

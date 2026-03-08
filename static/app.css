@@ -3516,3 +3516,554 @@ select {
   color: var(--text-muted);
   font-weight: 400;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FUNNEL TAB — Redesigned hierarchical report
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Funnel Summary Card (L1 Step 01) ── */
+.funnel-summary-card { padding: 0; overflow: hidden; }
+.fsc-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.fsc-header.upper { border-left: 4px solid var(--upper); }
+.fsc-header.mid   { border-left: 4px solid var(--mid); }
+.fsc-header.lower { border-left: 4px solid var(--lower); }
+.fsc-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.fsc-title { font-size: var(--fs-lg); font-weight: 700; color: var(--text); }
+.fsc-score-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px; }
+.fsc-score-num { font-size: var(--fs-2xl); font-weight: 800; font-family: var(--font-mono); }
+.fsc-score-den { font-size: var(--fs-sm); color: var(--text-muted); }
+.fsc-score-pct {
+  margin-left: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-3);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+}
+.fsc-bar { height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+.fsc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+/* ── Funnel Summary Card: 2-column body ── */
+.fsc-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.fsc-col-left {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid var(--border);
+}
+.fsc-col-right {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Quantitative metric block (left column) */
+.fsc-quant-block { display: flex; flex-direction: column; gap: 5px; }
+.fsc-qb-label {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+.fsc-qb-score-row { display: flex; align-items: baseline; gap: 4px; }
+.fsc-qb-score {
+  font-size: 1.7rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.fsc-qb-denom {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.fsc-qb-pct {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.fsc-qb-bar {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.fsc-qb-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.fsc-qb-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.fsc-qb-chip {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  background: var(--surface-3);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+
+/* Qualitative items (right column) */
+.fsc-qual-item { }
+.fsc-qual-item .sq-label {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.fsc-no-syn {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font-style: italic;
+  padding-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .fsc-two-col { grid-template-columns: 1fr; }
+  .fsc-col-left { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+/* ── Funnel Insights Card (L1 Step 02) ── */
+.funnel-insights-card { padding: 20px; }
+.funnel-insights-card h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+.funnel-deviation-section { margin-top: 18px; }
+.funnel-deviation-section h5 {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.funnel-dev-list { display: flex; flex-direction: column; gap: 10px; }
+.funnel-dev-item { }
+.funnel-dev-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.funnel-dev-bar-row { display: flex; align-items: center; gap: 8px; }
+.funnel-dev-track {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.funnel-dev-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.funnel-dev-avg {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  min-width: 32px;
+}
+.funnel-dev-range {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── Funnel Radar Card (L1 Step 03) ── */
+.funnel-radar-card { padding: 20px; }
+.funnel-radar-card h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+.funnel-radar-wrap { display: flex; justify-content: center; }
+.funnel-radar-wrap .radar-chart-wrap { max-width: 480px; width: 100%; }
+
+/* ── Funnel Horizontal Bar Card (L2 Step 01) ── */
+.funnel-hbar-card { padding: 20px; }
+.funnel-hbar-card h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+.funnel-hbar-list { display: flex; flex-direction: column; gap: 10px; }
+.funnel-hbar-item { display: flex; align-items: center; gap: 10px; }
+.funnel-hbar-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  min-width: 140px;
+  max-width: 160px;
+  flex-shrink: 0;
+}
+.funnel-hbar-track {
+  flex: 1;
+  height: 10px;
+  background: var(--surface-3);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.funnel-hbar-fill { height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+.funnel-hbar-val {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  min-width: 44px;
+  text-align: right;
+}
+
+/* ── Funnel Deep-Dive Card (L2 Step 02) ── */
+.funnel-deepdive-card { padding: 20px; }
+.funnel-deepdive-card h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+
+/* ══════════════════════════════════════════════════════
+   FUNNEL TAB REDESIGN — Top-to-Bottom Report
+   ══════════════════════════════════════════════════════ */
+
+/* ── Section 1: Funnel Overview Card (foc-*) ── */
+.foc-card { padding: 0; overflow: hidden; }
+.foc-header {
+  padding: 18px 20px 14px;
+  border-left: 4px solid transparent;
+}
+.foc-header.upper { border-left-color: var(--upper); }
+.foc-header.mid   { border-left-color: var(--mid); }
+.foc-header.lower { border-left-color: var(--lower); }
+.foc-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.foc-title { font-size: var(--fs-xl); font-weight: 800; color: var(--text); }
+
+.foc-score-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 16px 20px 6px;
+}
+.foc-score-num {
+  font-size: var(--fs-3xl);
+  font-weight: 900;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.foc-score-den { font-size: var(--fs-body); color: var(--text-muted); }
+.foc-score-pct {
+  margin-left: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 2px 7px;
+  color: var(--text-muted);
+}
+.foc-bar {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 0;
+  overflow: hidden;
+  margin: 0 20px 16px;
+}
+.foc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+/* Synthesis KPI row */
+.foc-kpi-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+.foc-kpi-card {
+  flex: 1 1 140px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+.foc-kpi-label {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.foc-kpi-val {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1.1;
+}
+.foc-kpi-max { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 400; margin-left: 1px; }
+.foc-kpi-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.foc-kpi-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+
+/* ── Section 1 Step 03: Synthesis Qualitative (syn-qual-*) ── */
+.syn-qual-section { padding: 20px; }
+.syn-qual-section h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+.syn-qual-grid { display: flex; flex-direction: column; gap: 14px; }
+.syn-qual-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+}
+.syn-qual-label {
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.syn-qual-body { font-size: var(--fs-body); color: var(--text); }
+
+/* ── Section 2: Group Section Card (grp-*) ── */
+.group-section-card { padding: 0; overflow: hidden; }
+
+.grp-header {
+  padding: 16px 20px 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.grp-header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.grp-title { font-size: var(--fs-lg); font-weight: 700; flex: 1; }
+.grp-score {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+.grp-score-max { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 400; }
+.grp-pct {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 2px 7px;
+}
+.grp-bar {
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.grp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.grp-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.grp-chip {
+  font-size: var(--fs-xs);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 2px 8px;
+  color: var(--text-muted);
+}
+
+/* Group subsection common */
+.grp-subsection-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* 2b: Bars */
+.grp-bars {
+  padding: 16px 20px 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+.grp-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.grp-bar-item:last-child { margin-bottom: 0; }
+.grp-bar-label {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  min-width: 100px;
+  flex-shrink: 0;
+}
+.grp-bar-track {
+  flex: 1;
+  height: 9px;
+  background: var(--surface-3);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.grp-bar-fill-item { height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+.grp-bar-val {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  min-width: 30px;
+  text-align: right;
+}
+
+/* 2c: Deviation table */
+.grp-dev-table { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+.grp-dev-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.grp-dev-tbl thead th {
+  text-align: left;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 4px 8px 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.grp-dev-tbl tbody td {
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.grp-dev-tbl tbody tr:last-child td { border-bottom: none; }
+.grp-dev-tbl tbody td:first-child { font-family: var(--font-body); color: var(--text-muted); }
+.dev-high { color: var(--danger); font-weight: 700; }
+.dev-mid  { color: var(--warn);   font-weight: 600; }
+.dev-low  { color: var(--success); }
+
+/* 2d: Compare */
+.grp-compare { padding: 14px 20px; }
+.grp-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.grp-cmp-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.grp-cmp-best { border-top: 3px solid var(--success); }
+.grp-cmp-worst { border-top: 3px solid var(--danger); }
+.grp-cmp-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  align-self: flex-start;
+}
+.grp-cmp-badge-best { background: var(--success-dim); color: var(--success); }
+.grp-cmp-badge-worst { background: var(--danger-dim); color: var(--danger); }
+.grp-cmp-name { font-size: var(--fs-body); font-weight: 600; }
+.grp-cmp-score { font-size: var(--fs-body); font-weight: 700; font-family: var(--font-mono); }
+
+/* ── Section 3: Persona Summary Table (pst-*) ── */
+.persona-summary-table-card { padding: 20px; }
+.persona-summary-table-card h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+.pst-wrap { overflow-x: auto; }
+.persona-summary-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.persona-summary-tbl thead th {
+  text-align: left;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 6px 12px 8px 0;
+  border-bottom: 2px solid var(--border-mid);
+  white-space: nowrap;
+}
+.persona-summary-tbl thead th:first-child { min-width: 120px; }
+.persona-summary-tbl tbody td {
+  padding: 7px 12px 7px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.persona-summary-tbl tbody tr:last-child td { border-bottom: none; }
+.persona-summary-tbl tbody tr:hover { background: var(--surface-2); }
+.pst-name { font-weight: 600; }
+.pst-emoji { font-size: 1.1rem; text-align: center; }
+.tbl-score {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+}
+.tbl-score-green  { background: var(--success-dim); color: var(--success); }
+.tbl-score-yellow { background: var(--warn-dim);    color: var(--warn); }
+.tbl-score-red    { background: var(--danger-dim);  color: var(--danger); }
+
+/* ── Section 3 Step 02: Persona card group pills ── */
+.persona-group-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.grp-pill {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.grp-pill-high   { background: var(--success-dim); color: var(--success); border-color: rgba(0,184,148,.2); }
+.grp-pill-mid    { background: var(--warn-dim);    color: var(--warn);    border-color: rgba(225,112,85,.2); }
+.grp-pill-low    { background: var(--danger-dim);  color: var(--danger);  border-color: rgba(214,48,49,.2); }
+
+@media (max-width: 640px) {
+  .foc-kpi-row { flex-direction: column; }
+  .grp-compare-grid { grid-template-columns: 1fr; }
+  .persona-group-pills { display: none; }
+}
+
+/* ── L3 Persona Quantitative Grouped Bars (pqg-*) ── */
+.pqg-wrap { display: flex; flex-direction: column; gap: 18px; padding: 16px 20px; }
+.pqg-group { display: flex; flex-direction: column; gap: 8px; }
+.pqg-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--border);
+  margin-bottom: 4px;
+}
+.pqg-group-label { font-size: var(--fs-sm); font-weight: 700; color: var(--text); letter-spacing: .02em; }
+.pqg-group-score {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.pqg-score-high { color: var(--success); background: #00b89420; }
+.pqg-score-mid  { color: var(--warn);    background: #fdcb6e20; }
+.pqg-score-low  { color: var(--danger);  background: #d6336c20; }
+
+.pqg-item { display: flex; flex-direction: column; gap: 3px; }
+.pqg-label { font-size: var(--fs-xs); color: var(--text-muted); }
+.pqg-bar-row { display: flex; align-items: center; gap: 8px; }
+.pqg-bar-track {
+  flex: 1;
+  height: 7px;
+  background: var(--surface-alt, #f0f2f7);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.pqg-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+.pqg-val { font-size: var(--fs-xs); font-weight: 600; min-width: 28px; text-align: right; }

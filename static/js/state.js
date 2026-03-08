@@ -9,6 +9,7 @@ export const state = {
   lastPersonaSummaries: [],
   lastPanelReviews: [],
   surveyTemplate: [],
+  funnelQuantGroupAverages: {},
 };
 
 export const OPENAI_MODELS = ['gpt-4o-mini', 'gpt-4o'];

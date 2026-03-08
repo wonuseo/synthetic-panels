@@ -385,6 +385,7 @@ function showResults(payload) {
   state.lastPanelReviews = panel_reviews || [];
   state.lastSynthesis = synthesis;
   state.lastSynthesisRaw = synthesis_raw;
+  state.funnelQuantGroupAverages = payload.funnel_quant_group_averages || {};
 
   // Build lastReviews from persona_summaries for backward compat with overview/funnel tabs
   // Map persona summaries to review-like objects with float averages
@@ -428,6 +429,7 @@ function showResults(payload) {
     purchase_willingness: s.avg_purchase_willingness,
     repurchase_intent: s.avg_repurchase_intent,
     purchase_urgency: s.avg_purchase_urgency,
+    funnel_quant_groups: s.funnel_quant_groups || {},
     error: null,
   }));
 

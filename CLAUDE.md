@@ -15,6 +15,11 @@ pip install -r requirements.txt
 
 No test suite exists yet.
 
+## Rules
+
+### 개요(Overview) 탭 수정 금지
+`static/js/render/overview.js` 및 이 파일에만 영향을 미치는 CSS는 **수정 금지**. 프런트엔드 작업 중 개요 탭 변경이 필요하다고 판단될 경우, 직접 수정하지 말고 반드시 사용자에게 먼저 물어볼 것.
+
 ## Architecture
 
 **Synthetic Panels** is a FastAPI SPA that simulates product/service reviews from synthetic personas using Claude or OpenAI LLMs.

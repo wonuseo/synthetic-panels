@@ -1,24 +1,147 @@
 import { state } from '../state.js';
-import { esc, scaleBar, recEmoji, synMetric, renderSynValue, hierHeader, hierConnector, buildStepTrack, _scaleCls, _funnelClsMap } from './helpers.js';
-import { computeFunnelAverages } from './overview.js';
+import { esc, recEmoji, renderSynValue, hierHeader, hierConnector, buildStepTrack } from './helpers.js';
+import { computeFunnelAverages, renderRadarChart } from './overview.js';
 
-function renderScaleBarsForFunnel(r, funnelKey) {
+const _FUNNEL_COLORS = { upper: '#6c5ce7', mid: '#0984e3', lower: '#00b894' };
+
+/* 퍼널별 정량 지표 그룹 정의 */
+const _FUNNEL_QUANT_GROUPS = {
+  upper: [
+    { label: '브랜드 인지·태도', keys: ['brand_favorability', 'brand_trust', 'brand_fit'],    sublabels: ['브랜드 호감도', '브랜드 신뢰도', '브랜드 적합성'] },
+    { label: '광고 효과성',     keys: ['message_clarity', 'attention_grabbing'],              sublabels: ['메시지 명확성', '주목도'] },
+  ],
+  mid: [
+    { label: '가치 인식',  keys: ['appeal', 'value_for_money', 'price_fairness'],            sublabels: ['매력도', '가성비', '가격 적정성'] },
+    { label: '구전·정보', keys: ['info_sufficiency', 'recommendation_intent'],              sublabels: ['정보 충분성', '추천 의향'] },
+  ],
+  lower: [
+    { label: '구매 의향',    keys: ['purchase_likelihood', 'purchase_consideration', 'purchase_willingness'], sublabels: ['구매 가능성', '고려 확률', '구매 의향'] },
+    { label: '재구매·시급성', keys: ['repurchase_intent', 'purchase_urgency'],               sublabels: ['재구매 의향', '구매 시급성'] },
+  ],
+};
+
+/* ── Internal helpers ── */
+function _getNum(v) { return typeof v === 'number' ? v : parseFloat(v) || 0; }
+function _pct(v, max = 5) { return Math.round((v / max) * 100); }
+function _scoreClass(v) { return v >= 4 ? 'high' : v >= 3 ? 'mid' : 'low'; }
+
+function _computePersonaGroupAvg(r, grp) {
+  const scores = grp.keys.map(k => _getNum(r[k])).filter(v => v > 0);
+  return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+}
+
+function _computePersonaFunnelAvg(r, funnelKey) {
+  const funnel = window.funnelConfig?.[funnelKey];
+  if (!funnel) return 0;
+  const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
+  const scores = quantItems.map(i => _getNum(r[i.key])).filter(v => v > 0);
+  return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+}
+
+/* ── Individual-persona radar (single review row) ── */
+function renderPersonaRadar(r, funnelKey) {
   if (!window.funnelConfig) return '';
   const funnel = window.funnelConfig[funnelKey];
   if (!funnel) return '';
   const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
-  if (!quantItems.length) return '';
-  const cls = _scaleCls[(_funnelClsMap[funnelKey] || 0) % _scaleCls.length];
-  let html = `<div class="scale-section"><h5>📊 정량 평가 (1-5)</h5><div class="scale-grid"><div class="scale-group">`;
-  for (const item of quantItems) {
-    const val = r[item.key];
-    if (val == null) continue;
-    html += scaleBar(item.label, val, 5, cls);
+  if (quantItems.length < 3) return '';
+
+  const n = quantItems.length;
+  const cx = 150, cy = 150, R = 122;
+  const maxVal = 5;
+  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+
+  const vals = quantItems.map(item => {
+    const raw = r[item.key];
+    const num = typeof raw === 'number' ? raw : parseFloat(raw) || 0;
+    return Math.max(0, Math.min(5, num));
+  });
+
+  function polarToXY(i, val) {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+    const rr = (val / maxVal) * R;
+    return [cx + rr * Math.cos(angle), cy + rr * Math.sin(angle)];
   }
-  html += `</div></div></div>`;
-  return html;
+
+  let gridLines = '';
+  for (let level = 1; level <= 5; level++) {
+    const pts = Array.from({ length: n }, (_, i) => polarToXY(i, level).join(',')).join(' ');
+    gridLines += `<polygon points="${pts}" fill="none" stroke="#e2e6f0" stroke-width="${level === 5 ? 1.5 : 0.7}"/>`;
+  }
+
+  let axisLines = '';
+  for (let i = 0; i < n; i++) {
+    const [x, y] = polarToXY(i, maxVal);
+    axisLines += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e2e6f0" stroke-width="0.7"/>`;
+  }
+
+  const dataPoints = vals.map((v, i) => polarToXY(i, v).join(',')).join(' ');
+
+  let labels = '';
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+    const labelR = R + 42;
+    const lx = cx + labelR * Math.cos(angle);
+    const ly = cy + labelR * Math.sin(angle);
+    const lineHeight = 23;
+    const lines = _splitLabel(quantItems[i].label);
+    const startY = ly - ((lines.length - 1) * lineHeight) / 2;
+    const val = vals[i].toFixed(1);
+    labels += `<text x="${lx}" y="${startY}" text-anchor="middle" dominant-baseline="middle" class="radar-label">`;
+    labels += lines.map((line, idx) => `<tspan x="${lx}" y="${startY + idx * lineHeight}">${esc(line)}</tspan>`).join('');
+    labels += `</text>`;
+    const [px, py] = polarToXY(i, vals[i]);
+    labels += `<text x="${px}" y="${py - 8}" text-anchor="middle" class="radar-val" fill="${color}">${val}</text>`;
+  }
+
+  let dots = '';
+  for (let i = 0; i < n; i++) {
+    const [x, y] = polarToXY(i, vals[i]);
+    dots += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="white" stroke-width="1.5"/>`;
+  }
+
+  const stageAvg = vals.length ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0;
+  return `<div class="radar-chart-wrap">
+    <div class="radar-chart-title-row radar-chart-title-row--avg-only">
+      <span class="radar-chart-avg">평균 ${stageAvg.toFixed(1)}/5</span>
+    </div>
+    <svg viewBox="-90 -90 480 480" class="radar-svg">
+      ${gridLines}${axisLines}
+      <polygon points="${dataPoints}" fill="${color}20" stroke="${color}" stroke-width="2"/>
+      ${dots}${labels}
+    </svg>
+  </div>`;
 }
 
+function _splitLabel(text, maxCharsPerLine = 8, maxLines = 4) {
+  const src = String(text || '').trim();
+  if (!src) return [''];
+  const withParenBreak = src
+    .replace(/\s*\(([^)]+)\)\s*/g, '\n($1)\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+  const seed = withParenBreak.split('\n').map(s => s.trim()).filter(Boolean);
+  const wrapped = [];
+  for (const part of seed) {
+    if (part.includes(' ')) {
+      const words = part.split(/\s+/).filter(Boolean);
+      for (const w of words) {
+        if (w.length <= maxCharsPerLine) wrapped.push(w);
+        else {
+          for (let i = 0; i < w.length; i += maxCharsPerLine) wrapped.push(w.slice(i, i + maxCharsPerLine));
+        }
+      }
+      continue;
+    }
+    for (let i = 0; i < part.length; i += maxCharsPerLine) wrapped.push(part.slice(i, i + maxCharsPerLine));
+  }
+  if (wrapped.length <= maxLines) return wrapped;
+  const merged = wrapped.slice(0, maxLines);
+  merged[maxLines - 1] = `${merged[maxLines - 1]}…`;
+  return merged;
+}
+
+/* ── Qualitative items for a funnel ── */
 function renderQualItemsForFunnel(r, funnelKey) {
   if (!window.funnelConfig) return '';
   const funnel = window.funnelConfig[funnelKey];
@@ -34,6 +157,249 @@ function renderQualItemsForFunnel(r, funnelKey) {
   return `<div class="qual-section"><h5>💬 정성적 코멘트</h5><div class="qual-grid">${items}</div></div>`;
 }
 
+/* ── Section 1 Step 01: 퍼널 개요 카드 ── */
+function renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages) {
+  const fa = funnelAverages?.[funnelKey];
+  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+  const synthesis = state.lastSynthesis && !state.lastSynthesis.error ? state.lastSynthesis : null;
+
+  let html = `<div class="card foc-card">`;
+
+  // Header: funnel name + desc tags
+  html += `<div class="foc-header ${funnelKey}">`;
+  html += `<div class="foc-title-row"><span class="funnel-dot ${funnelKey}"></span><span class="foc-title">${esc(funnel.label.split('(')[0].trim())}</span></div>`;
+  if (funnel.desc_who || funnel.desc_goal || funnel.desc_metrics) {
+    html += `<div class="fcc-desc-grid" style="margin-top:8px">`;
+    if (funnel.desc_who) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">대상</span><span class="fcc-desc-val">${esc(funnel.desc_who)}</span></div>`;
+    if (funnel.desc_goal) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">목표</span><span class="fcc-desc-val">${esc(funnel.desc_goal)}</span></div>`;
+    if (funnel.desc_metrics) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">핵심 지표</span><span class="fcc-desc-val">${esc(funnel.desc_metrics)}</span></div>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // Score hero
+  if (fa) {
+    const pct = Math.round(fa.normalized * 100);
+    html += `<div class="foc-score-hero">`;
+    html += `<span class="foc-score-num" style="color:${color}">${fa.avg}</span>`;
+    html += `<span class="foc-score-den">/ ${fa.max}</span>`;
+    html += `<span class="foc-score-pct">${pct}%</span>`;
+    html += `</div>`;
+    html += `<div class="foc-bar"><div class="foc-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+/* ── L3 persona card: grouped quantitative bars ── */
+function renderPersonaQuantGrouped(r, funnelKey) {
+  const groups = _FUNNEL_QUANT_GROUPS[funnelKey] || [];
+  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+  const funnel = window.funnelConfig?.[funnelKey];
+  const funnelQuantItems = funnel ? funnel.individual_items.filter(i => i.type === 'quantitative') : [];
+  if (!groups.length) return '';
+
+  let html = `<div class="pqg-wrap">`;
+  for (const grp of groups) {
+    const grpAvg = _computePersonaGroupAvg(r, grp);
+    const cls = _scoreClass(grpAvg);
+    html += `<div class="pqg-group">`;
+    html += `<div class="pqg-group-header">`;
+    html += `<span class="pqg-group-label">${esc(grp.label)}</span>`;
+    html += `<span class="pqg-group-score pqg-score-${cls}">${grpAvg > 0 ? grpAvg.toFixed(1) : '—'}/5</span>`;
+    html += `</div>`;
+    for (const key of grp.keys) {
+      const cfg = funnelQuantItems.find(i => i.key === key);
+      const label = cfg ? cfg.label : key;
+      const val = _getNum(r[key]);
+      const pct = _pct(val);
+      html += `<div class="pqg-item">`;
+      html += `<div class="pqg-label">${esc(label)}</div>`;
+      html += `<div class="pqg-bar-row">`;
+      html += `<div class="pqg-bar-track"><div class="pqg-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+      html += `<span class="pqg-val" style="color:${color}">${val > 0 ? val.toFixed(1) : '—'}</span>`;
+      html += `</div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+/* ── Section 1 Step 03: 종합 정성 인사이트 (전체 너비) ── */
+function renderSynthesisQualSection(funnelKey, funnel) {
+  const synthesis = state.lastSynthesis && !state.lastSynthesis.error ? state.lastSynthesis : null;
+  if (!synthesis || !funnel.synthesis_items) return '';
+
+  const synQual = funnel.synthesis_items
+    .filter(item => item.type !== 'quantitative')
+    .map(item => ({ label: item.label, val: synthesis[item.key] }))
+    .filter(({ val }) => val != null && val !== '' && !(Array.isArray(val) && !val.length));
+  if (!synQual.length) return '';
+
+  let html = `<div class="card syn-qual-section">`;
+  html += `<h3>💡 종합 정성 인사이트</h3>`;
+  html += `<div class="syn-qual-grid">`;
+  for (const item of synQual) {
+    html += `<div class="syn-qual-item"><div class="syn-qual-label">${esc(item.label)}</div><div class="syn-qual-body">${renderSynValue(item.val)}</div></div>`;
+  }
+  html += `</div>`;
+  html += `</div>`;
+  return html;
+}
+
+/* ── Section 2: 그룹별 분석 카드 ── */
+function renderGroupSection(funnelKey, funnel, valid, grpDef) {
+  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+
+  // Group average (prefer server-computed value)
+  const pyGroups = state.funnelQuantGroupAverages[funnelKey] || [];
+  const pyGrp = pyGroups.find(g => g.label === grpDef.label);
+  let grpAvg = 0, grpPct = 0;
+  if (pyGrp) {
+    grpAvg = typeof pyGrp.avg === 'number' ? pyGrp.avg : parseFloat(pyGrp.avg) || 0;
+    grpPct = pyGrp.pct ?? _pct(grpAvg);
+  } else {
+    const scores = valid.flatMap(r => grpDef.keys.map(k => _getNum(r[k]))).filter(v => v > 0);
+    grpAvg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    grpPct = _pct(grpAvg);
+  }
+
+  // Map keys to labels from funnelConfig
+  const funnelQuantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
+  const grpItems = grpDef.keys.map(k => {
+    const cfg = funnelQuantItems.find(i => i.key === k);
+    return { key: k, label: cfg ? cfg.label : k };
+  });
+
+  // Compute per-item stats
+  const itemStats = grpItems.map(item => {
+    const scores = valid.map(r => _getNum(r[item.key])).filter(v => v > 0);
+    if (!scores.length) return null;
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const minV = Math.min(...scores);
+    const maxV = Math.max(...scores);
+    return { label: item.label, avg, pct: _pct(avg), minV, maxV, deviation: maxV - minV };
+  }).filter(Boolean);
+
+  let html = `<div class="card group-section-card">`;
+
+  // 2a: Group header
+  html += `<div class="grp-header">`;
+  html += `<div class="grp-header-top">`;
+  html += `<span class="grp-title">${esc(grpDef.label)}</span>`;
+  html += `<span class="grp-score" style="color:${color}">${grpAvg.toFixed(1)}<span class="grp-score-max">/5</span></span>`;
+  html += `<span class="grp-pct">${grpPct}%</span>`;
+  html += `</div>`;
+  html += `<div class="grp-bar"><div class="grp-bar-fill" style="width:${grpPct}%;background:${color}"></div></div>`;
+  html += `<div class="grp-chips">`;
+  for (const sl of (grpDef.sublabels || [])) html += `<span class="grp-chip">${esc(sl)}</span>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  if (itemStats.length) {
+    // 2b: Horizontal bar chart
+    html += `<div class="grp-bars">`;
+    html += `<div class="grp-subsection-title">항목별 평균</div>`;
+    for (const item of itemStats) {
+      html += `<div class="grp-bar-item">`;
+      html += `<div class="grp-bar-label">${esc(item.label)}</div>`;
+      html += `<div class="grp-bar-track"><div class="grp-bar-fill-item" style="width:${item.pct}%;background:${color}"></div></div>`;
+      html += `<span class="grp-bar-val" style="color:${color}">${item.avg.toFixed(1)}</span>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+
+    // 2c: Deviation stats table
+    html += `<div class="grp-dev-table">`;
+    html += `<div class="grp-subsection-title">📐 항목별 편차</div>`;
+    html += `<table class="grp-dev-tbl"><thead><tr><th>항목</th><th>평균</th><th>최소</th><th>최대</th><th>편차</th></tr></thead><tbody>`;
+    for (const item of itemStats) {
+      const devClass = item.deviation >= 2 ? 'dev-high' : item.deviation >= 1 ? 'dev-mid' : 'dev-low';
+      html += `<tr>`;
+      html += `<td>${esc(item.label)}</td>`;
+      html += `<td style="color:${color}">${item.avg.toFixed(1)}</td>`;
+      html += `<td>${item.minV.toFixed(1)}</td>`;
+      html += `<td>${item.maxV.toFixed(1)}</td>`;
+      html += `<td class="${devClass}">${item.deviation.toFixed(1)}</td>`;
+      html += `</tr>`;
+    }
+    html += `</tbody></table>`;
+    html += `</div>`;
+  }
+
+  // 2d: Best vs Worst personas for this group
+  if (valid.length >= 2) {
+    const scored = valid
+      .map(r => ({ r, avg: _computePersonaGroupAvg(r, grpDef) }))
+      .filter(x => x.avg > 0)
+      .sort((a, b) => b.avg - a.avg);
+
+    if (scored.length >= 2) {
+      const best = scored[0];
+      const worst = scored[scored.length - 1];
+      html += `<div class="grp-compare">`;
+      html += `<div class="grp-subsection-title">🔍 세그먼트 비교</div>`;
+      html += `<div class="grp-compare-grid">`;
+      html += `<div class="grp-cmp-cell grp-cmp-best">`;
+      html += `<span class="grp-cmp-badge grp-cmp-badge-best">Best</span>`;
+      html += `<span class="grp-cmp-name">${esc(best.r.persona_name)}</span>`;
+      html += `<span class="grp-cmp-score" style="color:${color}">${best.avg.toFixed(1)}/5</span>`;
+      html += `</div>`;
+      html += `<div class="grp-cmp-cell grp-cmp-worst">`;
+      html += `<span class="grp-cmp-badge grp-cmp-badge-worst">Low</span>`;
+      html += `<span class="grp-cmp-name">${esc(worst.r.persona_name)}</span>`;
+      html += `<span class="grp-cmp-score" style="color:var(--danger)">${worst.avg.toFixed(1)}/5</span>`;
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+/* ── Section 3 Step 01: 페르소나 요약 테이블 ── */
+function renderPersonaSummaryTable(funnelKey, valid) {
+  if (!valid.length) return '';
+  const groups = _FUNNEL_QUANT_GROUPS[funnelKey] || [];
+
+  const rows = valid.map(r => {
+    const funnelAvg = _computePersonaFunnelAvg(r, funnelKey);
+    const groupAvgs = groups.map(grp => _computePersonaGroupAvg(r, grp));
+    return { r, funnelAvg, groupAvgs };
+  }).sort((a, b) => b.funnelAvg - a.funnelAvg);
+
+  function scoreCell(v) {
+    const cls = v >= 4 ? 'tbl-score-green' : v >= 3 ? 'tbl-score-yellow' : 'tbl-score-red';
+    return `<span class="tbl-score ${cls}">${v > 0 ? v.toFixed(1) : '—'}</span>`;
+  }
+
+  let html = `<div class="card persona-summary-table-card">`;
+  html += `<h3>👥 페르소나 요약 비교</h3>`;
+  html += `<div class="pst-wrap"><table class="persona-summary-tbl">`;
+  html += `<thead><tr><th>페르소나</th><th>추천</th>`;
+  for (const grp of groups) html += `<th>${esc(grp.label)}</th>`;
+  html += `<th>전체 평균</th></tr></thead><tbody>`;
+
+  for (const { r, funnelAvg, groupAvgs } of rows) {
+    const emoji = recEmoji(r.recommendation);
+    html += `<tr>`;
+    html += `<td class="pst-name">${esc(r.persona_name)}</td>`;
+    html += `<td class="pst-emoji">${emoji}</td>`;
+    for (const avg of groupAvgs) html += `<td>${scoreCell(avg)}</td>`;
+    html += `<td>${scoreCell(funnelAvg)}</td>`;
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  html += `</div>`;
+  return html;
+}
+
+/* ── Main export ── */
 export function renderFunnelTab(funnelKey) {
   const $panel = document.getElementById('tab-' + funnelKey);
   if (!window.funnelConfig || !window.funnelConfig[funnelKey]) {
@@ -42,92 +408,100 @@ export function renderFunnelTab(funnelKey) {
   }
   const funnel = window.funnelConfig[funnelKey];
   const valid = state.lastReviews.filter(r => !r.error);
+  const funnelAverages = computeFunnelAverages(valid);
+  const groups = _FUNNEL_QUANT_GROUPS[funnelKey] || [];
+
   let html = '';
 
-  html += `<div class="funnel-tab-header">`;
-  html += `<div class="funnel-tab-title"><span class="funnel-dot ${funnelKey}" style="display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0"></span>${esc(funnel.label)}</div>`;
-  if (funnel.desc_who || funnel.desc_goal || funnel.desc_metrics) {
-    html += `<div class="fcc-desc-grid">`;
-    if (funnel.desc_who) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">대상</span><span class="fcc-desc-val">${esc(funnel.desc_who)}</span></div>`;
-    if (funnel.desc_goal) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">목표</span><span class="fcc-desc-val">${esc(funnel.desc_goal)}</span></div>`;
-    if (funnel.desc_metrics) html += `<div class="fcc-desc-item"><span class="fcc-desc-tag">핵심 지표</span><span class="fcc-desc-val">${esc(funnel.desc_metrics)}</span></div>`;
-    html += `</div>`;
-  }
+  // ── Section 1: 전체 지표 (Funnel Overview)
+  html += hierHeader('l1', 'L1', `${esc(funnel.label.split('(')[0].trim())} 종합 분석`);
+  html += `<div class="level-zone l1">`;
+  html += buildStepTrack([
+    {
+      label: '퍼널 개요',
+      html: renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages),
+    },
+    {
+      label: '종합 레이더 차트',
+      html: `<div class="card funnel-radar-card"><h3>🕸️ 퍼널 정량 지표 레이더</h3><div class="funnel-radar-wrap">${renderRadarChart(valid, funnelKey)}</div></div>`,
+    },
+    {
+      label: '종합 정성 인사이트',
+      html: renderSynthesisQualSection(funnelKey, funnel),
+    },
+  ].filter(s => s.html.trim()));
   html += `</div>`;
 
-  if (state.lastSynthesis && !state.lastSynthesis.error) {
-    const synQuant = [], synQual = [], synCat = [];
-    for (const item of funnel.synthesis_items) {
-      const val = state.lastSynthesis[item.key];
-      if (val == null || val === '' || (Array.isArray(val) && !val.length)) continue;
-      if (item.type === 'quantitative' && typeof val === 'number') {
-        synQuant.push({ label: item.label, val, suffix: '/5' });
-      } else if (item.type === 'categorical') {
-        synCat.push({ label: item.label, val });
-      } else {
-        synQual.push({ label: item.label, val });
-      }
-    }
-    if (synQuant.length || synQual.length || synCat.length) {
-      html += hierHeader('l1', 'L1', '통합 분석');
-      html += `<div class="level-zone l1">`;
+  html += hierConnector('그룹 단위 결과');
 
-      const synthSteps = [];
-      if (synQuant.length) {
-        let qHtml = `<div class="syn-metrics">`;
-        for (const m of synQuant) qHtml += synMetric(m.label, m.val, m.suffix);
-        qHtml += `</div>`;
-        synthSteps.push({ label: '정량 지표', html: qHtml });
-      }
-      if (synQual.length) {
-        let qualHtml = `<div class="syn-qual"><h4>💬 정성적 분석</h4>`;
-        for (const item of synQual)
-          qualHtml += `<div class="syn-qual-item"><div class="sq-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
-        qualHtml += `</div>`;
-        synthSteps.push({ label: '정성적 분석', html: qualHtml });
-      }
-      if (synCat.length) {
-        let catHtml = `<div class="syn-decision"><h4>📋 의사결정 지원</h4>`;
-        for (const item of synCat)
-          catHtml += `<div class="syn-decision-item"><div class="d-label">${esc(item.label)}</div>${renderSynValue(item.val)}</div>`;
-        catHtml += `</div>`;
-        synthSteps.push({ label: '의사결정 지원', html: catHtml });
-      }
-
-      html += `<div class="synthesis"><h3>📊 통합 분석</h3>`;
-      html += buildStepTrack(synthSteps, true);
-      html += `</div>`;
-      html += `</div>`;
-      html += hierConnector('개별 페르소나');
-    }
-  }
-
-  html += hierHeader('l2', 'L2', `개별 페르소나 · ${esc(funnel.label.split('(')[0].trim())}`);
+  // ── Section 2: 그룹 단위 결과
+  html += hierHeader('l2', 'L2', '그룹 단위 결과');
   html += `<div class="level-zone l2">`;
-  html += `<div class="persona-cards">`;
-  [...state.lastReviews].sort((a, b) => (b.appeal || 0) - (a.appeal || 0)).forEach((r, i) => {
+  html += buildStepTrack(
+    groups.map(grp => ({
+      label: grp.label,
+      html: renderGroupSection(funnelKey, funnel, valid, grp),
+    })).filter(s => s.html.trim())
+  );
+  html += `</div>`;
+
+  html += hierConnector('페르소나별 결과');
+
+  // ── Section 3: 페르소나별 결과 요약
+  html += hierHeader('l3', 'L3', `페르소나별 결과 · ${esc(funnel.label.split('(')[0].trim())}`);
+  html += `<div class="level-zone l3">`;
+
+  const personaSteps = [];
+
+  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
+  if (tableHtml.trim()) personaSteps.push({ label: '요약 비교', html: tableHtml });
+
+  // Individual cards sorted by funnel avg
+  const sortedReviews = [...state.lastReviews].sort(
+    (a, b) => _computePersonaFunnelAvg(b, funnelKey) - _computePersonaFunnelAvg(a, funnelKey)
+  );
+
+  let cardsHtml = `<div class="persona-cards">`;
+  sortedReviews.forEach((r, i) => {
     const idx = `${funnelKey}-${i}`;
     const emoji = recEmoji(r.recommendation);
-    const score = typeof r.appeal === 'number' ? r.appeal : parseFloat(r.appeal) || 0;
-    const cls = score >= 4 ? 'high' : score >= 3 ? 'mid' : 'low';
-    const scoreDisplay = Number.isInteger(score) ? score : score.toFixed(1);
-    const cardSteps = [
-      { label: '정량 평가',   html: renderScaleBarsForFunnel(r, funnelKey) },
-      { label: '정성 코멘트', html: renderQualItemsForFunnel(r, funnelKey) },
+    const funnelAvg = _computePersonaFunnelAvg(r, funnelKey);
+    const cls = _scoreClass(funnelAvg);
+    const scoreDisplay = funnelAvg > 0 ? funnelAvg.toFixed(1) : '—';
+
+    const groupPills = groups.map(grp => {
+      const avg = _computePersonaGroupAvg(r, grp);
+      const pillCls = _scoreClass(avg);
+      const shortLabel = grp.label.length > 8 ? grp.label.substring(0, 8) + '…' : grp.label;
+      return `<span class="grp-pill grp-pill-${pillCls}">${esc(shortLabel)} ${avg > 0 ? avg.toFixed(1) : '—'}</span>`;
+    }).join('');
+
+    const quantHtml = renderPersonaQuantGrouped(r, funnelKey);
+    const qualHtml = renderQualItemsForFunnel(r, funnelKey);
+    const cardInnerSteps = [
+      { label: '그룹별 정량 평가', html: quantHtml },
+      { label: '정성 코멘트', html: qualHtml },
     ].filter(s => s.html.trim());
-    html += `<div class="persona-card" id="pc-${idx}">
+
+    cardsHtml += `<div class="persona-card" id="pc-${idx}">
       <div class="persona-card-header" onclick="toggleCard('${idx}')">
         <span class="emoji">${emoji}</span>
         <span class="name">${esc(r.persona_name)}</span>
         <span class="score-badge ${cls}">${scoreDisplay}/5</span>
+        <span class="persona-group-pills">${groupPills}</span>
         <span class="chevron">▶</span>
       </div>
       <div class="persona-card-body">
-        ${cardSteps.length ? buildStepTrack(cardSteps, true) : ''}
+        ${cardInnerSteps.length ? buildStepTrack(cardInnerSteps, true) : ''}
       </div>
     </div>`;
   });
+  cardsHtml += `</div>`;
+
+  if (valid.length) personaSteps.push({ label: '개별 페르소나', html: cardsHtml });
+
+  html += buildStepTrack(personaSteps);
   html += `</div>`;
-  html += `</div>`;
+
   $panel.innerHTML = html;
 }

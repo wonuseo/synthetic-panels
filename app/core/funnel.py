@@ -154,6 +154,22 @@ def _init_scales_cache():
 _init_scales_cache()
 
 
+FUNNEL_QUANT_GROUPS: dict = {
+    "upper": [
+        {"label": "브랜드 인지·태도", "keys": ["brand_favorability", "brand_trust", "brand_fit"],    "sublabels": ["브랜드 호감도", "브랜드 신뢰도", "브랜드 적합성"]},
+        {"label": "광고 효과성",     "keys": ["message_clarity", "attention_grabbing"],              "sublabels": ["메시지 명확성", "주목도"]},
+    ],
+    "mid": [
+        {"label": "가치 인식",  "keys": ["appeal", "value_for_money", "price_fairness"],            "sublabels": ["매력도", "가성비", "가격 적정성"]},
+        {"label": "구전·정보", "keys": ["info_sufficiency", "recommendation_intent"],              "sublabels": ["정보 충분성", "추천 의향"]},
+    ],
+    "lower": [
+        {"label": "구매 의향",    "keys": ["purchase_likelihood", "purchase_consideration", "purchase_willingness"], "sublabels": ["구매 가능성", "고려 확률", "구매 의향"]},
+        {"label": "재구매·시급성", "keys": ["repurchase_intent", "purchase_urgency"],               "sublabels": ["재구매 의향", "구매 시급성"]},
+    ],
+}
+
+
 def get_funnel_groups() -> dict:
     """프론트엔드용: {funnel_name: {label, description, individual_items, synthesis_items, qa_items}} 형태
     overall 섹션도 포함."""
