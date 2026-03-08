@@ -91,6 +91,68 @@ export const DEMO_FUNNEL_CONFIG = {
 function _j(i, amp) { return Math.round(Math.sin(i * 1.3 + amp) * amp); }
 function _c(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
+/* ── QA 결과 생성 헬퍼 ── */
+// seed 기반 결정론적 jitter (기존 _j와 다른 주파수 사용)
+function _qj(i, seed, amp) { return Math.round(Math.sin(i * 2.1 + seed) * amp); }
+
+/**
+ * QA 결과 생성
+ * @param {'lite'|'full'} mode
+ * @param {number} i - 패널 인덱스
+ * @param {object} panel - 패널 데이터
+ * @param {object} cfg - 페르소나 QA 설정
+ *   cfg.budgetLo/Hi  : 예산 민감도 예상 범위
+ *   cfg.competitorLo/Hi : 경쟁사 충성도 예상 범위  (full only)
+ *   cfg.skepticismLo/Hi : 회의감 체크 예상 범위    (full only)
+ *   cfg.repNoise     : 재확인 항목 노이즈 진폭 (0.5=정밀, 1=±1, 1.3=불안정)
+ */
+function _mkQAResult(mode, i, panel, cfg) {
+  // 일관성 검증 (Replication): core 값에 noise 추가
+  const repBA = _c(panel.brand_favorability + _qj(i, 37, cfg.repNoise), 1, 5);
+  const repVP = mode === 'full' ? _c(panel.value_for_money   + _qj(i, 41, cfg.repNoise), 1, 5) : null;
+  const repPI = mode === 'full' ? _c(panel.purchase_likelihood + _qj(i, 43, cfg.repNoise), 1, 5) : null;
+
+  // 일관성 점수: 재확인-핵심 차이의 평균을 최대 차이(4)로 정규화
+  const pairs = [[repBA, panel.brand_favorability]];
+  if (repVP !== null) pairs.push([repVP, panel.value_for_money]);
+  if (repPI !== null) pairs.push([repPI, panel.purchase_likelihood]);
+  const totalDiff = pairs.reduce((s, [a, b]) => s + Math.abs(a - b), 0);
+  const consistency_score = Math.round(Math.max(0, 1 - totalDiff / (pairs.length * 4)) * 100) / 100;
+
+  // 트랩 항목: 예상 범위 내 값 생성 (mid ± noise)
+  const _trap = (lo, hi, seed) => {
+    const mid = (lo + hi) / 2;
+    const v = _c(Math.round(mid + _qj(i, seed, 0.9)), 1, 5);
+    return { val: v, pass: v >= lo && v <= hi };
+  };
+
+  const bt = _trap(cfg.budgetLo, cfg.budgetHi, 47);
+  const ct = mode === 'full' ? _trap(cfg.competitorLo, cfg.competitorHi, 53) : null;
+  const sk = mode === 'full' ? _trap(cfg.skepticismLo, cfg.skepticismHi, 59) : null;
+
+  const trapsAll = [bt, ct, sk].filter(Boolean);
+  const trap_pass_rate = Math.round(trapsAll.filter(t => t.pass).length / trapsAll.length * 100) / 100;
+  const persona_quality = Math.round((0.5 * consistency_score + 0.5 * trap_pass_rate) * 100) / 100;
+
+  return {
+    qa_mode: mode,
+    qa_rep_brand_attitude:    repBA,
+    qa_rep_value_perception:  repVP,
+    qa_rep_purchase_intent:   repPI,
+    qa_trap_budget_sensitivity:   bt.val,
+    qa_trap_competitor_loyalty:   ct?.val ?? null,
+    qa_trap_skepticism_check:     sk?.val ?? null,
+    consistency_score,
+    trap_pass_rate,
+    persona_quality,
+    qa_passed: persona_quality >= 0.7,
+  };
+}
+
+function _addQA(panels, mode, cfg) {
+  return panels.map((panel, i) => ({ ...panel, qa_result: _mkQAResult(mode, i, panel, cfg) }));
+}
+
 function _mkPanels(prefix, name, base, recs, emotionalResponses, overallImpressions, reviewSummaries) {
   return Array.from({ length: 25 }, (_, i) => ({
     panel_id:                prefix + '-' + String(i + 1).padStart(2, '0'),
@@ -258,8 +320,23 @@ const _frPanels = _mkPanels('FR', '파이어족 미니멀리스트',
   ],
 );
 
+/* ── QA 설정: 페르소나별 예상 범위 ── */
+// 트렌드세터 MZ: 가격 무감각(고지출), 경쟁사 선호 없음, 회의주의 낮음 → Full mode
+const _MZ_QA = { budgetLo: 4, budgetHi: 5, competitorLo: 3, competitorHi: 5, skepticismLo: 3, skepticismHi: 5, repNoise: 0.5 };
+// 실용주의 워킹맘: 중간 가격민감도, 일부 경쟁사 선호, 중간 회의주의 → Full mode
+const _WM_QA = { budgetLo: 2, budgetHi: 4, competitorLo: 1, competitorHi: 3, skepticismLo: 2, skepticismHi: 4, repNoise: 1 };
+// 절약형 주부: 높은 가격민감도, 경쟁사 강한 선호, 높은 회의주의 → Lite mode
+const _FH_QA = { budgetLo: 1, budgetHi: 2, competitorLo: 1, competitorHi: 2, skepticismLo: 1, skepticismHi: 2, repNoise: 1 };
+// 파이어족: 높은 가격민감도, 경쟁사 없음(미니멀), 높은 회의주의 → Lite mode
+const _FR_QA = { budgetLo: 1, budgetHi: 2, competitorLo: 3, competitorHi: 5, skepticismLo: 1, skepticismHi: 2, repNoise: 1.3 };
+
+const _mzQA = _addQA(_mzPanels, 'full', _MZ_QA);
+const _wmQA = _addQA(_wmPanels, 'full', _WM_QA);
+const _fhQA = _addQA(_fhPanels, 'lite', _FH_QA);
+const _frQA = _addQA(_frPanels, 'lite', _FR_QA);
+
 export const DEMO_PERSONA_SUMMARIES = [
-  _mkSummary('mz', _mzPanels, {
+  _mkSummary('mz', _mzQA, {
     overall_impression: '인스타에 바로 올리고 싶은 감성. 트렌디하고 세련된 브랜드 비주얼이 인상적입니다.',
     emotional_response: '두근거리는 설렘과 소유욕. "이 브랜드는 나를 위한 것"이라는 강한 동일시.',
     perceived_message: '나만의 라이프스타일을 완성해주는 감성 브랜드',
@@ -273,7 +350,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     price_perception: '감성 대비 합리적이라고 느끼나 좀 더 저렴하면 망설임 없이 구매.',
     review_summary: '핵심 타겟 페르소나. 높은 브랜드 공감도와 즉각적 구매 의향으로 전환율 극대화 예상.',
   }),
-  _mkSummary('wm', _wmPanels, {
+  _mkSummary('wm', _wmQA, {
     overall_impression: '실용적이고 깔끔한 종합 인상. 바쁜 워킹맘 입장에서 간편함이 눈에 띄어요.',
     emotional_response: '실용성에 대한 기대와 가격에 대한 망설임이 공존하는 중립적 감정.',
     perceived_message: '바쁜 현대인을 위한 효율적 솔루션 브랜드',
@@ -287,7 +364,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     price_perception: '가격이 약간 높다고 느낌. 할인 혜택이 있으면 구매 고려 가능.',
     review_summary: '실용성 검증 후 전환 가능한 세그먼트. 가격 프로모션과 사용 후기가 핵심 전환 요소.',
   }),
-  _mkSummary('fh', _fhPanels, {
+  _mkSummary('fh', _fhQA, {
     overall_impression: '비싸 보이는데 왜 사야 하는지 모르겠어요. 같은 돈으로 더 실속 있는 걸 살 수 있어요.',
     emotional_response: '거부감과 불필요함. 마케팅에 속는 것 같다는 불쾌함.',
     perceived_message: '고가 사치품 이미지로 인식. 실속 있는 가치 메시지가 전달되지 않음.',
@@ -301,7 +378,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     price_perception: '완전히 과대 책정된 가격. 현재 가격의 절반이어도 망설일 것 같음.',
     review_summary: '비타겟 고객군. 마케팅 비용 투자 대비 ROI 낮음. 이 세그먼트는 제외 권고.',
   }),
-  _mkSummary('fr', _frPanels, {
+  _mkSummary('fr', _frQA, {
     overall_impression: '미니멀한 삶을 추구하는 입장에서 정말 필요한가 먼저 따져봅니다.',
     emotional_response: '냉정한 이성적 판단과 약간의 소비 충동 사이의 갈등. 결국 억제 쪽으로.',
     perceived_message: '불필요한 소비를 자극하는 브랜드로 인식될 위험 있음.',
@@ -317,7 +394,7 @@ export const DEMO_PERSONA_SUMMARIES = [
   }),
 ];
 
-export const DEMO_PANEL_REVIEWS = [..._mzPanels, ..._wmPanels, ..._fhPanels, ..._frPanels];
+export const DEMO_PANEL_REVIEWS = [..._mzQA, ..._wmQA, ..._fhQA, ..._frQA];
 
 export const DEMO_SYNTHESIS = {
   // Overall
