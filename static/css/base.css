@@ -1,0 +1,151 @@
+/* ═══════════════════════════════════════════════════════════
+   SYNTHETIC PANELS — UI Design System
+   Palette  : PANTONE 485C Red · 425C Grey · Black · 877C Silver · 8003C Gold
+   Typefaces : Noto Sans KR (body/KO) · JetBrains Mono (data)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Variables ── */
+:root {
+  /* ── PANTONE Brand Palette ──────────────────────────────── */
+  --red:    #DA291C;   /* PANTONE 485C  · R218 G41  B28  */
+  --grey:   #54585A;   /* PANTONE 425C  · R84  G88  B90  */
+  --black:  #1A1A1A;   /* PANTONE Black · near-black      */
+  --silver: #A2A5A7;   /* PANTONE 877C  · metallic approx */
+  --gold:   #877669;   /* PANTONE 8003C · R135 G118 B105  */
+
+  /* ── Backgrounds (silver/gold-tinted neutrals) ── */
+  --bg:        #F4F3F1;   /* warm silver off-white         */
+  --surface:   #FFFFFF;
+  --surface-2: #F9F8F7;   /* faint gold warmth             */
+  --surface-3: #EEEDEB;
+
+  /* ── Borders (grey-derived) ── */
+  --border:     #E1E2E2;   /* grey @ 18% on white           */
+  --border-mid: #BCBDBF;   /* grey @ 40% on white           */
+
+  /* ── Brand Accent = Gold ── */
+  --accent:      #877669;
+  --accent-2:    #A09383;   /* light gold tint for gradients   */
+  --accent-dim:  rgba(135, 118, 105, 0.08);
+  --accent-glow: rgba(135, 118, 105, 0.20);
+
+  /* ── Funnel Semantic Colors ── */
+  --upper:     #DA291C;                   /* Brand/Awareness : Red  */
+  --upper-dim: rgba(218, 41, 28, 0.10);
+  --mid:       #877669;                   /* Demand          : Gold */
+  --mid-dim:   rgba(135, 118, 105, 0.12);
+  --lower:     #54585A;                   /* Conversion      : Grey */
+  --lower-dim: rgba(84, 88, 90, 0.12);
+
+  /* ── Status Colors ── */
+  --success:     #877669;                  /* Gold   = high/achieved */
+  --success-dim: rgba(135, 118, 105, 0.10);
+  --warn:        #A2A5A7;                  /* Silver = mid/neutral   */
+  --warn-dim:    rgba(162, 165, 167, 0.14);
+  --danger:      #DA291C;                  /* Red    = low/critical  */
+  --danger-dim:  rgba(218, 41, 28, 0.10);
+
+  /* ── Text ── */
+  --text:       #1A1A1A;   /* PANTONE Black */
+  --text-muted: #54585A;   /* PANTONE Grey  */
+  --text-faint: #A2A5A7;   /* PANTONE Silver */
+
+  --radius-xs: 5px;
+  --radius-sm: 9px;
+  --radius-md: 13px;
+  --radius-lg: 18px;
+
+  --shadow-xs: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.09), 0 1px 4px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 20px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.05);
+
+  --font-body: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Type scale — 8 steps aligned to content hierarchy ──
+     3xl  : hero score numbers           (2.4rem)
+     2xl  : display metric values        (1.6rem)
+     xl   : page / tab titles            (1.25rem)
+     lg   : card / section headings      (0.95rem)
+     body : primary reading text         (0.9375rem)
+     sm   : secondary / supporting text  (0.85rem)
+     label: field labels, sub-headers    (0.775rem)
+     xs   : micro captions, mono tags    (0.7rem)
+  ── */
+  --fs-3xl:   2.4rem;
+  --fs-2xl:   1.6rem;
+  --fs-xl:    1.25rem;
+  --fs-lg:    0.95rem;
+  --fs-body:  0.9375rem;
+  --fs-sm:    0.85rem;
+  --fs-label: 0.775rem;
+  --fs-xs:    0.7rem;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Base ── */
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ── */
+.app {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 32px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(135,118,105,.15);
+  border-radius: var(--radius-sm);
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.version-info {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs) !important;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 3px 8px;
+}
+

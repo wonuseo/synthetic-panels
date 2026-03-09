@@ -1,0 +1,162 @@
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+/* ── Page entry animation ── */
+#page-upload  { animation: pageIn 0.35s ease both; }
+#page-results { animation: pageIn 0.35s ease both; }
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HIERARCHICAL REPORT STRUCTURE — L1 / L2 / L3
+   Three visually distinct levels with decreasing prominence.
+   L1 → dominant accent zone
+   L2 → secondary tinted zone, indented
+   L3 → tertiary muted zone, further indented
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Section headers: level-aware banners ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* L1: dominant — strong accent left border, gradient background */
+.section-header.l1 {
+  margin: 52px 0 22px;
+  padding: 13px 22px;
+  background: linear-gradient(to right, rgba(135,118,105,.09) 0%, rgba(135,118,105,.03) 60%, transparent 100%);
+  border-left: 4px solid var(--accent);
+}
+.section-header.l1:first-child { margin-top: 0; }
+
+/* L2: secondary — medium border, light tint */
+.section-header.l2 {
+  margin: 40px 0 18px;
+  padding: 10px 18px;
+  background: var(--surface-2);
+  border-left: 3px solid rgba(135,118,105,.35);
+}
+
+/* L3: tertiary — thin border, minimal */
+.section-header.l3 {
+  margin: 28px 0 14px;
+  padding: 8px 14px;
+  border-left: 2px solid var(--border-mid);
+}
+
+/* ── Level badges: scale with level ── */
+.section-level {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.section-level.l1 {
+  font-size: 0.67rem;
+  padding: 5px 14px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(135,118,105,.28);
+}
+.section-level.l2 {
+  font-size: var(--fs-xs);
+  padding: 4px 11px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(135, 118, 105, .22);
+}
+.section-level.l3 {
+  font-size: 0.6rem;
+  padding: 3px 9px;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+/* ── Section title: scale with level ── */
+.section-title-text {
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.section-header.l1 .section-title-text {
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+  color: rgba(135,118,105,.85);
+}
+.section-header.l2 .section-title-text {
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.section-header.l3 .section-title-text {
+  font-size: var(--fs-label);
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+/* Horizontal rule fills remaining space */
+.section-line {
+  flex: 1;
+  height: 1px;
+}
+.section-header.l1 .section-line { background: rgba(135,118,105,.2); }
+.section-header.l2 .section-line { background: rgba(135,118,105,.1); }
+.section-header.l3 .section-line { background: var(--border); }
+
+/* ── Content zones (wrap each L-section's content) ── */
+.level-zone { position: relative; }
+.level-zone.l2 {
+  padding-left: 18px;
+  border-left: 1px dashed var(--border);
+  margin-left: 4px;
+}
+
+/* ── Level connector: pill bridge between zones ── */
+.level-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-left: 4px;
+  margin: 16px 0 4px;
+}
+.connector-line {
+  width: 2px;
+  height: 32px;
+  background: linear-gradient(to bottom, rgba(135,118,105,.3) 0%, rgba(135,118,105,.08) 100%);
+  margin-left: 20px;
+}
+.connector-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 20px;
+  padding: 5px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  margin-left: 8px;
+}
+.connector-arrow-icon {
+  font-size: 0.6rem;
+  color: var(--accent);
+  line-height: 1;
+}
+.connector-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
