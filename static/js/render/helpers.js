@@ -209,6 +209,33 @@ export function renderQA(qa) {
   return html;
 }
 
+/**
+ * Renders a qual-section block from an array of {label, key} items and a review object.
+ * Used by individual.js (all funnels) and funnel-tab.js (single funnel).
+ */
+export function renderQualGrid(qualItems, r, title = '💬 정성적 코멘트') {
+  let items = '';
+  for (const item of qualItems) {
+    const val = r[item.key];
+    if (!val) continue;
+    items += `<div class="qual-item"><div class="qual-label">${esc(item.label)}</div><div class="qual-text">${renderSynValue(val)}</div></div>`;
+  }
+  if (!items) return '';
+  return `<div class="qual-section"><h5>${title}</h5><div class="qual-grid">${items}</div></div>`;
+}
+
+export function shortSectionLabel(raw) {
+  const src = String(raw || '').trim();
+  if (!src) return '공통';
+  return src.replace(/^\[[^\]]+\]\s*/, '').trim() || src;
+}
+
+export function sectionBadgeLabel(sectionId) {
+  const key = String(sectionId || '').trim().toLowerCase();
+  const map = { overall: 'OVERALL', upper: 'UPPER', mid: 'MID', lower: 'LOWER' };
+  return map[key] || 'FUNNEL';
+}
+
 export function hierHeader(lvl, label, title) {
   return `<div class="section-header ${lvl}"><span class="section-level ${lvl}">${label}</span><span class="section-title-text">${title}</span><div class="section-line"></div></div>`;
 }

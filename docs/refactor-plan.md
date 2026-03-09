@@ -236,25 +236,13 @@
   - 리팩토링 씨앗:
     - `render/radar-label.js` 또는 `render/chart-labels.js` 추출
 
-- [ ] survey / panel-stats 섹션 유틸 통합
-  - 관련 코드:
-    - [`static/js/render/survey.js:42`](../static/js/render/survey.js#L42)
-    - [`static/js/render/survey.js:48`](../static/js/render/survey.js#L48)
-    - [`static/js/render/panel-stats.js:32`](../static/js/render/panel-stats.js#L32)
-    - [`static/js/render/panel-stats.js:38`](../static/js/render/panel-stats.js#L38)
-  - 메모: section label / badge 규칙이 두 파일에 복제되어 있다.
-  - 리팩토링 씨앗:
-    - `render/survey-common.js` 추출
+- [x] survey / panel-stats 섹션 유틸 통합 ✓ 2026-03-09
+  - `shortSectionLabel`, `sectionBadgeLabel` → `helpers.js`로 이동; 두 파일 import 갱신
 
-- [ ] funnel qualitative renderer 통합
-  - 관련 코드:
-    - [`static/js/render/overview.js:750`](../static/js/render/overview.js#L750)
-    - [`static/js/render/funnel-tab.js:158`](../static/js/render/funnel-tab.js#L158)
-    - [`static/js/render/individual.js:66`](../static/js/render/individual.js#L66)
-  - 메모: 정성 item 반복 렌더링이 overview / funnel / individual에서 각각 약간씩 다르게 중복된다.
-  - 리팩토링 씨앗:
-    - `render/qual-items.js` 공통화
-    - `limit`, `layout`, `sectionTitle`만 옵션으로 분리
+- [x] funnel qualitative renderer 통합 ✓ 2026-03-09
+  - `renderQualGrid(qualItems, r, title?)` → `helpers.js` 추출
+  - `renderQualItemsForFunnel` (funnel-tab.js) + `renderQualItems` (individual.js) 가 이를 사용
+  - overview.js는 수정 금지(CLAUDE.md)이므로 overview 쪽은 미완료
 
 - [ ] radar / score card SVG renderer 공통화
   - 관련 코드:
@@ -265,26 +253,16 @@
   - 리팩토링 씨앗:
     - `buildRadarSvg({ items, values, color, labelFormatter })` 추출
 
-- [ ] 개별/평균 정량 bar renderer 통합
-  - 관련 코드:
-    - [`static/js/render/individual.js:5`](../static/js/render/individual.js#L5)
-    - [`static/js/render/individual.js:28`](../static/js/render/individual.js#L28)
-  - 메모: 동일한 stage loop를 돌면서 입력 데이터만 다른 renderer가 두 개 있다.
-  - 리팩토링 씨앗:
-    - `renderScaleGroups(source, valueSelector)` 패턴으로 통합
+- [x] 개별/평균 정량 bar renderer 통합 ✓ 2026-03-09
+  - `_renderScaleGroups(title, getValue, skip?)` 내부 함수 추출
+  - `renderScaleBars` + `renderAvgScaleBars` 가 이를 사용; `renderAvgScaleBars`도 `scaleBar` 헬퍼 경유
 
 ## 6) 백엔드 오케스트레이션 / 동시성 / provider abstraction
 
-- [ ] OpenAI / Claude 재시도 로직 공통 모듈화
-  - 관련 코드:
-    - [`app/llm/openai_client.py:66`](../app/llm/openai_client.py#L66)
-    - [`app/llm/openai_client.py:119`](../app/llm/openai_client.py#L119)
-    - [`app/llm/claude.py:66`](../app/llm/claude.py#L66)
-    - [`app/llm/claude.py:114`](../app/llm/claude.py#L114)
-  - 메모: backoff, jitter, global cooldown, retryable 예외 처리 구조가 사실상 복제돼 있다.
-  - 리팩토링 씨앗:
-    - `app/llm/retry.py`
-    - provider별 차이는 client invoke 함수만 남기기
+- [x] OpenAI / Claude 재시도 로직 공통 모듈화 ✓ 2026-03-09
+  - `app/llm/retry.py` — `RetryEngine` 클래스 추출
+  - `claude.py`·`openai_client.py` 각자 `_retry_engine = RetryEngine(...)` 인스턴스화
+  - `_call_with_retry` 함수는 한 줄 delegate로 축소
 
 - [ ] SSE phase polling loop 공통화
   - 관련 코드:

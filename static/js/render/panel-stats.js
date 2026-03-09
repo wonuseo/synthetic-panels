@@ -1,4 +1,4 @@
-import { esc, hierHeader } from './helpers.js';
+import { esc, hierHeader, shortSectionLabel, sectionBadgeLabel } from './helpers.js';
 import { buildSurveySections, flattenSurveyFields, RECOMMENDATION_OPTIONS } from './survey-schema.js';
 
 function toNumber(raw) {
@@ -29,22 +29,6 @@ function isAnswered(field, rawValue) {
   return normalizeText(rawValue).length > 0;
 }
 
-function shortSectionLabel(raw) {
-  const src = String(raw || '').trim();
-  if (!src) return '공통';
-  return src.replace(/^\[[^\]]+\]\s*/, '').trim() || src;
-}
-
-function sectionBadgeLabel(sectionId) {
-  const key = String(sectionId || '').trim().toLowerCase();
-  const map = {
-    overall: 'OVERALL',
-    upper: 'UPPER',
-    mid: 'MID',
-    lower: 'LOWER',
-  };
-  return map[key] || 'FUNNEL';
-}
 
 function buildQuantitativeStats(reviews, field) {
   const scale = field.scale || { min: 1, max: 5 };

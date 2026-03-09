@@ -1,4 +1,4 @@
-import { esc, hierHeader } from './helpers.js';
+import { esc, hierHeader, shortSectionLabel, sectionBadgeLabel } from './helpers.js';
 import { buildSurveySections, flattenSurveyFields } from './survey-schema.js';
 
 function typeBadgeLabel(type) {
@@ -39,22 +39,6 @@ function renderQualitativeInput() {
   </div>`;
 }
 
-function shortSectionLabel(raw) {
-  const src = String(raw || '').trim();
-  if (!src) return '공통';
-  return src.replace(/^\[[^\]]+\]\s*/, '').trim() || src;
-}
-
-function sectionBadgeLabel(sectionId) {
-  const key = String(sectionId || '').trim().toLowerCase();
-  const map = {
-    overall: 'OVERALL',
-    upper: 'UPPER',
-    mid: 'MID',
-    lower: 'LOWER',
-  };
-  return map[key] || 'FUNNEL';
-}
 
 function renderQuestionCard(field, questionIndex) {
   let inputHtml = renderQualitativeInput();

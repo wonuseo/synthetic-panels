@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { esc, recEmoji, renderSynValue, hierHeader, hierConnector, buildStepTrack } from './helpers.js';
+import { esc, recEmoji, renderSynValue, hierHeader, hierConnector, buildStepTrack, renderQualGrid } from './helpers.js';
 import { computeFunnelAverages, renderRadarChart } from './overview.js';
 import { buildSurveySections, flattenSurveyFields } from './survey-schema.js';
 
@@ -160,14 +160,7 @@ function renderQualItemsForFunnel(r, funnelKey) {
   const funnel = window.funnelConfig[funnelKey];
   if (!funnel) return '';
   const qualItems = funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
-  let items = '';
-  for (const item of qualItems) {
-    const val = r[item.key];
-    if (!val) continue;
-    items += `<div class="qual-item"><div class="qual-label">${esc(item.label)}</div><div class="qual-text">${renderSynValue(val)}</div></div>`;
-  }
-  if (!items) return '';
-  return `<div class="qual-section"><h5>💬 정성적 코멘트</h5><div class="qual-grid">${items}</div></div>`;
+  return renderQualGrid(qualItems, r);
 }
 
 function renderFunnelQualSummary(r, funnelKey) {
