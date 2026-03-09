@@ -116,6 +116,81 @@ async function loadDemo() {
 if ($.btnDemo) $.btnDemo.addEventListener('click', () => loadDemo());
 window.loadDemo = loadDemo;
 
+/* ── Metrics summary ── */
+const _TEAM_METRICS = {
+  marketing: {
+    upper: {
+      label: 'Brand (브랜드 자산)',
+      desc: '잠재 고객 대상 · 브랜드 인지 및 태도 형성 단계',
+      quant: ['브랜드 호감도', '브랜드 적합성', '메시지 명확성', '주목도', '브랜드 신뢰도'],
+      qual:  ['지각된 메시지', '감정적 반응', '브랜드 연상'],
+    },
+    mid: {
+      label: 'Demand & Acquisition (수요 창출)',
+      desc: '잠재·신규 고객 대상 · 수요 확보 및 고객 획득 단계',
+      quant: ['매력도', '가성비', '가격 적정성', '정보 충분성', '추천 의향'],
+      qual:  ['긍정 요소', '우려 사항', '경쟁 대안 비교', '정보 부족 사항'],
+    },
+    lower: {
+      label: 'Sales & Conversion (전환·매출)',
+      desc: '구매 고려 고객 대상 · 최종 전환과 매출 단계',
+      quant: ['구매 가능성', '고려 확률', '구매 의향', '재구매 의향', '구매 시급성'],
+      qual:  ['구매 촉진 요소', '구매 장벽', '가격 인식'],
+    },
+  },
+  commerce: {
+    upper: {
+      label: 'Product (상품 매력)',
+      desc: '잠재 소비자 대상 · 상품 차별성 및 브랜드 인지 단계',
+      quant: ['상품 차별성', '브랜드 프리미엄', '상품 신뢰도', '비주얼 매력도', '스토리 매력도'],
+      qual:  ['상품 첫인상', '감정적 반응', '브랜드 연상'],
+    },
+    mid: {
+      label: 'Value (가치 인식)',
+      desc: '잠재·신규 고객 대상 · 가격 대비 가치 인식 단계',
+      quant: ['가격 대비 가치', '품질 기대감', '선물 적합성', '정보 충분성', '추천 의향'],
+      qual:  ['긍정 요소', '우려 사항', '경쟁 상품 비교', '정보 부족 사항'],
+    },
+    lower: {
+      label: 'Purchase (구매 전환)',
+      desc: '구매 고려 고객 대상 · 최종 구매 전환 및 재구매 단계',
+      quant: ['구매 가능성', '고려 확률', '구매 의향', '재구매 의향', '구매 시급성'],
+      qual:  ['구매 촉진 요소', '구매 장벽', '가격 인식'],
+    },
+  },
+};
+
+function renderMetricsSummary(team) {
+  const el = document.getElementById('metrics-summary');
+  if (!el) return;
+  const data = _TEAM_METRICS[team] || _TEAM_METRICS.marketing;
+  const teamLabel = team === 'commerce' ? '커머스비즈니스팀' : '마케팅팀';
+  el.innerHTML = `
+    <div class="metrics-summary-header">
+      📊 측정 지표 <span>${teamLabel}</span>
+    </div>
+    <div class="metrics-funnel-grid">
+      ${['upper', 'mid', 'lower'].map(f => {
+        const d = data[f];
+        return `
+          <div class="metrics-funnel-card" data-funnel="${f}">
+            <div class="metrics-funnel-name">${d.label}</div>
+            <div class="metrics-funnel-desc">${d.desc}</div>
+            <div class="metrics-group-label">정량 지표</div>
+            <div class="metrics-badge-list">
+              ${d.quant.map(m => `<span class="metrics-badge-quant">${m} (정량)</span>`).join('')}
+            </div>
+            <div class="metrics-group-label">정성 지표</div>
+            <div class="metrics-badge-list">
+              ${d.qual.map(m => `<span class="metrics-badge-qual">${m} (정성)</span>`).join('')}
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+renderMetricsSummary(state.team);
+
 /* ── Team toggle ── */
 const _TEAM_INTRO = {
   marketing: '가상 페르소나를 활용하여 프로모션 자료에 대한 소비자 반응을 시뮬레이션합니다.<br>브랜드 인지부터 전환까지, 마케팅 퍼널 전 단계의 정량·정성 피드백을 빠르게 확인하세요.',
@@ -146,6 +221,8 @@ document.getElementById('team-toggle')?.addEventListener('click', async (e) => {
   $.pListWrap.classList.add('hidden');
   $.pListWrap.innerHTML = '';
   updateRunBtn();
+
+  renderMetricsSummary(team);
 
   await loadFunnelConfig(team);
   surveyTemplatePromise = null;
