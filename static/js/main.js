@@ -178,11 +178,11 @@ function renderMetricsSummary(team) {
             <div class="metrics-funnel-desc">${d.desc}</div>
             <div class="metrics-group-label">정량 지표</div>
             <div class="metrics-badge-list">
-              ${d.quant.map(m => `<span class="metrics-badge-quant">${m} (정량)</span>`).join('')}
+              ${d.quant.map(m => `<span class="metrics-badge-quant">${m} (1-5)</span>`).join('')}
             </div>
             <div class="metrics-group-label">정성 지표</div>
             <div class="metrics-badge-list">
-              ${d.qual.map(m => `<span class="metrics-badge-qual">${m} (정성)</span>`).join('')}
+              ${d.qual.map(m => `<span class="metrics-badge-qual">${m} (서술형)</span>`).join('')}
             </div>
           </div>`;
       }).join('')}
