@@ -105,7 +105,7 @@ export const THEMES = {
 };
 
 const STORAGE_KEY = 'sp-theme';
-const DEFAULT_THEME = 'gold';
+const DEFAULT_THEME = 'cobalt';
 
 /**
  * 테마를 적용합니다.
