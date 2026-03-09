@@ -89,6 +89,10 @@ uvicorn server:app --reload --port 8000
 
 ![System Architecture](resources/system-architecture.png)
 
+## 패널 프롬프트 구조
+
+![Panel Prompts](resources/panel-prompts.PNG)
+
 ## 프로젝트 구조
 
 ```
