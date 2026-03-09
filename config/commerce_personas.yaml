@@ -1,0 +1,58 @@
+# 커머스비즈니스팀 페르소나 필드 정의 — Google Sheets 컬럼명과 일치해야 합니다.
+fields:
+  - key: persona_id
+    label: "ID"
+  - key: persona_name
+    label: "이름"
+  - key: panel_gender
+    label: "성별"
+  - key: panel_age
+    label: "나이"
+  - key: panel_shopping_freq
+    label: "쇼핑 빈도"
+  - key: panel_price_sensitivity
+    label: "가격 민감도"
+  - key: panel_gift_tendency
+    label: "선물 구매 빈도"
+  - key: panel_brand_loyalty
+    label: "브랜드 충성도"
+  - key: panel_online_pref
+    label: "온라인 쇼핑 선호도"
+  - key: panel_product_category_pref_1
+    label: "선호 상품 카테고리 1"
+  - key: panel_product_category_pref_2
+    label: "선호 상품 카테고리 2"
+  - key: panel_quality_priority
+    label: "품질 우선 기준"
+  - key: persona_ksf
+    label: "핵심 성공 요인 (KSF)"
+  - key: panel_visited
+    label: "과거 구매 여부"
+  - key: panel_visit_experience
+    label: "구매 경험"
+  - key: panel_skepticism
+    label: "마케팅 회의도"
+  - key: panel_competitor_pref
+    label: "선호 경쟁 브랜드"
+  - key: panel_past_friction
+    label: "과거 마찰/불만 경험"
+
+# LLM에 전달되는 페르소나 프로필 텍스트 템플릿
+# Python str.format(**fields) 방식으로 렌더링됩니다.
+profile_template: |
+  이름: {persona_name}
+  성별: {panel_gender}
+  나이: {panel_age}
+  쇼핑 빈도: {panel_shopping_freq}
+  가격 민감도: {panel_price_sensitivity}
+  선물 구매 빈도: {panel_gift_tendency}
+  브랜드 충성도: {panel_brand_loyalty}
+  온라인 쇼핑 선호도: {panel_online_pref}
+  선호 상품 카테고리: {panel_product_category_pref_1}, {panel_product_category_pref_2}
+  품질 우선 기준: {panel_quality_priority}
+  핵심 성공 요인(KSF): {persona_ksf}
+  과거 구매 여부: {panel_visited}
+  구매 경험: {panel_visit_experience}
+  마케팅 회의도: {panel_skepticism}
+  선호 경쟁 브랜드: {panel_competitor_pref}
+  과거 마찰/불만: {panel_past_friction}

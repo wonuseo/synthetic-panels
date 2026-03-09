@@ -1,0 +1,142 @@
+# 커머스비즈니스팀 서베이 필드 정의
+# key:      JSON 키 (snake_case)
+# spec:     LLM 출력 타입 지시
+# question: LLM 프롬프트에 포함되는 질문/설명
+# label:    종합 분석 텍스트에서 사용하는 짧은 레이블
+
+sections:
+  - id: overall
+    label: "[Overall] 상품 종합"
+    fields:
+      - key: product_appeal
+        spec: "integer 1-5"
+        label: "상품 매력도"
+        question: "이 MD 상품의 전반적인 매력도"
+      - key: product_quality
+        spec: "integer 1-5"
+        label: "상품 퀄리티"
+        question: "이 MD 상품의 전반적인 퀄리티/완성도"
+      - key: overall_impression
+        spec: "string"
+        label: "종합 첫인상"
+        question: "이 MD 상품의 종합적인 첫인상을 1-2문장으로 (한국어)"
+      - key: review_summary
+        spec: "string"
+        label: "종합 평가"
+        question: "종합 평가를 간단한 문단으로 (한국어)"
+
+  - id: upper
+    label: "[Upper Funnel] 상품 매력"
+    fields:
+      - key: product_uniqueness
+        spec: "integer 1-5"
+        label: "차별성"
+        question: "다른 상품 대비 이 상품만의 차별성/독특함 (1=전혀 없음 ~ 5=매우 독특)"
+      - key: brand_premium
+        spec: "integer 1-5"
+        label: "브랜드 프리미엄"
+        question: "이 상품에서 느껴지는 브랜드 프리미엄 수준 (1=전혀 없음 ~ 5=매우 높음)"
+      - key: product_trust
+        spec: "integer 1-5"
+        label: "상품 신뢰도"
+        question: "이 상품의 품질·성분·원산지 등에 대한 신뢰도 (1=매우 불신 ~ 5=매우 신뢰)"
+      - key: visual_appeal
+        spec: "integer 1-5"
+        label: "비주얼 매력도"
+        question: "상품 패키지·비주얼·디자인의 매력도 (1=전혀 ~ 5=매우)"
+      - key: story_appeal
+        spec: "integer 1-5"
+        label: "스토리 매력도"
+        question: "상품 스토리·컨셉·브랜드 배경의 매력도 (1=전혀 ~ 5=매우)"
+      - key: product_impression
+        spec: "string"
+        label: "상품 첫인상"
+        question: "이 MD 상품을 처음 접했을 때의 첫인상은? (한국어, 1-2문장)"
+      - key: emotional_response
+        spec: "string"
+        label: "감정적 반응"
+        question: "이 상품을 봤을 때 어떤 감정이 드는가? (한국어, 1-2문장)"
+      - key: brand_association
+        spec: "string"
+        label: "브랜드 연상"
+        question: "이 상품으로 인해 떠오르는 브랜드/호텔 이미지는? (한국어)"
+
+  - id: mid
+    label: "[Mid Funnel] 가치 인식"
+    fields:
+      - key: price_value
+        spec: "integer 1-5"
+        label: "가격 대비 가치"
+        question: "이 상품의 가격 대비 가치 (1=전혀 가치 없음 ~ 5=매우 높은 가치)"
+      - key: quality_expectation
+        spec: "integer 1-5"
+        label: "품질 기대감"
+        question: "실제로 받았을 때 기대되는 품질 수준 (1=기대 안 됨 ~ 5=매우 기대)"
+      - key: gift_suitability
+        spec: "integer 1-5"
+        label: "선물 적합성"
+        question: "선물용으로 적합한 정도 (1=전혀 ~ 5=매우 적합)"
+      - key: info_sufficiency
+        spec: "integer 1-5"
+        label: "정보 충분성"
+        question: "구매 결정에 충분한 정보가 제공된 정도 (1=전혀 ~ 5=매우)"
+      - key: recommendation_intent
+        spec: "integer 1-5"
+        label: "추천 의향"
+        question: "주변에 추천할 의향 (1=전혀 ~ 5=매우)"
+      - key: key_positives
+        spec: "string"
+        label: "긍정 요소"
+        question: "이 상품의 매력적인 요소들과 이유를 세미콜론(;)으로 구분 (한국어)"
+      - key: key_concerns
+        spec: "string"
+        label: "우려 사항"
+        question: "최소 2개 이상의 구체적 우려·거부감 요소를 세미콜론(;)으로 구분 — 상품이 내 니즈를 충족하지 못하는 이유, 가격 대비 가치 의문, 대안과의 비교 등 실질적 내용으로 (한국어)"
+      - key: competitive_comparison
+        spec: "string"
+        label: "경쟁 상품 비교"
+        question: "비슷한 상품이나 대안과 비교했을 때 이 상품의 차별점은? (한국어)"
+      - key: information_gap
+        spec: "string"
+        label: "정보 부족"
+        question: "구매 결정을 위해 추가로 알고 싶은 정보는? (한국어)"
+      - key: recommendation
+        spec: "string"
+        label: "관심도"
+        question: '반드시 다음 중 정확히 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"'
+
+  - id: lower
+    label: "[Lower Funnel] 구매 전환"
+    fields:
+      - key: purchase_likelihood
+        spec: "integer 1-5"
+        label: "구매 가능성"
+        question: "이 상품을 구매할 가능성 (1=전혀 ~ 5=매우 높음)"
+      - key: purchase_consideration
+        spec: "integer 1-5"
+        label: "고려 확률"
+        question: "이 상품을 구매 고려 목록에 올릴 확률 (1=전혀 ~ 5=매우 높음)"
+      - key: purchase_willingness
+        spec: "integer 1-5"
+        label: "구매 의향"
+        question: "이 상품을 구매할 의향 (1=전혀 ~ 5=매우 높음)"
+      - key: repurchase_intent
+        spec: "integer 1-5"
+        label: "재구매 의향"
+        question: "재구매 의향 (1=전혀 ~ 5=매우 높음)"
+      - key: purchase_urgency
+        spec: "integer 1-5"
+        label: "구매 시급성"
+        question: "구매의 시급성 (1=전혀 ~ 5=매우 시급)"
+      - key: purchase_trigger
+        spec: "string"
+        label: "구매 촉진 요소"
+        question: "무엇이 이 상품 구매를 결정하게 만드는가? (한국어)"
+      - key: purchase_barrier
+        spec: "string"
+        label: "구매 장벽"
+        question: "무엇이 이 상품 구매를 망설이게 하는가? (한국어)"
+      - key: price_perception
+        spec: "string"
+        label: "가격 인식"
+        question: "이 상품의 가격에 대해 어떻게 느끼는가? 적정한가? (한국어)"

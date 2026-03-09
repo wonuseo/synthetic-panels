@@ -4328,4 +4328,32 @@ tr:nth-child(3) .pst-rank { color: var(--primary); opacity: 0.5; }
   overflow: hidden;
 }
 .pqg-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+
+/* ── Team toggle ── */
+.team-toggle {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--surface-alt, #f0f2f7);
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+.team-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  transition: background .18s, color .18s, box-shadow .18s;
+}
+.team-btn:hover { background: #fff; color: var(--text); }
+.team-btn.active {
+  background: #fff;
+  color: var(--primary, #6c5ce7);
+  box-shadow: 0 1px 4px rgba(0,0,0,.10);
+}
 .pqg-val { font-size: var(--fs-xs); font-weight: 600; min-width: 28px; text-align: right; }

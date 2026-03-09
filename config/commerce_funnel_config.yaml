@@ -1,12 +1,12 @@
 overall:
-  label: "Overall (프로모션 종합)"
+  label: "Overall (상품 종합)"
   desc_who: "전체 평가 대상"
-  desc_goal: "프로모션의 전반적인 매력도와 퀄리티를 종합 평가"
-  desc_metrics: "매력도, 퀄리티"
+  desc_goal: "MD 상품의 전반적인 매력도와 퀄리티를 종합 평가"
+  desc_metrics: "상품 매력도, 상품 퀄리티"
   individual_items:
     quantitative:
-      - { key: promotion_attractiveness, label: "프로모션 매력도", scale: "1-5" }
-      - { key: promotion_quality, label: "프로모션 퀄리티", scale: "1-5" }
+      - { key: product_appeal, label: "상품 매력도", scale: "1-5" }
+      - { key: product_quality, label: "상품 퀄리티", scale: "1-5" }
     qualitative:
       - { key: overall_impression, label: "종합 첫인상" }
       - { key: review_summary, label: "종합 평가" }
@@ -15,60 +15,60 @@ overall:
       - { key: executive_summary, label: "핵심 요약" }
       - { key: go_nogo_recommendation, label: "Go/No-Go 의사결정" }
       - { key: improvement_priority, label: "최우선 개선 영역" }
-      - { key: actionable_recommendations, label: "프로모션 개선 제안" }
+      - { key: actionable_recommendations, label: "상품 개선 제안" }
       - { key: usage_strategy, label: "활용 방안 제안" }
       - { key: segment_insights, label: "세그먼트 인사이트" }
       - { key: target_segment_priority, label: "타겟 세그먼트 우선순위" }
 
 funnels:
   upper:
-    label: "Brand (브랜드 자산)"
-    desc_who: "잠재 고객"
-    desc_goal: "브랜드를 처음 인지하고 태도·이미지를 형성하는 단계"
-    desc_metrics: "호감도, 적합성, 명확성, 주목도, 신뢰도"
+    label: "Product (상품 매력)"
+    desc_who: "잠재 소비자"
+    desc_goal: "상품의 차별성·브랜드 프리미엄·신뢰도·비주얼·스토리 매력을 인지하는 단계"
+    desc_metrics: "차별성, 브랜드 프리미엄, 신뢰도, 비주얼 매력, 스토리 매력"
     individual_items:
       quantitative:
-        - { key: brand_favorability, label: "브랜드 호감도", scale: "1-5" }
-        - { key: brand_fit, label: "브랜드 적합성", scale: "1-5" }
-        - { key: message_clarity, label: "메시지 명확성", scale: "1-5" }
-        - { key: attention_grabbing, label: "주목도", scale: "1-5" }
-        - { key: brand_trust, label: "브랜드 신뢰도", scale: "1-5" }
+        - { key: product_uniqueness, label: "상품 차별성", scale: "1-5" }
+        - { key: brand_premium, label: "브랜드 프리미엄", scale: "1-5" }
+        - { key: product_trust, label: "상품 신뢰도", scale: "1-5" }
+        - { key: visual_appeal, label: "비주얼 매력도", scale: "1-5" }
+        - { key: story_appeal, label: "스토리 매력도", scale: "1-5" }
       qualitative:
-        - { key: perceived_message, label: "지각된 메시지" }
+        - { key: product_impression, label: "상품 첫인상" }
         - { key: emotional_response, label: "감정적 반응" }
         - { key: brand_association, label: "브랜드 연상" }
     synthesis_items:
       quantitative:
-        - { key: avg_brand_attitude, label: "평균 브랜드 태도" }
-        - { key: avg_brand_fit, label: "평균 브랜드 적합성" }
-        - { key: avg_ad_effectiveness, label: "평균 광고 효과성" }
+        - { key: avg_product_appeal, label: "평균 상품 매력도" }
+        - { key: avg_brand_presence, label: "평균 브랜드 존재감" }
+        - { key: avg_product_presentation, label: "평균 상품 표현력" }
       qualitative:
-        - { key: message_gap_analysis, label: "메시지 갭 분석" }
-        - { key: emotional_tone_summary, label: "감정 톤 요약" }
-        - { key: brand_association_summary, label: "브랜드 연상 종합" }
+        - { key: product_message_analysis, label: "상품 메시지 분석" }
+        - { key: emotional_appeal_summary, label: "감성 소구 요약" }
+        - { key: brand_premium_summary, label: "브랜드 프리미엄 종합" }
     qa_items:
       - { key: qa_rep_brand_attitude, type: replication }
       - { key: qa_trap_skepticism_check, type: trap }
     quant_groups:
-      - { label: "브랜드 인지·태도", keys: ["brand_favorability", "brand_trust", "brand_fit"], sublabels: ["브랜드 호감도", "브랜드 신뢰도", "브랜드 적합성"] }
-      - { label: "광고 효과성", keys: ["message_clarity", "attention_grabbing"], sublabels: ["메시지 명확성", "주목도"] }
+      - { label: "상품 매력도", keys: ["product_uniqueness", "brand_premium", "product_trust"], sublabels: ["상품 차별성", "브랜드 프리미엄", "상품 신뢰도"] }
+      - { label: "비주얼·스토리", keys: ["visual_appeal", "story_appeal"], sublabels: ["비주얼 매력도", "스토리 매력도"] }
 
   mid:
-    label: "Demand & Acquisition (수요 창출)"
+    label: "Value (가치 인식)"
     desc_who: "관심을 보인 잠재·신규 고객"
-    desc_goal: "수요를 확보하고 신규 고객을 획득하는 단계"
-    desc_metrics: "매력도, 가성비, 가격 적정성, 정보 충분성, 추천 의향"
+    desc_goal: "상품의 가격 대비 가치·품질 기대감·선물 적합성을 인식하는 단계"
+    desc_metrics: "가격 대비 가치, 품질 기대감, 선물 적합성, 정보 충분성, 추천 의향"
     individual_items:
       quantitative:
-        - { key: appeal, label: "매력도", scale: "1-5" }
-        - { key: value_for_money, label: "가성비", scale: "1-5" }
-        - { key: price_fairness, label: "가격 적정성", scale: "1-5" }
+        - { key: price_value, label: "가격 대비 가치", scale: "1-5" }
+        - { key: quality_expectation, label: "품질 기대감", scale: "1-5" }
+        - { key: gift_suitability, label: "선물 적합성", scale: "1-5" }
         - { key: info_sufficiency, label: "정보 충분성", scale: "1-5" }
         - { key: recommendation_intent, label: "추천 의향", scale: "1-5" }
       qualitative:
         - { key: key_positives, label: "긍정 요소" }
         - { key: key_concerns, label: "우려 사항" }
-        - { key: competitive_comparison, label: "경쟁 대안 비교" }
+        - { key: competitive_comparison, label: "경쟁 상품 비교" }
         - { key: information_gap, label: "정보 부족 사항" }
       categorical:
         - { key: recommendation, label: "관심도", options: ["매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"] }
@@ -85,13 +85,13 @@ funnels:
       - { key: qa_trap_budget_sensitivity, type: trap }
       - { key: qa_trap_competitor_loyalty, type: trap }
     quant_groups:
-      - { label: "가치 인식", keys: ["appeal", "value_for_money", "price_fairness"], sublabels: ["매력도", "가성비", "가격 적정성"] }
+      - { label: "가치 인식", keys: ["price_value", "quality_expectation", "gift_suitability"], sublabels: ["가격 대비 가치", "품질 기대감", "선물 적합성"] }
       - { label: "구전·정보", keys: ["info_sufficiency", "recommendation_intent"], sublabels: ["정보 충분성", "추천 의향"] }
 
   lower:
-    label: "Sales & Conversion (전환·매출)"
+    label: "Purchase (구매 전환)"
     desc_who: "구매를 고려 중인 고객"
-    desc_goal: "최종 전환과 매출로 이어지는 단계"
+    desc_goal: "최종 구매 전환과 재구매로 이어지는 단계"
     desc_metrics: "구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성"
     individual_items:
       quantitative:

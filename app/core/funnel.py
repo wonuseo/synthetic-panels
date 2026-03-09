@@ -5,7 +5,12 @@ from functools import lru_cache
 
 import yaml
 
-_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "funnel_config.yaml"
+_CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
+
+_TEAM_CONFIG_FILES = {
+    "marketing": "funnel_config.yaml",
+    "commerce": "commerce_funnel_config.yaml",
+}
 
 # Funnel ordering: upper → mid → lower
 _FUNNEL_ORDER = ["upper", "mid", "lower"]
@@ -22,16 +27,18 @@ QA_COMPUTED = [
 ]
 
 
-@lru_cache(maxsize=1)
-def load_funnel_config() -> dict:
-    """YAML 로드 후 dict 반환"""
-    with open(_CONFIG_PATH, encoding="utf-8") as f:
+@lru_cache(maxsize=4)
+def load_funnel_config(team: str = "marketing") -> dict:
+    """YAML 로드 후 dict 반환 (팀별 캐시)"""
+    filename = _TEAM_CONFIG_FILES.get(team, "funnel_config.yaml")
+    config_path = _CONFIG_DIR / filename
+    with open(config_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
-def get_overall_keys() -> list[str]:
+def get_overall_keys(team: str = "marketing") -> list[str]:
     """overall 섹션의 individual_items key 목록 반환."""
-    cfg = load_funnel_config()
+    cfg = load_funnel_config(team)
     overall = cfg.get("overall", {})
     items = overall.get("individual_items", {})
     keys: list[str] = []
@@ -41,9 +48,9 @@ def get_overall_keys() -> list[str]:
     return keys
 
 
-def get_individual_keys() -> list[str]:
+def get_individual_keys(team: str = "marketing") -> list[str]:
     """overall + 퍼널 순서대로 individual_items의 key 목록 반환."""
-    cfg = load_funnel_config()
+    cfg = load_funnel_config(team)
     keys: list[str] = []
 
     # Overall items first
@@ -63,9 +70,41 @@ def get_individual_keys() -> list[str]:
     return keys
 
 
-def get_qa_keys() -> list[str]:
+def get_quant_keys(team: str = "marketing") -> list[str]:
+    """overall + 퍼널 순서대로 quantitative individual_items의 key 목록 반환."""
+    cfg = load_funnel_config(team)
+    keys: list[str] = []
+    overall = cfg.get("overall", {})
+    for item in overall.get("individual_items", {}).get("quantitative", []):
+        keys.append(item["key"])
+    for funnel_name in _FUNNEL_ORDER:
+        funnel = cfg["funnels"].get(funnel_name, {})
+        for item in funnel.get("individual_items", {}).get("quantitative", []):
+            keys.append(item["key"])
+    return keys
+
+
+def get_qual_keys(team: str = "marketing") -> list[str]:
+    """overall + 퍼널 순서대로 qualitative/categorical individual_items의 key 목록 반환."""
+    cfg = load_funnel_config(team)
+    keys: list[str] = []
+    overall = cfg.get("overall", {})
+    items = overall.get("individual_items", {})
+    for item_type in ["qualitative", "categorical"]:
+        for item in items.get(item_type, []):
+            keys.append(item["key"])
+    for funnel_name in _FUNNEL_ORDER:
+        funnel = cfg["funnels"].get(funnel_name, {})
+        items = funnel.get("individual_items", {})
+        for item_type in ["qualitative", "categorical"]:
+            for item in items.get(item_type, []):
+                keys.append(item["key"])
+    return keys
+
+
+def get_qa_keys(team: str = "marketing") -> list[str]:
     """퍼널 순서대로 qa_items의 key 목록 반환"""
-    cfg = load_funnel_config()
+    cfg = load_funnel_config(team)
     keys: list[str] = []
     for funnel_name in _FUNNEL_ORDER:
         funnel = cfg["funnels"].get(funnel_name, {})
@@ -74,9 +113,9 @@ def get_qa_keys() -> list[str]:
     return keys
 
 
-def get_synthesis_keys() -> list[str]:
+def get_synthesis_keys(team: str = "marketing") -> list[str]:
     """overall + 퍼널 순서대로 synthesis_items의 key 목록 반환"""
-    cfg = load_funnel_config()
+    cfg = load_funnel_config(team)
     keys: list[str] = []
     # Overall synthesis items
     overall = cfg.get("overall", {})
@@ -93,24 +132,20 @@ def get_synthesis_keys() -> list[str]:
     return keys
 
 
-def get_results_headers() -> list[str]:
+def get_results_headers(team: str = "marketing") -> list[str]:
     """['run_id', 'persona_id', 'persona_name'] + individual_keys + ['error'] + qa_keys + QA_COMPUTED"""
     return (
         ["run_id", "persona_id", "persona_name", "panel_id"]
-        + get_individual_keys()
+        + get_individual_keys(team)
         + ["error"]
-        + get_qa_keys()
+        + get_qa_keys(team)
         + QA_COMPUTED
     )
 
 
-def get_field_scales() -> dict[str, tuple[int, int]]:
-    """개별 항목별 유효 스케일 범위를 dict로 반환.
-
-    반환 형태: {"brand_favorability": (1, 5), "appeal": (1, 5), ...}
-    scale이 없는(정성적) 항목은 제외된다.
-    """
-    cfg = load_funnel_config()
+def get_field_scales(team: str = "marketing") -> dict[str, tuple[int, int]]:
+    """개별 항목별 유효 스케일 범위를 dict로 반환."""
+    cfg = load_funnel_config(team)
     scales: dict[str, tuple[int, int]] = {}
 
     # Overall items
@@ -137,43 +172,53 @@ def get_field_scales() -> dict[str, tuple[int, int]]:
     return scales
 
 
-def get_field_scales_cached() -> dict[str, tuple[int, int]]:
+def get_field_scales_cached(team: str = "marketing") -> dict[str, tuple[int, int]]:
     """get_field_scales의 캐시된 버전."""
-    return _FIELD_SCALES_CACHE
+    return _FIELD_SCALES_CACHE.get(team) or get_field_scales(team)
 
 
-# 모듈 로드 시 한 번만 계산
-_FIELD_SCALES_CACHE: dict[str, tuple[int, int]] = {}
+def get_funnel_quant_groups(team: str = "marketing") -> dict:
+    """YAML에서 퍼널별 정량 그룹 정의를 로드하여 반환."""
+    cfg = load_funnel_config(team)
+    result: dict = {}
+    for funnel_name in _FUNNEL_ORDER:
+        funnel = cfg["funnels"].get(funnel_name, {})
+        groups = funnel.get("quant_groups", [])
+        result[funnel_name] = [
+            {
+                "label": g["label"],
+                "keys": g["keys"],
+                "sublabels": g.get("sublabels", []),
+            }
+            for g in groups
+        ]
+    return result
+
+
+# 모듈 로드 시 팀별 스케일 캐시 초기화
+_FIELD_SCALES_CACHE: dict[str, dict[str, tuple[int, int]]] = {}
 
 
 def _init_scales_cache():
     global _FIELD_SCALES_CACHE
-    _FIELD_SCALES_CACHE = get_field_scales()
+    for team in _TEAM_CONFIG_FILES:
+        try:
+            _FIELD_SCALES_CACHE[team] = get_field_scales(team)
+        except Exception:
+            pass
 
 
 _init_scales_cache()
 
 
-FUNNEL_QUANT_GROUPS: dict = {
-    "upper": [
-        {"label": "브랜드 인지·태도", "keys": ["brand_favorability", "brand_trust", "brand_fit"],    "sublabels": ["브랜드 호감도", "브랜드 신뢰도", "브랜드 적합성"]},
-        {"label": "광고 효과성",     "keys": ["message_clarity", "attention_grabbing"],              "sublabels": ["메시지 명확성", "주목도"]},
-    ],
-    "mid": [
-        {"label": "가치 인식",  "keys": ["appeal", "value_for_money", "price_fairness"],            "sublabels": ["매력도", "가성비", "가격 적정성"]},
-        {"label": "구전·정보", "keys": ["info_sufficiency", "recommendation_intent"],              "sublabels": ["정보 충분성", "추천 의향"]},
-    ],
-    "lower": [
-        {"label": "구매 의향",    "keys": ["purchase_likelihood", "purchase_consideration", "purchase_willingness"], "sublabels": ["구매 가능성", "고려 확률", "구매 의향"]},
-        {"label": "재구매·시급성", "keys": ["repurchase_intent", "purchase_urgency"],               "sublabels": ["재구매 의향", "구매 시급성"]},
-    ],
-}
+# ── 하위 호환성: 기존 코드가 import하는 FUNNEL_QUANT_GROUPS ──────────
+FUNNEL_QUANT_GROUPS: dict = get_funnel_quant_groups("marketing")
 
 
-def get_funnel_groups() -> dict:
-    """프론트엔드용: {funnel_name: {label, description, individual_items, synthesis_items, qa_items}} 형태
+def get_funnel_groups(team: str = "marketing") -> dict:
+    """프론트엔드용: {funnel_name: {label, description, individual_items, synthesis_items, qa_items, quant_groups}} 형태
     overall 섹션도 포함."""
-    cfg = load_funnel_config()
+    cfg = load_funnel_config(team)
     groups: dict = {}
 
     # Overall section
@@ -207,6 +252,7 @@ def get_funnel_groups() -> dict:
             "individual_items": individual_list,
             "synthesis_items": synthesis_list_overall,
             "qa_items": [],
+            "quant_groups": [],
         }
 
     # Funnel sections
@@ -244,6 +290,15 @@ def get_funnel_groups() -> dict:
                 "type": item.get("type", ""),
             })
 
+        # quant_groups
+        quant_groups_list: list[dict] = []
+        for g in funnel.get("quant_groups", []):
+            quant_groups_list.append({
+                "label": g["label"],
+                "keys": g["keys"],
+                "sublabels": g.get("sublabels", []),
+            })
+
         groups[funnel_name] = {
             "label": funnel.get("label", funnel_name),
             "description": funnel.get("description", ""),
@@ -253,5 +308,6 @@ def get_funnel_groups() -> dict:
             "individual_items": individual_list,
             "synthesis_items": synthesis_list,
             "qa_items": qa_list,
+            "quant_groups": quant_groups_list,
         }
     return groups

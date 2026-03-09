@@ -4,21 +4,10 @@ import { computeFunnelAverages, renderRadarChart } from './overview.js';
 
 const _FUNNEL_COLORS = { upper: '#6c5ce7', mid: '#0984e3', lower: '#00b894' };
 
-/* 퍼널별 정량 지표 그룹 정의 */
-const _FUNNEL_QUANT_GROUPS = {
-  upper: [
-    { label: '브랜드 인지·태도', keys: ['brand_favorability', 'brand_trust', 'brand_fit'],    sublabels: ['브랜드 호감도', '브랜드 신뢰도', '브랜드 적합성'] },
-    { label: '광고 효과성',     keys: ['message_clarity', 'attention_grabbing'],              sublabels: ['메시지 명확성', '주목도'] },
-  ],
-  mid: [
-    { label: '가치 인식',  keys: ['appeal', 'value_for_money', 'price_fairness'],            sublabels: ['매력도', '가성비', '가격 적정성'] },
-    { label: '구전·정보', keys: ['info_sufficiency', 'recommendation_intent'],              sublabels: ['정보 충분성', '추천 의향'] },
-  ],
-  lower: [
-    { label: '구매 의향',    keys: ['purchase_likelihood', 'purchase_consideration', 'purchase_willingness'], sublabels: ['구매 가능성', '고려 확률', '구매 의향'] },
-    { label: '재구매·시급성', keys: ['repurchase_intent', 'purchase_urgency'],               sublabels: ['재구매 의향', '구매 시급성'] },
-  ],
-};
+/* 퍼널별 정량 지표 그룹: funnelConfig에서 동적으로 로드 */
+function _getQuantGroups(funnelKey) {
+  return window.funnelConfig?.[funnelKey]?.quant_groups || [];
+}
 
 /* ── Internal helpers ── */
 function _getNum(v) { return typeof v === 'number' ? v : parseFloat(v) || 0; }
@@ -194,7 +183,7 @@ function renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages) {
 
 /* ── L3 persona card: grouped quantitative bars ── */
 function renderPersonaQuantGrouped(r, funnelKey) {
-  const groups = _FUNNEL_QUANT_GROUPS[funnelKey] || [];
+  const groups = _getQuantGroups(funnelKey);
   const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
   const funnel = window.funnelConfig?.[funnelKey];
   const funnelQuantItems = funnel ? funnel.individual_items.filter(i => i.type === 'quantitative') : [];
@@ -365,7 +354,7 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
 /* ── Section 3 Step 01: 페르소나 요약 테이블 ── */
 function renderPersonaSummaryTable(funnelKey, valid) {
   if (!valid.length) return '';
-  const groups = _FUNNEL_QUANT_GROUPS[funnelKey] || [];
+  const groups = _getQuantGroups(funnelKey);
 
   const rows = valid.map(r => {
     const funnelAvg = _computePersonaFunnelAvg(r, funnelKey);
@@ -411,7 +400,7 @@ export function renderFunnelTab(funnelKey) {
   const funnel = window.funnelConfig[funnelKey];
   const valid = state.lastReviews.filter(r => !r.error);
   const funnelAverages = computeFunnelAverages(valid);
-  const groups = _FUNNEL_QUANT_GROUPS[funnelKey] || [];
+  const groups = _getQuantGroups(funnelKey);
 
   let html = '';
 

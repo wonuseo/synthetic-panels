@@ -24,7 +24,7 @@
   <div id="page-upload">
     <!-- Intro Guide -->
     <div class="intro-guide">
-      <p class="intro-desc">가상 페르소나를 활용하여 프로모션 자료에 대한 소비자 반응을 시뮬레이션합니다.<br>브랜드 인지부터 전환까지, 마케팅 퍼널 전 단계의 정량·정성 피드백을 빠르게 확인하세요.</p>
+      <p class="intro-desc" id="intro-desc">가상 페르소나를 활용하여 프로모션 자료에 대한 소비자 반응을 시뮬레이션합니다.<br>브랜드 인지부터 전환까지, 마케팅 퍼널 전 단계의 정량·정성 피드백을 빠르게 확인하세요.</p>
       <div class="intro-steps">
         <div class="intro-steps-row">
           <div class="intro-step">
@@ -74,7 +74,7 @@
     <div class="upload-grid">
       <!-- Left: file + text upload -->
       <div class="card">
-        <h2>📎 프로모션 자료 업로드</h2>
+        <h2 id="upload-card-title">📎 프로모션 자료 업로드</h2>
 
         <label style="margin-top:0">이미지 / PDF</label>
         <div class="drop-zone" id="drop-zone">
@@ -101,7 +101,13 @@
       <div class="card">
         <h2>⚙️ Settings</h2>
 
-        <label for="panel-size" style="margin-top:4px">패널 수</label>
+        <label>평가 모드</label>
+        <div class="team-toggle" id="team-toggle">
+          <button class="team-btn active" data-team="marketing">마케팅팀</button>
+          <button class="team-btn" data-team="commerce">커머스비즈니스팀</button>
+        </div>
+
+        <label for="panel-size" style="margin-top:12px">패널 수</label>
         <select id="panel-size">
           <option value="10" selected>10명</option>
           <option value="20">20명</option>

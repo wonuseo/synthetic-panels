@@ -22,9 +22,9 @@ from app.media.processor import prepare_for_claude
 from app.llm.prompt import (
     build_system_prompt,
     build_user_prompt,
-    SYNTHESIS_SYSTEM_PROMPT,
+    get_synthesis_system_prompt,
     build_synthesis_prompt,
-    PERSONA_SYNTHESIS_SYSTEM_PROMPT,
+    get_persona_synthesis_system_prompt,
     build_persona_synthesis_prompt,
 )
 
@@ -150,6 +150,7 @@ def call_claude(
     model: str = "claude-sonnet-4-20250514",
     text_content: str = "",
     qa_mode: str = "off",
+    team: str = "marketing",
 ) -> Review:
     client = _get_client()
 
@@ -158,7 +159,7 @@ def call_claude(
         user_content.extend(prepare_for_claude(file_bytes, filename))
     user_content.append({
         "type": "text",
-        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content, qa_mode=qa_mode),
+        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content, qa_mode=qa_mode, team=team),
     })
 
     try:
@@ -167,12 +168,12 @@ def call_claude(
                 model=model,
                 max_tokens=2048,
                 temperature=0.7,
-                system=build_system_prompt(persona),
+                system=build_system_prompt(persona, team),
                 messages=[{"role": "user", "content": user_content}],
             ),
         )
         response_text = response.content[0].text
-        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text, panel_id=persona.panel_id)
+        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text, panel_id=persona.panel_id, team=team)
         if qa_mode != "off" and review.qa_result:
             review.qa_result.compute_scores(review, persona, qa_mode)
         return review
@@ -187,7 +188,7 @@ def call_claude(
         )
 
 
-def synthesize_persona_claude(persona_name: str, reviews_data: List[dict], model: str = "claude-sonnet-4-20250514") -> str:
+def synthesize_persona_claude(persona_name: str, reviews_data: List[dict], model: str = "claude-sonnet-4-20250514", team: str = "marketing") -> str:
     client = _get_client()
 
     try:
@@ -196,8 +197,8 @@ def synthesize_persona_claude(persona_name: str, reviews_data: List[dict], model
                 model=model,
                 max_tokens=2048,
                 temperature=0.3,
-                system=PERSONA_SYNTHESIS_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": build_persona_synthesis_prompt(persona_name, reviews_data)}],
+                system=get_persona_synthesis_system_prompt(team),
+                messages=[{"role": "user", "content": build_persona_synthesis_prompt(persona_name, reviews_data, team)}],
             ),
         )
         return response.content[0].text
@@ -206,7 +207,7 @@ def synthesize_persona_claude(persona_name: str, reviews_data: List[dict], model
         return f'{{"error": "{e}"}}'
 
 
-def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20250514") -> str:
+def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20250514", team: str = "marketing") -> str:
     client = _get_client()
 
     try:
@@ -215,8 +216,8 @@ def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20
                 model=model,
                 max_tokens=2048,
                 temperature=0.3,
-                system=SYNTHESIS_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": build_synthesis_prompt(reviews_data)}],
+                system=get_synthesis_system_prompt(team),
+                messages=[{"role": "user", "content": build_synthesis_prompt(reviews_data, team)}],
             ),
         )
         return response.content[0].text

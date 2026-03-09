@@ -30,7 +30,7 @@ async function ensureSurveyTemplate() {
     return state.surveyTemplate;
   }
   if (!surveyTemplatePromise) {
-    surveyTemplatePromise = loadSurveyTemplate()
+    surveyTemplatePromise = loadSurveyTemplate(state.team)
       .then((sections) => {
         state.surveyTemplate = Array.isArray(sections) ? sections : [];
         if (!$.pageResults.classList.contains('hidden')) renderSurveyTabs();
@@ -387,51 +387,35 @@ function showResults(payload) {
   state.lastSynthesisRaw = synthesis_raw;
   state.funnelQuantGroupAverages = payload.funnel_quant_group_averages || {};
 
-  // Build lastReviews from persona_summaries for backward compat with overview/funnel tabs
-  // Map persona summaries to review-like objects with float averages
-  state.lastReviews = persona_summaries.map(s => ({
-    persona_id: s.persona_id,
-    persona_name: s.persona_name,
-    panel_count: s.panel_count,
-    promotion_attractiveness: s.avg_promotion_attractiveness,
-    promotion_quality: s.avg_promotion_quality,
-    appeal: s.avg_appeal,
-    // qualitative — overall
-    overall_impression: s.overall_impression,
-    review_summary: s.review_summary,
-    // qualitative — upper
-    perceived_message: s.perceived_message,
-    emotional_response: s.emotional_response,
-    brand_association: s.brand_association,
-    // qualitative — mid
-    key_positives: s.key_positives,
-    key_concerns: s.key_concerns,
-    competitive_comparison: s.competitive_comparison,
-    information_gap: s.information_gap,
-    recommendation: Object.keys(s.recommendation_distribution || {}).reduce((a, b) =>
-      (s.recommendation_distribution[a] || 0) >= (s.recommendation_distribution[b] || 0) ? a : b, '보통'),
-    // qualitative — lower
-    purchase_trigger: s.purchase_trigger,
-    purchase_barrier: s.purchase_barrier,
-    price_perception: s.price_perception,
-    // quantitative averages
-    brand_favorability: s.avg_brand_favorability,
-    brand_fit: s.avg_brand_fit,
-    message_clarity: s.avg_message_clarity,
-    attention_grabbing: s.avg_attention_grabbing,
-    brand_trust: s.avg_brand_trust,
-    value_for_money: s.avg_value_for_money,
-    price_fairness: s.avg_price_fairness,
-    info_sufficiency: s.avg_info_sufficiency,
-    recommendation_intent: s.avg_recommendation_intent,
-    purchase_likelihood: s.avg_purchase_likelihood,
-    purchase_consideration: s.avg_purchase_consideration,
-    purchase_willingness: s.avg_purchase_willingness,
-    repurchase_intent: s.avg_repurchase_intent,
-    purchase_urgency: s.avg_purchase_urgency,
-    funnel_quant_groups: s.funnel_quant_groups || {},
-    error: null,
-  }));
+  // Build lastReviews from persona_summaries dynamically — works for both teams + demo data
+  const _STRUCTURAL = new Set([
+    'persona_id', 'persona_name', 'panel_count', 'panel_reviews',
+    'recommendation_distribution', 'funnel_quant_groups', 'quant_averages', 'qual_fields',
+  ]);
+  state.lastReviews = persona_summaries.map(s => {
+    const base = {
+      persona_id: s.persona_id,
+      persona_name: s.persona_name,
+      panel_count: s.panel_count,
+      recommendation: Object.keys(s.recommendation_distribution || {}).reduce((a, b) =>
+        (s.recommendation_distribution[a] || 0) >= (s.recommendation_distribution[b] || 0) ? a : b, '보통'),
+      funnel_quant_groups: s.funnel_quant_groups || {},
+      error: null,
+    };
+    // Copy all non-structural top-level fields (demo compat: avg_* and qual fields)
+    for (const [k, v] of Object.entries(s)) {
+      if (!_STRUCTURAL.has(k)) {
+        base[k] = v;
+        // Also strip avg_ prefix so overview.js can access r.promotion_attractiveness etc.
+        if (k.startsWith('avg_')) base[k.slice(4)] = v;
+      }
+    }
+    // Override/extend with quant_averages (new API format, team-agnostic)
+    Object.assign(base, s.quant_averages || {});
+    // Override/extend with qual_fields (new API format, team-agnostic)
+    Object.assign(base, s.qual_fields || {});
+    return base;
+  });
 
   $.pageUpload.classList.add('hidden');
   $.pageResults.classList.remove('hidden');
@@ -478,10 +462,50 @@ async function refreshUsageBadge() {
   } catch {}
 }
 
+/* ── Team toggle ── */
+const _TEAM_INTRO = {
+  marketing: '가상 페르소나를 활용하여 프로모션 자료에 대한 소비자 반응을 시뮬레이션합니다.<br>브랜드 인지부터 전환까지, 마케팅 퍼널 전 단계의 정량·정성 피드백을 빠르게 확인하세요.',
+  commerce: '가상 페르소나를 활용하여 MD 상품에 대한 소비자 반응을 시뮬레이션합니다.<br>상품 매력도부터 구매 전환까지, 커머스 퍼널 전 단계의 정량·정성 피드백을 빠르게 확인하세요.',
+};
+const _TEAM_UPLOAD_TITLE = {
+  marketing: '📎 프로모션 자료 업로드',
+  commerce: '📎 MD 상품 자료 업로드',
+};
+
+document.getElementById('team-toggle')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.team-btn');
+  if (!btn) return;
+  const team = btn.dataset.team;
+  if (!team || team === state.team) return;
+
+  state.team = team;
+  document.querySelectorAll('.team-btn').forEach(b => b.classList.toggle('active', b.dataset.team === team));
+
+  // Update intro text and upload card title
+  const introEl = document.getElementById('intro-desc');
+  if (introEl) introEl.innerHTML = _TEAM_INTRO[team] || _TEAM_INTRO.marketing;
+  const uploadTitle = document.getElementById('upload-card-title');
+  if (uploadTitle) uploadTitle.textContent = _TEAM_UPLOAD_TITLE[team] || _TEAM_UPLOAD_TITLE.marketing;
+
+  // Reset personas (different team = different sheet)
+  state.personasLoaded = false;
+  state.samplingSeed = null;
+  $.pStatus.innerHTML = '<div class="persona-badge" style="color:#636e72">팀이 변경되었습니다. 페르소나를 다시 로드하세요.</div>';
+  $.pListWrap.classList.add('hidden');
+  $.pListWrap.innerHTML = '';
+  updateRunBtn();
+
+  // Reload funnelConfig and surveyTemplate for the new team
+  await loadFunnelConfig(team);
+  surveyTemplatePromise = null;
+  state.surveyTemplate = [];
+  ensureSurveyTemplate();
+});
+
 /* ── Initialize model selectors and load funnel config ── */
 initModelSelectors();
 renderPanelSizeEstimateGuide();
-loadFunnelConfig();
+loadFunnelConfig(state.team);
 ensureSurveyTemplate();
 refreshUsageBadge();
 
@@ -540,7 +564,7 @@ $.btnLoad.addEventListener('click', async () => {
   $.pListWrap.innerHTML = '';
 
   const panelSize = Number($.panelSize.value || 10);
-  const result = await loadPersonas(panelSize);
+  const result = await loadPersonas(panelSize, null, state.team);
   if (result.ok) {
     state.personasLoaded = true;
     state.selectedPanelSize = Number(result.panel_size || panelSize);
@@ -587,6 +611,7 @@ $.btnRun.addEventListener('click', async () => {
   fd.append('synthesis_model', $.synthesisModel.value);
   fd.append('qa_mode', document.getElementById('qa-mode').value);
   fd.append('panel_size', String(state.selectedPanelSize || Number($.panelSize.value || 10)));
+  fd.append('team', state.team);
   if (state.samplingSeed) fd.append('sampling_seed', state.samplingSeed);
   if (password) fd.append('password', password);
 

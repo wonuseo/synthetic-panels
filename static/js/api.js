@@ -1,8 +1,8 @@
 import { state } from './state.js';
 
-export async function loadFunnelConfig() {
+export async function loadFunnelConfig(team = 'marketing') {
   try {
-    const res = await fetch('/api/funnel-config');
+    const res = await fetch('/api/funnel-config?team=' + encodeURIComponent(team));
     const data = await res.json();
     if (data.ok) window.funnelConfig = data.funnels;
   } catch (e) {
@@ -10,9 +10,9 @@ export async function loadFunnelConfig() {
   }
 }
 
-export async function loadSurveyTemplate() {
+export async function loadSurveyTemplate(team = 'marketing') {
   try {
-    const res = await fetch('/api/survey-template');
+    const res = await fetch('/api/survey-template?team=' + encodeURIComponent(team));
     const data = await res.json();
     if (data.ok) return data.sections || [];
     return [];
@@ -22,9 +22,9 @@ export async function loadSurveyTemplate() {
   }
 }
 
-export async function loadPersonas(panelSize = 10, samplingSeed = null) {
+export async function loadPersonas(panelSize = 10, samplingSeed = null, team = 'marketing') {
   try {
-    const params = new URLSearchParams({ panel_size: String(panelSize) });
+    const params = new URLSearchParams({ panel_size: String(panelSize), team });
     if (samplingSeed) params.set('sampling_seed', samplingSeed);
     const res = await fetch(`/api/personas?${params.toString()}`, { method: 'POST' });
     const data = await res.json();

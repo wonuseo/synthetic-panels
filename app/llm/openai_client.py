@@ -22,9 +22,9 @@ from app.media.processor import prepare_for_openai
 from app.llm.prompt import (
     build_system_prompt,
     build_user_prompt,
-    SYNTHESIS_SYSTEM_PROMPT,
+    get_synthesis_system_prompt,
     build_synthesis_prompt,
-    PERSONA_SYNTHESIS_SYSTEM_PROMPT,
+    get_persona_synthesis_system_prompt,
     build_persona_synthesis_prompt,
 )
 
@@ -162,6 +162,7 @@ def call_openai(
     model: str = "gpt-4o",
     text_content: str = "",
     qa_mode: str = "off",
+    team: str = "marketing",
 ) -> Review:
     client = _get_client()
 
@@ -170,7 +171,7 @@ def call_openai(
         user_content.extend(prepare_for_openai(file_bytes, filename))
     user_content.append({
         "type": "text",
-        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content, qa_mode=qa_mode),
+        "text": build_user_prompt(has_image=bool(file_bytes), text_content=text_content, qa_mode=qa_mode, team=team),
     })
 
     try:
@@ -181,13 +182,13 @@ def call_openai(
                 temperature=0.7,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": build_system_prompt(persona)},
+                    {"role": "system", "content": build_system_prompt(persona, team)},
                     {"role": "user", "content": user_content},
                 ],
             ),
         )
         response_text = response.choices[0].message.content
-        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text, panel_id=persona.panel_id)
+        review = Review.from_llm_response(persona.persona_id, persona.persona_name, response_text, panel_id=persona.panel_id, team=team)
         if qa_mode != "off" and review.qa_result:
             review.qa_result.compute_scores(review, persona, qa_mode)
         return review
@@ -202,7 +203,7 @@ def call_openai(
         )
 
 
-def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model: str = "gpt-4o") -> str:
+def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model: str = "gpt-4o", team: str = "marketing") -> str:
     client = _get_client()
 
     try:
@@ -213,8 +214,8 @@ def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model
                 temperature=0.3,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": PERSONA_SYNTHESIS_SYSTEM_PROMPT},
-                    {"role": "user", "content": build_persona_synthesis_prompt(persona_name, reviews_data)},
+                    {"role": "system", "content": get_persona_synthesis_system_prompt(team)},
+                    {"role": "user", "content": build_persona_synthesis_prompt(persona_name, reviews_data, team)},
                 ],
             ),
         )
@@ -224,7 +225,7 @@ def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model
         return f'{{"error": "{e}"}}'
 
 
-def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o") -> str:
+def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o", team: str = "marketing") -> str:
     client = _get_client()
 
     try:
@@ -235,8 +236,8 @@ def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o") -> str:
                 temperature=0.3,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT},
-                    {"role": "user", "content": build_synthesis_prompt(reviews_data)},
+                    {"role": "system", "content": get_synthesis_system_prompt(team)},
+                    {"role": "user", "content": build_synthesis_prompt(reviews_data, team)},
                 ],
             ),
         )

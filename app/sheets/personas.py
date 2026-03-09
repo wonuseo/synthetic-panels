@@ -19,11 +19,11 @@ def load_personas(spreadsheet: gspread.Spreadsheet, worksheet_name: str = "perso
     return [Persona.from_sheet_row(row) for row in records]
 
 
-def load_panels(spreadsheet: gspread.Spreadsheet, worksheet_name: str = "generated_panels") -> List[Persona]:
+def load_panels(spreadsheet: gspread.Spreadsheet, worksheet_name: str = "generated_panels", team: str = "marketing") -> List[Persona]:
     worksheet = spreadsheet.worksheet(worksheet_name)
     expected_headers = worksheet.row_values(1)
     records = worksheet.get_all_records(expected_headers=expected_headers)
-    return [Persona.from_sheet_row(row) for row in records]
+    return [Persona.from_sheet_row(row, team) for row in records]
 
 
 def validate_panel_size(panel_size: int) -> int:
@@ -216,15 +216,25 @@ def sample_panels_by_ratio(
     return sampled, seed
 
 
+_TEAM_PANEL_WORKSHEETS = {
+    "marketing": "generated_panels",
+    "commerce": "generated_panels_commerce",
+}
+
+
 def sample_panels_for_size(
     spreadsheet: gspread.Spreadsheet,
     panel_size: int,
     sampling_seed: Optional[str] = None,
-    panel_worksheet_name: str = "generated_panels",
+    panel_worksheet_name: Optional[str] = None,
     ratio_worksheet_name: str = "persona_ratios",
+    team: str = "marketing",
 ) -> Tuple[List[Persona], int, str]:
     validated_size = validate_panel_size(panel_size)
-    panels = load_panels(spreadsheet, worksheet_name=panel_worksheet_name)
+    # Determine worksheet name based on team if not explicitly provided
+    if panel_worksheet_name is None:
+        panel_worksheet_name = _TEAM_PANEL_WORKSHEETS.get(team, "generated_panels")
+    panels = load_panels(spreadsheet, worksheet_name=panel_worksheet_name, team=team)
     if not panels:
         seed = sampling_seed or uuid.uuid4().hex
         return [], 0, seed

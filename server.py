@@ -30,7 +30,7 @@ from app.llm.parse import extract_json_or_none
 from app.models.review import Review
 from app.models.persona_summary import PersonaSummary
 from app.models.qa import QAResult
-from app.core.funnel import FUNNEL_QUANT_GROUPS
+from app.core.funnel import get_funnel_quant_groups
 
 from zoneinfo import ZoneInfo
 
@@ -38,10 +38,11 @@ app = FastAPI(title="Synthetic Panels")
 logger = logging.getLogger(__name__)
 
 
-def _compute_cross_persona_quant_groups(persona_summaries: list) -> dict:
+def _compute_cross_persona_quant_groups(persona_summaries: list, team: str = "marketing") -> dict:
     """모든 페르소나의 funnel_quant_groups를 다시 평균하여 반환."""
+    funnel_quant_groups = get_funnel_quant_groups(team)
     result: dict = {}
-    for funnel_key, groups in FUNNEL_QUANT_GROUPS.items():
+    for funnel_key, groups in funnel_quant_groups.items():
         result[funnel_key] = []
         for grp_def in groups:
             grp_avgs = []
@@ -112,9 +113,13 @@ def _resolve_asset_version() -> str:
 
 ASSET_VERSION = _resolve_asset_version()
 
-_SURVEY_TEMPLATE_PATH = Path(__file__).parent / "config" / "survey_questions.yaml"
 _SCALE_SPEC_RE = re.compile(r"integer\s+(\d+)\s*-\s*(\d+)", re.IGNORECASE)
 _RECOMMENDATION_OPTIONS = ["매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"]
+
+_TEAM_SURVEY_PATHS = {
+    "marketing": Path(__file__).parent / "config" / "survey_questions.yaml",
+    "commerce": Path(__file__).parent / "config" / "commerce_survey_questions.yaml",
+}
 
 
 def _to_question_type(field_key: str, spec: str) -> str:
@@ -133,9 +138,10 @@ def _parse_scale(spec: str) -> Optional[dict]:
     return {"min": lo, "max": hi}
 
 
-@lru_cache(maxsize=1)
-def _load_survey_template() -> list[dict]:
-    with open(_SURVEY_TEMPLATE_PATH, encoding="utf-8") as f:
+@lru_cache(maxsize=4)
+def _load_survey_template(team: str = "marketing") -> list[dict]:
+    path = _TEAM_SURVEY_PATHS.get(team, _TEAM_SURVEY_PATHS["marketing"])
+    with open(path, encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
 
     sections = []
@@ -212,17 +218,17 @@ async def index(request: Request):
 
 
 @app.get("/api/funnel-config")
-async def api_funnel_config():
+async def api_funnel_config(team: str = "marketing"):
     """프론트엔드용 퍼널 설정 반환"""
     from app.core.funnel import get_funnel_groups
-    return {"ok": True, "funnels": get_funnel_groups()}
+    return {"ok": True, "funnels": get_funnel_groups(team)}
 
 
 @app.get("/api/survey-template")
-async def api_survey_template():
+async def api_survey_template(team: str = "marketing"):
     """프론트엔드용 설문 문항 템플릿 반환"""
     try:
-        return {"ok": True, "sections": _load_survey_template()}
+        return {"ok": True, "sections": _load_survey_template(team)}
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
@@ -231,6 +237,7 @@ async def api_survey_template():
 async def api_load_personas(
     panel_size: int = 10,
     sampling_seed: Optional[str] = None,
+    team: str = "marketing",
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
@@ -262,6 +269,7 @@ async def api_load_personas(
             spreadsheet=spreadsheet,
             panel_size=panel_size,
             sampling_seed=sampling_seed,
+            team=team,
         )
         # persona_id별 그룹핑
         grouped = defaultdict(list)
@@ -275,15 +283,26 @@ async def api_load_personas(
         for persona_id in sorted(grouped.keys(), key=_persona_sort_key):
             panel_list = grouped[persona_id]
             first = panel_list[0]
-            panel_stats = {
-                "gender_distribution": _build_distribution([p.panel_gender for p in panel_list]),
-                "season_distribution": _build_distribution([p.persona_season for p in panel_list]),
-                "budget_distribution": _build_distribution([p.panel_cpc for p in panel_list]),
-                "visit_distribution": _build_distribution([p.panel_visited for p in panel_list]),
-                "visit_experience_distribution": _build_distribution([p.panel_visit_experience for p in panel_list]),
-                "skepticism_distribution": _build_distribution([p.panel_skepticism for p in panel_list]),
-                "potential_distribution": _build_distribution([p.panel_potential for p in panel_list]),
-            }
+            if team == "commerce":
+                panel_stats = {
+                    "gender_distribution": _build_distribution([p.panel_gender for p in panel_list]),
+                    "budget_distribution": _build_distribution([p.panel_cpc for p in panel_list]),
+                    "visit_distribution": _build_distribution([p.panel_visited for p in panel_list]),
+                    "visit_experience_distribution": _build_distribution([p.panel_visit_experience for p in panel_list]),
+                    "skepticism_distribution": _build_distribution([p.panel_skepticism for p in panel_list]),
+                    "shopping_freq_distribution": _build_distribution([p.extra.get("panel_shopping_freq", "") for p in panel_list]),
+                    "brand_loyalty_distribution": _build_distribution([p.extra.get("panel_brand_loyalty", "") for p in panel_list]),
+                }
+            else:
+                panel_stats = {
+                    "gender_distribution": _build_distribution([p.panel_gender for p in panel_list]),
+                    "season_distribution": _build_distribution([p.persona_season for p in panel_list]),
+                    "budget_distribution": _build_distribution([p.panel_cpc for p in panel_list]),
+                    "visit_distribution": _build_distribution([p.panel_visited for p in panel_list]),
+                    "visit_experience_distribution": _build_distribution([p.panel_visit_experience for p in panel_list]),
+                    "skepticism_distribution": _build_distribution([p.panel_skepticism for p in panel_list]),
+                    "potential_distribution": _build_distribution([p.panel_potential for p in panel_list]),
+                }
             personas_info.append({
                 "persona_id": first.persona_id,
                 "persona_name": first.persona_name,
@@ -322,6 +341,7 @@ async def api_review(
     file: Optional[UploadFile] = File(None),
     qa_mode: str = Form(QA_MODE),
     password: Optional[str] = Form(None),
+    team: str = Form("marketing"),
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
@@ -348,6 +368,7 @@ async def api_review(
             spreadsheet=spreadsheet,
             panel_size=panel_size,
             sampling_seed=sampling_seed,
+            team=team,
         )
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
@@ -373,8 +394,8 @@ async def api_review(
 
             def run_single(panel):
                 if provider == "Claude":
-                    return call_claude(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
-                return call_openai(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode)
+                    return call_claude(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode, team=team)
+                return call_openai(panel, file_bytes, filename, review_model, text_content, qa_mode=qa_mode, team=team)
 
             futures = {executor.submit(run_single, p): p for p in panels}
             completed = 0
@@ -437,7 +458,7 @@ async def api_review(
 
             for persona_id, persona_reviews in grouped.items():
                 persona_name = persona_reviews[0].persona_name
-                summary = PersonaSummary.from_reviews(persona_id, persona_name, persona_reviews)
+                summary = PersonaSummary.from_reviews(persona_id, persona_name, persona_reviews, team=team)
                 persona_summaries.append(summary)
 
             total_personas = len(persona_summaries)
@@ -447,12 +468,10 @@ async def api_review(
             phase3_start = time.time()
 
             def run_persona_synthesis(summary):
-                reviews_data = []
-                for pr in summary.panel_reviews:
-                    reviews_data.append(pr)
+                reviews_data = list(summary.panel_reviews)
                 if provider == "Claude":
-                    return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model)
-                return summary.persona_id, synthesize_persona_openai(summary.persona_name, reviews_data, summary_model)
+                    return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model, team=team)
+                return summary.persona_id, synthesize_persona_openai(summary.persona_name, reviews_data, summary_model, team=team)
 
             p3_futures = {executor.submit(run_persona_synthesis, s): s for s in persona_summaries}
             p3_completed = 0
@@ -493,7 +512,7 @@ async def api_review(
                     if parsed:
                         for s in persona_summaries:
                             if s.persona_id == persona_id:
-                                s.fill_qualitative(parsed)
+                                s.fill_qualitative(parsed, team=team)
                                 break
 
                     elapsed = time.time() - phase3_start
@@ -520,47 +539,22 @@ async def api_review(
                 recommendation = "보통"
                 if s.recommendation_distribution:
                     recommendation = max(s.recommendation_distribution, key=s.recommendation_distribution.get)
-
-                synthesis_input.append({
+                entry = {
                     "persona_name": s.persona_name,
-                    "promotion_attractiveness": s.avg_promotion_attractiveness,
-                    "promotion_quality": s.avg_promotion_quality,
-                    "overall_impression": s.overall_impression,
-                    "review_summary": s.review_summary,
-                    "brand_favorability": s.avg_brand_favorability,
-                    "brand_fit": s.avg_brand_fit,
-                    "message_clarity": s.avg_message_clarity,
-                    "attention_grabbing": s.avg_attention_grabbing,
-                    "brand_trust": s.avg_brand_trust,
-                    "perceived_message": s.perceived_message,
-                    "emotional_response": s.emotional_response,
-                    "brand_association": s.brand_association,
-                    "appeal": s.avg_appeal,
-                    "value_for_money": s.avg_value_for_money,
-                    "price_fairness": s.avg_price_fairness,
-                    "info_sufficiency": s.avg_info_sufficiency,
-                    "recommendation_intent": s.avg_recommendation_intent,
-                    "key_positives": s.key_positives,
-                    "key_concerns": s.key_concerns,
-                    "competitive_comparison": s.competitive_comparison,
-                    "information_gap": s.information_gap,
                     "recommendation": recommendation,
-                    "purchase_likelihood": s.avg_purchase_likelihood,
-                    "purchase_consideration": s.avg_purchase_consideration,
-                    "purchase_willingness": s.avg_purchase_willingness,
-                    "repurchase_intent": s.avg_repurchase_intent,
-                    "purchase_urgency": s.avg_purchase_urgency,
-                    "purchase_trigger": s.purchase_trigger,
-                    "purchase_barrier": s.purchase_barrier,
-                    "price_perception": s.price_perception,
-                })
+                }
+                # Flatten quantitative averages (works for both marketing and commerce)
+                entry.update(s.quant_averages)
+                # Flatten qualitative fields
+                entry.update(s.qual_fields)
+                synthesis_input.append(entry)
 
             synthesis_raw = ""
             if synthesis_input:
                 def do_synthesize():
                     if provider == "Claude":
-                        return synthesize_claude(synthesis_input, synthesis_model)
-                    return synthesize_openai(synthesis_input, synthesis_model)
+                        return synthesize_claude(synthesis_input, synthesis_model, team=team)
+                    return synthesize_openai(synthesis_input, synthesis_model, team=team)
 
                 synthesis_raw = await loop.run_in_executor(None, do_synthesize)
 
@@ -575,7 +569,7 @@ async def api_review(
                     "synthesis_raw": synthesis_raw,
                     "panel_size": selected_panel_size,
                     "sampling_seed": selected_seed,
-                    "funnel_quant_group_averages": _compute_cross_persona_quant_groups(persona_summaries),
+                    "funnel_quant_group_averages": _compute_cross_persona_quant_groups(persona_summaries, team=team),
                 }),
             }
         except asyncio.CancelledError:
@@ -606,6 +600,7 @@ async def api_save(
     reviews_json: str = Form(...),
     synthesis_json: Optional[str] = Form(None),
     persona_summaries_json: Optional[str] = Form(None),
+    team: str = Form("marketing"),
 ):
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
@@ -632,61 +627,92 @@ async def api_save(
                     qa_mode=str(qa_data.get("qa_mode", "off")),
                 )
 
-            overall_impression = r.get("overall_impression") or r.get("first_impression", "")
-            competitive_comparison = r.get("competitive_comparison") or r.get("competitive_preference", "")
-            recommendation = r.get("recommendation") or r.get("recommendation_context", "")
-            combined_trigger_barrier = r.get("purchase_trigger_barrier", "")
-            purchase_trigger = r.get("purchase_trigger") or combined_trigger_barrier
-            purchase_barrier = r.get("purchase_barrier") or combined_trigger_barrier
+            if team == "commerce":
+                # Commerce: store all fields in data dict
+                combined_trigger_barrier = r.get("purchase_trigger_barrier", "")
+                purchase_trigger = r.get("purchase_trigger") or combined_trigger_barrier
+                purchase_barrier = r.get("purchase_barrier") or combined_trigger_barrier
+                data_dict = {k: v for k, v in r.items() if k not in {"persona_id", "persona_name", "panel_id", "raw_response", "error", "qa_result", "data"}}
+                reviews.append(Review(
+                    persona_id=r["persona_id"],
+                    persona_name=r["persona_name"],
+                    panel_id=r.get("panel_id", ""),
+                    recommendation=r.get("recommendation", "보통"),
+                    overall_impression=r.get("overall_impression", ""),
+                    review_summary=r.get("review_summary", ""),
+                    key_positives=r.get("key_positives", ""),
+                    key_concerns=r.get("key_concerns", ""),
+                    competitive_comparison=r.get("competitive_comparison", ""),
+                    information_gap=r.get("information_gap", ""),
+                    purchase_trigger=purchase_trigger,
+                    purchase_barrier=purchase_barrier,
+                    price_perception=r.get("price_perception", ""),
+                    purchase_likelihood=r.get("purchase_likelihood", 0),
+                    purchase_consideration=r.get("purchase_consideration", 0),
+                    purchase_willingness=r.get("purchase_willingness", 0),
+                    repurchase_intent=r.get("repurchase_intent", 0),
+                    purchase_urgency=r.get("purchase_urgency", 0),
+                    raw_response=r.get("raw_response", ""),
+                    error=r.get("error"),
+                    qa_result=qa_result,
+                    data=data_dict,
+                ))
+            else:
+                overall_impression = r.get("overall_impression") or r.get("first_impression", "")
+                competitive_comparison = r.get("competitive_comparison") or r.get("competitive_preference", "")
+                recommendation = r.get("recommendation") or r.get("recommendation_context", "")
+                combined_trigger_barrier = r.get("purchase_trigger_barrier", "")
+                purchase_trigger = r.get("purchase_trigger") or combined_trigger_barrier
+                purchase_barrier = r.get("purchase_barrier") or combined_trigger_barrier
 
-            reviews.append(Review(
-                persona_id=r["persona_id"],
-                persona_name=r["persona_name"],
-                panel_id=r.get("panel_id", ""),
-                promotion_attractiveness=r.get("promotion_attractiveness", 0),
-                promotion_quality=r.get("promotion_quality", 0),
-                brand_favorability=r.get("brand_favorability", 0),
-                brand_fit=r.get("brand_fit", 0),
-                message_clarity=r.get("message_clarity", 0),
-                attention_grabbing=r.get("attention_grabbing", 0),
-                brand_trust=r.get("brand_trust", 0),
-                appeal=r.get("appeal", 0),
-                value_for_money=r.get("value_for_money", 0),
-                price_fairness=r.get("price_fairness", 0),
-                info_sufficiency=r.get("info_sufficiency", 0),
-                recommendation_intent=r.get("recommendation_intent", 0),
-                purchase_likelihood=r.get("purchase_likelihood", 0),
-                purchase_consideration=r.get("purchase_consideration", 0),
-                purchase_willingness=r.get("purchase_willingness", 0),
-                repurchase_intent=r.get("repurchase_intent", 0),
-                purchase_urgency=r.get("purchase_urgency", 0),
-                overall_impression=overall_impression,
-                review_summary=r.get("review_summary", ""),
-                perceived_message=r.get("perceived_message", ""),
-                emotional_response=r.get("emotional_response", ""),
-                brand_association=r.get("brand_association", ""),
-                key_positives=r.get("key_positives", ""),
-                key_concerns=r.get("key_concerns", ""),
-                competitive_comparison=competitive_comparison,
-                information_gap=r.get("information_gap", ""),
-                recommendation=recommendation,
-                purchase_trigger=purchase_trigger,
-                purchase_barrier=purchase_barrier,
-                price_perception=r.get("price_perception", ""),
-                raw_response=r.get("raw_response", ""),
-                error=r.get("error"),
-                qa_result=qa_result,
-            ))
+                reviews.append(Review(
+                    persona_id=r["persona_id"],
+                    persona_name=r["persona_name"],
+                    panel_id=r.get("panel_id", ""),
+                    promotion_attractiveness=r.get("promotion_attractiveness", 0),
+                    promotion_quality=r.get("promotion_quality", 0),
+                    brand_favorability=r.get("brand_favorability", 0),
+                    brand_fit=r.get("brand_fit", 0),
+                    message_clarity=r.get("message_clarity", 0),
+                    attention_grabbing=r.get("attention_grabbing", 0),
+                    brand_trust=r.get("brand_trust", 0),
+                    appeal=r.get("appeal", 0),
+                    value_for_money=r.get("value_for_money", 0),
+                    price_fairness=r.get("price_fairness", 0),
+                    info_sufficiency=r.get("info_sufficiency", 0),
+                    recommendation_intent=r.get("recommendation_intent", 0),
+                    purchase_likelihood=r.get("purchase_likelihood", 0),
+                    purchase_consideration=r.get("purchase_consideration", 0),
+                    purchase_willingness=r.get("purchase_willingness", 0),
+                    repurchase_intent=r.get("repurchase_intent", 0),
+                    purchase_urgency=r.get("purchase_urgency", 0),
+                    overall_impression=overall_impression,
+                    review_summary=r.get("review_summary", ""),
+                    perceived_message=r.get("perceived_message", ""),
+                    emotional_response=r.get("emotional_response", ""),
+                    brand_association=r.get("brand_association", ""),
+                    key_positives=r.get("key_positives", ""),
+                    key_concerns=r.get("key_concerns", ""),
+                    competitive_comparison=competitive_comparison,
+                    information_gap=r.get("information_gap", ""),
+                    recommendation=recommendation,
+                    purchase_trigger=purchase_trigger,
+                    purchase_barrier=purchase_barrier,
+                    price_perception=r.get("price_perception", ""),
+                    raw_response=r.get("raw_response", ""),
+                    error=r.get("error"),
+                    qa_result=qa_result,
+                ))
         run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-        save_reviews(spreadsheet, reviews, run_id)
+        save_reviews(spreadsheet, reviews, run_id, team=team)
         if synthesis_json:
             synthesis_data = json.loads(synthesis_json)
             if synthesis_data and isinstance(synthesis_data, dict):
-                save_synthesis(spreadsheet, synthesis_data, run_id)
+                save_synthesis(spreadsheet, synthesis_data, run_id, team=team)
         if persona_summaries_json:
             summaries_data = json.loads(persona_summaries_json)
             if summaries_data and isinstance(summaries_data, list):
-                save_persona_summaries(spreadsheet, summaries_data, run_id)
+                save_persona_summaries(spreadsheet, summaries_data, run_id, team=team)
         return {"ok": True, "run_id": run_id, "count": len(reviews)}
     except Exception as e:
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})

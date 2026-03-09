@@ -112,9 +112,9 @@ class QAResult:
         self.persona_quality = 0.5 * self.consistency_score + 0.5 * self.trap_pass_rate
         self.qa_passed = self.persona_quality >= 0.7
 
-    def to_sheet_columns(self) -> list:
+    def to_sheet_columns(self, team: str = "marketing") -> list:
         """Return flat list for appending to sheet row."""
-        row = [getattr(self, key, 0) for key in get_qa_keys()]
+        row = [getattr(self, key, 0) for key in get_qa_keys(team)]
         row.extend([
             round(self.consistency_score, 3),
             round(self.trap_pass_rate, 3),
