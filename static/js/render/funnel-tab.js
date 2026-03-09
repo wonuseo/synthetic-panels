@@ -1,8 +1,9 @@
 import { state } from '../state.js';
 import { esc, recEmoji, renderSynValue, hierHeader, hierConnector, buildStepTrack } from './helpers.js';
 import { computeFunnelAverages, renderRadarChart } from './overview.js';
+import { buildSurveySections, flattenSurveyFields } from './survey-schema.js';
 
-const _FUNNEL_COLORS = { upper: '#6c5ce7', mid: '#0984e3', lower: '#00b894' };
+const _FUNNEL_COLORS = { upper: '#DA291C', mid: '#877669', lower: '#54585A' };
 
 /* 퍼널별 정량 지표 그룹: funnelConfig에서 동적으로 로드 */
 function _getQuantGroups(funnelKey) {
@@ -13,6 +14,20 @@ function _getQuantGroups(funnelKey) {
 function _getNum(v) { return typeof v === 'number' ? v : parseFloat(v) || 0; }
 function _pct(v, max = 5) { return Math.round((v / max) * 100); }
 function _scoreClass(v) { return v >= 4 ? 'high' : v >= 3 ? 'mid' : 'low'; }
+function _metricDefinition(item) {
+  return String(item?.definition || '').trim();
+}
+function _groupDefinition(grpDef) {
+  return String(grpDef?.definition || '').trim();
+}
+
+function _getSurveyFieldMap() {
+  const sections = buildSurveySections(state.surveyTemplate, window.funnelConfig);
+  return flattenSurveyFields(sections).reduce((acc, field) => {
+    acc[field.key] = field;
+    return acc;
+  }, {});
+}
 
 function _computePersonaGroupAvg(r, grp) {
   const scores = grp.keys.map(k => _getNum(r[k])).filter(v => v > 0);
@@ -27,6 +42,15 @@ function _computePersonaFunnelAvg(r, funnelKey) {
   return scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 }
 
+function _computeSpread(scores) {
+  if (!scores.length) return 0;
+  return Math.max(...scores) - Math.min(...scores);
+}
+
+function _getPersonaPanelReviews(personaId) {
+  return (state.lastPanelReviews || []).filter(r => !r.error && r.persona_id === personaId);
+}
+
 /* ── Individual-persona radar (single review row) ── */
 function renderPersonaRadar(r, funnelKey) {
   if (!window.funnelConfig) return '';
@@ -38,7 +62,7 @@ function renderPersonaRadar(r, funnelKey) {
   const n = quantItems.length;
   const cx = 150, cy = 150, R = 122;
   const maxVal = 5;
-  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+  const color = _FUNNEL_COLORS[funnelKey] || '#DA291C';
 
   const vals = quantItems.map(item => {
     const raw = r[item.key];
@@ -146,10 +170,50 @@ function renderQualItemsForFunnel(r, funnelKey) {
   return `<div class="qual-section"><h5>💬 정성적 코멘트</h5><div class="qual-grid">${items}</div></div>`;
 }
 
+function renderFunnelQualSummary(r, funnelKey) {
+  if (!window.funnelConfig) return '';
+  const funnel = window.funnelConfig[funnelKey];
+  if (!funnel) return '';
+  const qualItems = funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
+  const cards = qualItems
+    .map(item => ({ label: item.label, val: r[item.key] }))
+    .filter(item => item.val)
+    .map(item => `<div class="persona-funnel-qual-item"><div class="persona-funnel-qual-label">${esc(item.label)}</div><div class="persona-funnel-qual-text">${renderSynValue(item.val)}</div></div>`)
+    .join('');
+
+  if (!cards) return '';
+  return `<div class="persona-funnel-qual-wrap">${cards}</div>`;
+}
+
+function renderPersonaPanelReviewSummary(personaId, funnelKey) {
+  const panelReviews = _getPersonaPanelReviews(personaId);
+  if (!panelReviews.length) return '';
+
+  const cards = panelReviews.map((review, index) => {
+    const avg = _computePersonaFunnelAvg(review, funnelKey);
+    const avgDisplay = avg > 0 ? avg.toFixed(1) : '—';
+    const qualHtml = renderFunnelQualSummary(review, funnelKey);
+    if (!qualHtml && avg <= 0) return '';
+    return `<article class="persona-panel-review-card">
+      <div class="persona-panel-review-head">
+        <span class="persona-panel-review-id">${esc(review.panel_id || `패널 ${index + 1}`)}</span>
+        <span class="persona-panel-review-score">${avgDisplay}/5</span>
+      </div>
+      ${qualHtml || '<div class="persona-panel-review-empty">정성 코멘트 없음</div>'}
+    </article>`;
+  }).filter(Boolean).join('');
+
+  if (!cards) return '';
+  return `<div class="persona-panel-review-section">
+    <div class="persona-panel-review-title">개별 패널 리뷰</div>
+    <div class="persona-panel-review-list">${cards}</div>
+  </div>`;
+}
+
 /* ── Section 1 Step 01: 퍼널 개요 카드 ── */
 function renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages) {
   const fa = funnelAverages?.[funnelKey];
-  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+  const color = _FUNNEL_COLORS[funnelKey] || '#DA291C';
   const synthesis = state.lastSynthesis && !state.lastSynthesis.error ? state.lastSynthesis : null;
 
   let html = `<div class="card foc-card">`;
@@ -184,7 +248,7 @@ function renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages) {
 /* ── L3 persona card: grouped quantitative bars ── */
 function renderPersonaQuantGrouped(r, funnelKey) {
   const groups = _getQuantGroups(funnelKey);
-  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+  const color = _FUNNEL_COLORS[funnelKey] || '#DA291C';
   const funnel = window.funnelConfig?.[funnelKey];
   const funnelQuantItems = funnel ? funnel.individual_items.filter(i => i.type === 'quantitative') : [];
   if (!groups.length) return '';
@@ -239,9 +303,54 @@ function renderSynthesisQualSection(funnelKey, funnel) {
   return html;
 }
 
+function renderGroupQualSummary(funnel) {
+  const synthesis = state.lastSynthesis && !state.lastSynthesis.error ? state.lastSynthesis : null;
+  if (!synthesis || !funnel?.synthesis_items) return '';
+
+  const items = funnel.synthesis_items
+    .filter(item => item.type === 'qualitative')
+    .map(item => ({ label: item.label, val: synthesis[item.key] }))
+    .filter(item => item.val != null && item.val !== '');
+
+  if (!items.length) return '';
+
+  let html = `<section class="grp-stage-card grp-stage-card-qual grp-stage-row">`;
+  html += `<div class="grp-subsection-title">정성 평가 종합</div>`;
+  html += `<div class="grp-qual-summary-list">`;
+  for (const item of items) {
+    html += `<div class="grp-qual-summary-item">`;
+    html += `<div class="grp-qual-summary-label">${esc(item.label)}</div>`;
+    html += `<div class="grp-qual-summary-text">${renderSynValue(item.val)}</div>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
+  html += `</section>`;
+  return html;
+}
+
+function renderL2Section(funnelKey, funnel, valid, groups) {
+  const cards = groups.map(grp => renderGroupSection(funnelKey, funnel, valid, grp)).filter(Boolean).join('');
+  if (!cards) return '';
+
+  let html = `<div class="card l2-stage-section">`;
+  html += `<div class="l2-stage-section-head">`;
+  html += `<span class="l2-stage-section-title">🧭 퍼널 단계별 카드</span>`;
+  html += `<div class="l2-stage-section-pills">`;
+  html += `<span class="grp-stage-pill">01 그룹 평균 점수</span>`;
+  html += `<span class="grp-stage-pill">02 세부 점수 및 정의</span>`;
+  html += `<span class="grp-stage-pill">03 정성 평가 종합</span>`;
+  html += `</div>`;
+  html += `</div>`;
+  html += `<div class="l2-group-grid">${cards}</div>`;
+  html += `</div>`;
+  return html;
+}
+
 /* ── Section 2: 그룹별 분석 카드 ── */
 function renderGroupSection(funnelKey, funnel, valid, grpDef) {
-  const color = _FUNNEL_COLORS[funnelKey] || '#6c5ce7';
+  const color = _FUNNEL_COLORS[funnelKey] || '#DA291C';
+  const surveyFieldMap = _getSurveyFieldMap();
+  const groups = _getQuantGroups(funnelKey);
 
   // Group average (prefer server-computed value)
   const pyGroups = state.funnelQuantGroupAverages[funnelKey] || [];
@@ -260,7 +369,13 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
   const funnelQuantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
   const grpItems = grpDef.keys.map(k => {
     const cfg = funnelQuantItems.find(i => i.key === k);
-    return { key: k, label: cfg ? cfg.label : k };
+    const surveyField = surveyFieldMap[k] || null;
+    return {
+      key: k,
+      label: cfg ? cfg.label : (surveyField?.label || k),
+      definition: _metricDefinition(cfg),
+      question: String(surveyField?.question || '').trim(),
+    };
   });
 
   // Compute per-item stats
@@ -270,10 +385,41 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     const minV = Math.min(...scores);
     const maxV = Math.max(...scores);
-    return { label: item.label, avg, pct: _pct(avg), minV, maxV, deviation: maxV - minV };
+    return {
+      ...item,
+      avg,
+      pct: _pct(avg),
+      deviation: maxV - minV,
+    };
   }).filter(Boolean);
 
-  let html = `<div class="card group-section-card">`;
+  const summaryStats = groups.map(group => {
+    const pyGroup = pyGroups.find(g => g.label === group.label);
+    let avg = 0;
+    if (pyGroup) avg = typeof pyGroup.avg === 'number' ? pyGroup.avg : parseFloat(pyGroup.avg) || 0;
+    else {
+      const values = valid.map(r => _computePersonaGroupAvg(r, group)).filter(v => v > 0);
+      avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    }
+    const perPersonaScores = valid.map(r => _computePersonaGroupAvg(r, group)).filter(v => v > 0);
+    return {
+      key: `group-${group.label}`,
+      label: group.label,
+      avg,
+      deviation: _computeSpread(perPersonaScores),
+      highlighted: group.label === grpDef.label,
+    };
+  });
+  const funnelScores = valid.map(r => _computePersonaFunnelAvg(r, funnelKey)).filter(v => v > 0);
+  summaryStats.push({
+    key: 'group-total',
+    label: '전체 평균',
+    avg: funnelScores.length ? funnelScores.reduce((a, b) => a + b, 0) / funnelScores.length : 0,
+    deviation: _computeSpread(funnelScores),
+    highlighted: false,
+  });
+
+  let html = `<div class="card group-section-card group-section-card--${funnelKey}">`;
 
   // 2a: Group header
   html += `<div class="grp-header">`;
@@ -289,62 +435,49 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
   html += `</div>`;
 
   if (itemStats.length) {
-    // 2b: Horizontal bar chart
-    html += `<div class="grp-bars">`;
-    html += `<div class="grp-subsection-title">항목별 평균</div>`;
+    html += `<div class="grp-stage-grid">`;
+    html += `<section class="grp-stage-card grp-stage-card-score grp-stage-row">`;
+    html += `<div class="grp-subsection-title">평균 점수 요약</div>`;
+    html += `<div class="grp-scoreboard">`;
+    for (const stat of summaryStats) {
+      const scoreClass = _scoreClass(stat.avg);
+      const activeClass = stat.highlighted ? ' grp-scorecard-active' : '';
+      html += `<div class="grp-scorecard${activeClass}">`;
+      html += `<div class="grp-scorecard-label">${esc(stat.label)}</div>`;
+      html += `<div class="grp-scorecard-avg grp-scorecard-${scoreClass}" style="color:${stat.highlighted ? color : ''}">${stat.avg > 0 ? stat.avg.toFixed(1) : '—'}<span>/5</span></div>`;
+      html += `<div class="grp-scorecard-dev">편차 ${stat.deviation > 0 ? stat.deviation.toFixed(1) : '0.0'}</div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+    html += `</section>`;
+
+    html += `<section class="grp-stage-card grp-stage-card-metrics grp-stage-row">`;
+    html += `<div class="grp-subsection-title">그룹 정의</div>`;
+    html += `<p class="grp-definition">${esc(_groupDefinition(grpDef) || `${grpDef.label} 관련 핵심 지표를 묶어 해석한 그룹입니다.`)}</p>`;
+    html += `<div class="grp-subsection-title">Metrics 상세</div>`;
+    html += `<div class="grp-metric-list">`;
     for (const item of itemStats) {
-      html += `<div class="grp-bar-item">`;
-      html += `<div class="grp-bar-label">${esc(item.label)}</div>`;
+      html += `<div class="grp-metric-list-item">`;
+      html += `<div class="grp-metric-list-head">`;
+      html += `<div class="grp-metric-list-label">${esc(item.label)}</div>`;
+      html += `<div class="grp-metric-list-score" style="color:${color}">${item.avg.toFixed(1)}<span class="grp-metric-list-score-max">/5</span></div>`;
+      html += `</div>`;
+      if (item.definition) html += `<div class="grp-metric-list-def">${esc(item.definition)}</div>`;
+      if (item.question) {
+        html += `<div class="grp-metric-question">`;
+        html += `<span class="grp-metric-question-label">설문 질문</span>`;
+        html += `<p>${esc(item.question)}</p>`;
+        html += `</div>`;
+      }
+      html += `<div class="grp-bar-item grp-bar-item-card">`;
       html += `<div class="grp-bar-track"><div class="grp-bar-fill-item" style="width:${item.pct}%;background:${color}"></div></div>`;
-      html += `<span class="grp-bar-val" style="color:${color}">${item.avg.toFixed(1)}</span>`;
+      html += `</div>`;
       html += `</div>`;
     }
     html += `</div>`;
+    html += `</section>`;
 
-    // 2c: Deviation stats table
-    html += `<div class="grp-dev-table">`;
-    html += `<div class="grp-subsection-title">📐 항목별 편차</div>`;
-    html += `<table class="grp-dev-tbl"><thead><tr><th>항목</th><th>평균</th><th>최소</th><th>최대</th><th>편차</th></tr></thead><tbody>`;
-    for (const item of itemStats) {
-      const devClass = item.deviation >= 2 ? 'dev-high' : item.deviation >= 1 ? 'dev-mid' : 'dev-low';
-      html += `<tr>`;
-      html += `<td>${esc(item.label)}</td>`;
-      html += `<td style="color:${color}">${item.avg.toFixed(1)}</td>`;
-      html += `<td>${item.minV.toFixed(1)}</td>`;
-      html += `<td>${item.maxV.toFixed(1)}</td>`;
-      html += `<td class="${devClass}">${item.deviation.toFixed(1)}</td>`;
-      html += `</tr>`;
-    }
-    html += `</tbody></table>`;
     html += `</div>`;
-  }
-
-  // 2d: Best vs Worst personas for this group
-  if (valid.length >= 2) {
-    const scored = valid
-      .map(r => ({ r, avg: _computePersonaGroupAvg(r, grpDef) }))
-      .filter(x => x.avg > 0)
-      .sort((a, b) => b.avg - a.avg);
-
-    if (scored.length >= 2) {
-      const best = scored[0];
-      const worst = scored[scored.length - 1];
-      html += `<div class="grp-compare">`;
-      html += `<div class="grp-subsection-title">🔍 세그먼트 비교</div>`;
-      html += `<div class="grp-compare-grid">`;
-      html += `<div class="grp-cmp-cell grp-cmp-best">`;
-      html += `<span class="grp-cmp-badge grp-cmp-badge-best">Best</span>`;
-      html += `<span class="grp-cmp-name">${esc(best.r.persona_name)}</span>`;
-      html += `<span class="grp-cmp-score" style="color:${color}">${best.avg.toFixed(1)}/5</span>`;
-      html += `</div>`;
-      html += `<div class="grp-cmp-cell grp-cmp-worst">`;
-      html += `<span class="grp-cmp-badge grp-cmp-badge-worst">Low</span>`;
-      html += `<span class="grp-cmp-name">${esc(worst.r.persona_name)}</span>`;
-      html += `<span class="grp-cmp-score" style="color:var(--danger)">${worst.avg.toFixed(1)}/5</span>`;
-      html += `</div>`;
-      html += `</div>`;
-      html += `</div>`;
-    }
   }
 
   html += `</div>`;
@@ -403,13 +536,12 @@ export function renderFunnelTab(funnelKey) {
   const groups = _getQuantGroups(funnelKey);
 
   let html = '';
+  const funnelLabel = funnel.label.split('(')[0].trim();
 
-  // ── L1: 퍼널 종합 (Overview — 큰 그림)
-  // 세그먼트: 퍼널 개요 | 정량: 레이더 차트 | 세그먼트 비교: 페르소나 요약 테이블
-  html += hierHeader('l1', 'L1', `${esc(funnel.label.split('(')[0].trim())} 종합 분석`);
+  // ── L1: 퍼널 종합 — 01 퍼널 개요 | 02 정량·정성 종합 | 03 퍼널 단계별 카드
+  html += hierHeader('l1', 'L1', `${esc(funnelLabel)} 종합 분석`);
   html += `<div class="level-zone l1">`;
-  // Step 02: 정량 (left) + 정성 (right) 2-column layout
-  const radarHtml = `<div class="card funnel-radar-card"><h3>🕸️ 퍼널 정량 지표 레이더</h3><div class="funnel-radar-wrap">${renderRadarChart(valid, funnelKey)}</div></div>`;
+  const radarHtml = `<div class="card funnel-radar-card"><h3>정량 지표 평균</h3><div class="funnel-radar-wrap">${renderRadarChart(valid, funnelKey)}</div></div>`;
   const synQualHtml = renderSynthesisQualSection(funnelKey, funnel);
   let dualHtml = '';
   if (synQualHtml.trim()) {
@@ -418,42 +550,23 @@ export function renderFunnelTab(funnelKey) {
     dualHtml = radarHtml;
   }
 
+  const l2SectionHtml = renderL2Section(funnelKey, funnel, valid, groups);
   const l1Steps = [
-    {
-      label: '퍼널 개요',
-      html: renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages),
-    },
-    {
-      label: '정량 · 정성 종합',
-      html: dualHtml,
-    },
+    { label: '퍼널 개요',        html: renderFunnelOverviewCard(funnelKey, funnel, valid, funnelAverages) },
+    { label: '정량 · 정성 종합', html: dualHtml },
   ];
-  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
-  if (tableHtml.trim()) l1Steps.push({ label: '세그먼트 비교', html: tableHtml });
+  if (l2SectionHtml.trim()) l1Steps.push({ label: '퍼널 단계별 카드', html: l2SectionHtml });
   html += buildStepTrack(l1Steps.filter(s => s.html.trim()));
-  html += `</div>`;
-
-  html += hierConnector('세부 분석');
-
-  // ── L2: 세부 분석 (Group-Level — 중간 깊이)
-  // 정량: 그룹별 bars + 편차 + best/worst
-  html += hierHeader('l2', 'L2', '세부 분석');
-  html += `<div class="level-zone l2">`;
-  const l2Steps = groups.map(grp => ({
-    label: grp.label,
-    html: renderGroupSection(funnelKey, funnel, valid, grp),
-  })).filter(s => s.html.trim());
-  html += buildStepTrack(l2Steps);
   html += `</div>`;
 
   html += hierConnector('페르소나별 결과');
 
-  // ── L3: 페르소나별 결과 (Individual — 가장 상세)
-  // 세그먼트: 개별 프로필 | 정량: 개인별 bars | 정성: 개인별 코멘트
-  html += hierHeader('l3', 'L3', `페르소나별 결과 · ${esc(funnel.label.split('(')[0].trim())}`);
-  html += `<div class="level-zone l3">`;
+  // ── L2: 페르소나별 결과 — 01 세그먼트 비교 | 02 개별 페르소나
+  html += hierHeader('l2', 'L2', `페르소나별 결과 · ${esc(funnelLabel)}`);
+  html += `<div class="level-zone l2">`;
 
-  // Individual cards sorted by funnel avg
+  const tableHtml = renderPersonaSummaryTable(funnelKey, valid);
+
   const sortedReviews = [...state.lastReviews].sort(
     (a, b) => _computePersonaFunnelAvg(b, funnelKey) - _computePersonaFunnelAvg(a, funnelKey)
   );
@@ -469,33 +582,48 @@ export function renderFunnelTab(funnelKey) {
     const groupPills = groups.map(grp => {
       const avg = _computePersonaGroupAvg(r, grp);
       const pillCls = _scoreClass(avg);
-      const shortLabel = grp.label.length > 8 ? grp.label.substring(0, 8) + '…' : grp.label;
-      return `<span class="grp-pill grp-pill-${pillCls}">${esc(shortLabel)} ${avg > 0 ? avg.toFixed(1) : '—'}</span>`;
+      return `<span class="grp-pill grp-pill-${pillCls}">${esc(grp.label)} ${avg > 0 ? avg.toFixed(1) : '—'}</span>`;
     }).join('');
 
-    const quantHtml = renderPersonaQuantGrouped(r, funnelKey);
-    const qualHtml = renderQualItemsForFunnel(r, funnelKey);
-    const cardInnerSteps = [
-      { label: '그룹별 정량 평가', html: quantHtml },
-      { label: '정성 코멘트', html: qualHtml },
-    ].filter(s => s.html.trim());
+    const personaRadarHtml = renderPersonaRadar(r, funnelKey);
+    const qualHtml = renderFunnelQualSummary(r, funnelKey);
+    const panelReviewHtml = renderPersonaPanelReviewSummary(r.persona_id, funnelKey);
 
     cardsHtml += `<div class="persona-card" id="pc-${idx}">
       <div class="persona-card-header" onclick="toggleCard('${idx}')">
         <span class="emoji">${emoji}</span>
         <span class="name">${esc(r.persona_name)}</span>
-        <span class="score-badge ${cls}">${scoreDisplay}/5</span>
-        <span class="persona-group-pills">${groupPills}</span>
+        <span class="persona-card-meta-right">
+          <span class="persona-group-pills">${groupPills}</span>
+          <span class="score-badge ${cls}">${scoreDisplay}/5</span>
+        </span>
         <span class="chevron">▶</span>
       </div>
       <div class="persona-card-body">
-        ${cardInnerSteps.length ? buildStepTrack(cardInnerSteps, true) : ''}
+        <div class="persona-funnel-layout">
+          <div class="persona-funnel-left">
+            <div class="persona-funnel-pane">
+              <div class="persona-funnel-pane-title">정량 평가</div>
+              ${personaRadarHtml || '<div class="persona-funnel-empty">정량 데이터 없음</div>'}
+            </div>
+          </div>
+          <div class="persona-funnel-right">
+            <div class="persona-funnel-pane">
+              <div class="persona-funnel-pane-title">정성적 코멘트</div>
+              ${qualHtml || '<div class="persona-funnel-empty">정성 코멘트 없음</div>'}
+            </div>
+          </div>
+        </div>
+        ${panelReviewHtml}
       </div>
     </div>`;
   });
   cardsHtml += `</div>`;
 
-  if (valid.length) html += buildStepTrack([{ label: '개별 페르소나', html: cardsHtml }]);
+  const personaSteps = [];
+  if (tableHtml.trim()) personaSteps.push({ label: '세그먼트 비교', html: tableHtml });
+  if (valid.length)      personaSteps.push({ label: '개별 페르소나', html: cardsHtml });
+  html += buildStepTrack(personaSteps);
   html += `</div>`;
 
   $panel.innerHTML = html;

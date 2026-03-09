@@ -21,11 +21,11 @@ export const DEMO_FUNNEL_CONFIG = {
   upper: {
     label: 'Brand (브랜드 자산)', desc_who: '잠재 고객', desc_goal: '브랜드를 처음 인지하고 태도·이미지를 형성하는 단계', desc_metrics: '호감도, 적합성, 명확성, 주목도, 신뢰도',
     individual_items: [
-      { key: 'brand_favorability', label: '브랜드 호감도', scale: '1-5', type: 'quantitative' },
-      { key: 'brand_fit',          label: '브랜드 적합성', scale: '1-5', type: 'quantitative' },
-      { key: 'message_clarity',    label: '메시지 명확성', scale: '1-5', type: 'quantitative' },
-      { key: 'attention_grabbing', label: '주목도',         scale: '1-5', type: 'quantitative' },
-      { key: 'brand_trust',        label: '브랜드 신뢰도', scale: '1-5', type: 'quantitative' },
+      { key: 'brand_favorability', label: '브랜드 호감도', definition: '브랜드나 프로모션에 대해 전반적으로 느끼는 호의 수준', scale: '1-5', type: 'quantitative' },
+      { key: 'brand_fit',          label: '브랜드 적합성', definition: '프로모션이 기존 브랜드 이미지와 얼마나 자연스럽게 연결되는지', scale: '1-5', type: 'quantitative' },
+      { key: 'message_clarity',    label: '메시지 명확성', definition: '광고가 무엇을 말하는지 얼마나 쉽게 이해되는지', scale: '1-5', type: 'quantitative' },
+      { key: 'attention_grabbing', label: '주목도',         definition: '광고가 첫 노출에서 시선을 끌어 멈춰 세우는 힘', scale: '1-5', type: 'quantitative' },
+      { key: 'brand_trust',        label: '브랜드 신뢰도', definition: '브랜드나 프로모션 내용을 믿을 수 있다고 느끼는 정도', scale: '1-5', type: 'quantitative' },
       { key: 'perceived_message',  label: '지각된 메시지',                type: 'qualitative' },
       { key: 'emotional_response', label: '감정적 반응',                  type: 'qualitative' },
       { key: 'brand_association',  label: '브랜드 연상',                  type: 'qualitative' },
@@ -39,15 +39,29 @@ export const DEMO_FUNNEL_CONFIG = {
       { key: 'brand_association_summary', label: '브랜드 연상 종합', type: 'qualitative' },
     ],
     qa_items: [{ key: 'qa_rep_brand_attitude', type: 'replication' }, { key: 'qa_trap_skepticism_check', type: 'trap' }],
+    quant_groups: [
+      {
+        label: '브랜드 인지·태도',
+        definition: '브랜드를 얼마나 긍정적으로 받아들이고 신뢰하며 프로모션이 브랜드 이미지와 맞는지 평가하는 상위 그룹',
+        keys: ['brand_favorability', 'brand_trust', 'brand_fit'],
+        sublabels: ['브랜드 호감도', '브랜드 신뢰도', '브랜드 적합성'],
+      },
+      {
+        label: '광고 효과성',
+        definition: '광고 메시지가 얼마나 명확하고 눈에 띄는지, 초기 주목과 이해를 얼마나 이끄는지 평가하는 상위 그룹',
+        keys: ['message_clarity', 'attention_grabbing'],
+        sublabels: ['메시지 명확성', '주목도'],
+      },
+    ],
   },
   mid: {
     label: 'Demand & Acquisition (수요 창출)', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '수요를 확보하고 신규 고객을 획득하는 단계', desc_metrics: '매력도, 가성비, 가격 적정성, 정보 충분성, 추천 의향',
     individual_items: [
-      { key: 'appeal',                label: '매력도',         scale: '1-5', type: 'quantitative' },
-      { key: 'value_for_money',       label: '가성비',         scale: '1-5', type: 'quantitative' },
-      { key: 'price_fairness',        label: '가격 적정성',    scale: '1-5', type: 'quantitative' },
-      { key: 'info_sufficiency',      label: '정보 충분성',    scale: '1-5', type: 'quantitative' },
-      { key: 'recommendation_intent', label: '추천 의향',      scale: '1-5', type: 'quantitative' },
+      { key: 'appeal',                label: '매력도',         definition: '제안 자체가 소비자에게 얼마나 끌리는지 보여주는 지표', scale: '1-5', type: 'quantitative' },
+      { key: 'value_for_money',       label: '가성비',         definition: '지불 가격 대비 얻는 가치가 충분하다고 느끼는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'price_fairness',        label: '가격 적정성',    definition: '제시된 가격이 합리적이고 수용 가능하다고 느끼는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'info_sufficiency',      label: '정보 충분성',    definition: '구매 판단에 필요한 정보가 충분히 제공되었는지', scale: '1-5', type: 'quantitative' },
+      { key: 'recommendation_intent', label: '추천 의향',      definition: '타인에게 권할 만큼 긍정적이라고 느끼는 정도', scale: '1-5', type: 'quantitative' },
       { key: 'key_positives',         label: '긍정 요소',                    type: 'qualitative' },
       { key: 'key_concerns',          label: '우려 사항',                    type: 'qualitative' },
       { key: 'competitive_comparison',label: '경쟁 대안 비교',               type: 'qualitative' },
@@ -62,15 +76,29 @@ export const DEMO_FUNNEL_CONFIG = {
       { key: 'wom_potential',              label: '구전 잠재력',            type: 'qualitative' },
     ],
     qa_items: [{ key: 'qa_rep_value_perception', type: 'replication' }, { key: 'qa_trap_budget_sensitivity', type: 'trap' }],
+    quant_groups: [
+      {
+        label: '가치 인식',
+        definition: '프로모션의 매력도와 가격 대비 가치, 가격 수용성을 함께 평가하는 그룹',
+        keys: ['appeal', 'value_for_money', 'price_fairness'],
+        sublabels: ['매력도', '가성비', '가격 적정성'],
+      },
+      {
+        label: '구전·정보',
+        definition: '의사결정에 필요한 정보 제공 수준과 타인에게 추천할 정도의 호감도를 평가하는 그룹',
+        keys: ['info_sufficiency', 'recommendation_intent'],
+        sublabels: ['정보 충분성', '추천 의향'],
+      },
+    ],
   },
   lower: {
     label: 'Sales & Conversion (전환·매출)', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 전환과 매출로 이어지는 단계', desc_metrics: '구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성',
     individual_items: [
-      { key: 'purchase_likelihood',    label: '구매 가능성', scale: '1-5', type: 'quantitative' },
-      { key: 'purchase_consideration', label: '고려 확률',    scale: '1-5', type: 'quantitative' },
-      { key: 'purchase_willingness',   label: '구매 의향',    scale: '1-5', type: 'quantitative' },
-      { key: 'repurchase_intent',      label: '재구매 의향',  scale: '1-5', type: 'quantitative' },
-      { key: 'purchase_urgency',       label: '구매 시급성',  scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_likelihood',    label: '구매 가능성', definition: '실제로 구매로 이어질 가능성을 직접적으로 묻는 지표', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_consideration', label: '고려 확률',    definition: '구매 후보군 안에 넣고 진지하게 검토할 가능성', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_willingness',   label: '구매 의향',    definition: '현재 시점에서 구매하겠다는 의지가 얼마나 강한지', scale: '1-5', type: 'quantitative' },
+      { key: 'repurchase_intent',      label: '재구매 의향',  definition: '한 번 구매 후 다시 선택할 가능성', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_urgency',       label: '구매 시급성',  definition: '구매를 미루지 않고 빠르게 실행할 필요성을 느끼는 정도', scale: '1-5', type: 'quantitative' },
       { key: 'purchase_trigger',       label: '구매 촉진 요소',              type: 'qualitative' },
       { key: 'purchase_barrier',       label: '구매 장벽',                   type: 'qualitative' },
       { key: 'price_perception',       label: '가격 인식',                   type: 'qualitative' },
@@ -84,6 +112,20 @@ export const DEMO_FUNNEL_CONFIG = {
       { key: 'price_perception_summary',    label: '가격 인식 종합',        type: 'qualitative' },
     ],
     qa_items: [{ key: 'qa_rep_purchase_intent', type: 'replication' }],
+    quant_groups: [
+      {
+        label: '구매 의향',
+        definition: '구매 가능성, 고려 가능성, 실제 구매 의향을 묶어 전환 직전의 반응을 평가하는 그룹',
+        keys: ['purchase_likelihood', 'purchase_consideration', 'purchase_willingness'],
+        sublabels: ['구매 가능성', '고려 확률', '구매 의향'],
+      },
+      {
+        label: '재구매·시급성',
+        definition: '재구매 의향과 현재 구매 긴급도를 함께 평가하는 그룹',
+        keys: ['repurchase_intent', 'purchase_urgency'],
+        sublabels: ['재구매 의향', '구매 시급성'],
+      },
+    ],
   },
 };
 

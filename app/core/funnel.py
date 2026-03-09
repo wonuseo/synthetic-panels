@@ -231,6 +231,7 @@ def get_funnel_groups(team: str = "marketing") -> dict:
                 individual_list.append({
                     "key": item["key"],
                     "label": item["label"],
+                    "definition": item.get("definition", ""),
                     "scale": item.get("scale", ""),
                     "type": item_type,
                 })
@@ -267,6 +268,7 @@ def get_funnel_groups(team: str = "marketing") -> dict:
                 individual_list.append({
                     "key": item["key"],
                     "label": item["label"],
+                    "definition": item.get("definition", ""),
                     "scale": item.get("scale", ""),
                     "type": item_type,
                 })
@@ -295,6 +297,7 @@ def get_funnel_groups(team: str = "marketing") -> dict:
         for g in funnel.get("quant_groups", []):
             quant_groups_list.append({
                 "label": g["label"],
+                "definition": g.get("definition", ""),
                 "keys": g["keys"],
                 "sublabels": g.get("sublabels", []),
             })
