@@ -198,6 +198,7 @@ function _addQA(panels, mode, cfg) {
 function _mkPanels(prefix, name, base, recs, emotionalResponses, overallImpressions, reviewSummaries) {
   return Array.from({ length: 25 }, (_, i) => ({
     panel_id:                prefix + '-' + String(i + 1).padStart(2, '0'),
+    persona_id:              prefix.toLowerCase(),
     persona_name:            name,
     promotion_attractiveness: _c(base.pa  + _j(i,    1), 1, 5),
     promotion_quality:       _c(base.pq  + _j(i+1,  1), 1, 5),
@@ -235,7 +236,7 @@ const _QUANT_KEYS = [
   'purchase_willingness', 'repurchase_intent', 'purchase_urgency',
 ];
 
-function _mkSummary(personaId, panels, qual) {
+function _mkSummary(personaId, panels, qual, panel_stats = null) {
   const avg = {};
   for (const f of _QUANT_KEYS) {
     avg['avg_' + f] = Math.round(panels.reduce((s, p) => s + (p[f] || 0), 0) / panels.length * 10) / 10;
@@ -247,6 +248,7 @@ function _mkSummary(personaId, panels, qual) {
     panel_count: panels.length, ...avg,
     recommendation_distribution: dist, ...qual,
     panel_reviews: panels,
+    ...(panel_stats ? { panel_stats } : {}),
   };
 }
 
@@ -377,6 +379,40 @@ const _wmQA = _addQA(_wmPanels, 'full', _WM_QA);
 const _fhQA = _addQA(_fhPanels, 'lite', _FH_QA);
 const _frQA = _addQA(_frPanels, 'lite', _FR_QA);
 
+/* ── 페르소나별 패널 통계 ── */
+const _MZ_STATS = {
+  gender_distribution:           [{ label: '여성', count: 17 }, { label: '남성', count: 8 }],
+  season_distribution:           [{ label: '여름', count: 10 }, { label: '봄', count: 8 }, { label: '가을', count: 5 }, { label: '겨울', count: 2 }],
+  budget_distribution:           [{ label: '높음', count: 15 }, { label: '보통', count: 7 }, { label: '낮음', count: 3 }],
+  visit_distribution:            [{ label: '방문', count: 18 }, { label: '미방문', count: 7 }],
+  visit_experience_distribution: [{ label: '긍정 경험', count: 14 }, { label: '중립 경험', count: 3 }, { label: '부정 경험', count: 1 }],
+  skepticism_distribution:       [{ label: '낮음', count: 18 }, { label: '중간', count: 5 }, { label: '높음', count: 2 }],
+};
+const _WM_STATS = {
+  gender_distribution:           [{ label: '여성', count: 20 }, { label: '남성', count: 5 }],
+  season_distribution:           [{ label: '가을', count: 8 }, { label: '여름', count: 6 }, { label: '겨울', count: 6 }, { label: '봄', count: 5 }],
+  budget_distribution:           [{ label: '보통', count: 14 }, { label: '낮음', count: 7 }, { label: '높음', count: 4 }],
+  visit_distribution:            [{ label: '미방문', count: 13 }, { label: '방문', count: 12 }],
+  visit_experience_distribution: [{ label: '긍정 경험', count: 7 }, { label: '중립 경험', count: 4 }, { label: '부정 경험', count: 1 }],
+  skepticism_distribution:       [{ label: '중간', count: 13 }, { label: '높음', count: 8 }, { label: '낮음', count: 4 }],
+};
+const _FH_STATS = {
+  gender_distribution:           [{ label: '여성', count: 22 }, { label: '남성', count: 3 }],
+  season_distribution:           [{ label: '가을', count: 10 }, { label: '겨울', count: 8 }, { label: '봄', count: 4 }, { label: '여름', count: 3 }],
+  budget_distribution:           [{ label: '낮음', count: 18 }, { label: '보통', count: 6 }, { label: '높음', count: 1 }],
+  visit_distribution:            [{ label: '미방문', count: 17 }, { label: '방문', count: 8 }],
+  visit_experience_distribution: [{ label: '중립 경험', count: 4 }, { label: '긍정 경험', count: 2 }, { label: '부정 경험', count: 2 }],
+  skepticism_distribution:       [{ label: '높음', count: 16 }, { label: '중간', count: 7 }, { label: '낮음', count: 2 }],
+};
+const _FR_STATS = {
+  gender_distribution:           [{ label: '남성', count: 15 }, { label: '여성', count: 10 }],
+  season_distribution:           [{ label: '가을', count: 7 }, { label: '봄', count: 6 }, { label: '여름', count: 6 }, { label: '겨울', count: 6 }],
+  budget_distribution:           [{ label: '낮음', count: 16 }, { label: '보통', count: 7 }, { label: '높음', count: 2 }],
+  visit_distribution:            [{ label: '미방문', count: 13 }, { label: '방문', count: 12 }],
+  visit_experience_distribution: [{ label: '중립 경험', count: 6 }, { label: '긍정 경험', count: 4 }, { label: '부정 경험', count: 2 }],
+  skepticism_distribution:       [{ label: '높음', count: 14 }, { label: '중간', count: 9 }, { label: '낮음', count: 2 }],
+};
+
 export const DEMO_PERSONA_SUMMARIES = [
   _mkSummary('mz', _mzQA, {
     overall_impression: '인스타에 바로 올리고 싶은 감성. 트렌디하고 세련된 브랜드 비주얼이 인상적입니다.',
@@ -391,7 +427,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     purchase_barrier: '가격 정당화와 트렌드 지속성에 대한 불확실성',
     price_perception: '감성 대비 합리적이라고 느끼나 좀 더 저렴하면 망설임 없이 구매.',
     review_summary: '핵심 타겟 페르소나. 높은 브랜드 공감도와 즉각적 구매 의향으로 전환율 극대화 예상.',
-  }),
+  }, _MZ_STATS),
   _mkSummary('wm', _wmQA, {
     overall_impression: '실용적이고 깔끔한 종합 인상. 바쁜 워킹맘 입장에서 간편함이 눈에 띄어요.',
     emotional_response: '실용성에 대한 기대와 가격에 대한 망설임이 공존하는 중립적 감정.',
@@ -405,7 +441,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     purchase_barrier: '가격 대비 가치 불명확. 주변 추천 없이는 결정하기 어려움.',
     price_perception: '가격이 약간 높다고 느낌. 할인 혜택이 있으면 구매 고려 가능.',
     review_summary: '실용성 검증 후 전환 가능한 세그먼트. 가격 프로모션과 사용 후기가 핵심 전환 요소.',
-  }),
+  }, _WM_STATS),
   _mkSummary('fh', _fhQA, {
     overall_impression: '비싸 보이는데 왜 사야 하는지 모르겠어요. 같은 돈으로 더 실속 있는 걸 살 수 있어요.',
     emotional_response: '거부감과 불필요함. 마케팅에 속는 것 같다는 불쾌함.',
@@ -419,7 +455,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     purchase_barrier: '현재 가격대에서는 절대 구매 불가. 필요성 자체를 못 느낌.',
     price_perception: '완전히 과대 책정된 가격. 현재 가격의 절반이어도 망설일 것 같음.',
     review_summary: '비타겟 고객군. 마케팅 비용 투자 대비 ROI 낮음. 이 세그먼트는 제외 권고.',
-  }),
+  }, _FH_STATS),
   _mkSummary('fr', _frQA, {
     overall_impression: '미니멀한 삶을 추구하는 입장에서 정말 필요한가 먼저 따져봅니다.',
     emotional_response: '냉정한 이성적 판단과 약간의 소비 충동 사이의 갈등. 결국 억제 쪽으로.',
@@ -433,7 +469,7 @@ export const DEMO_PERSONA_SUMMARIES = [
     purchase_barrier: '소비 억제 철학 자체가 근본적 장벽. 파이어 목표와 상충.',
     price_perception: '품질 대비 가격은 납득 가능하나 구매 자체가 소비 철학에 위배됨.',
     review_summary: '소비 억제 철학으로 인해 전환 허들 높음. 장기적 가치 및 ROI 입증 전략 필요.',
-  }),
+  }, _FR_STATS),
 ];
 
 export const DEMO_PANEL_REVIEWS = [..._mzQA, ..._wmQA, ..._fhQA, ..._frQA];

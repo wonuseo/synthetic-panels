@@ -185,28 +185,66 @@ function renderFunnelQualSummary(r, funnelKey) {
   return `<div class="persona-funnel-qual-wrap">${cards}</div>`;
 }
 
+function _computeOverallAvg(review) {
+  let sum = 0, count = 0;
+  for (const key of ['overall', 'upper', 'mid', 'lower']) {
+    const funnel = window.funnelConfig?.[key];
+    if (!funnel) continue;
+    for (const item of funnel.individual_items.filter(i => i.type === 'quantitative')) {
+      const val = _getNum(review[item.key]);
+      if (val > 0) { sum += val; count++; }
+    }
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+function _renderAllQualItems(review) {
+  let html = '';
+  for (const key of ['overall', 'upper', 'mid', 'lower']) {
+    const funnel = window.funnelConfig?.[key];
+    if (!funnel) continue;
+    for (const item of funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical')) {
+      const val = review[item.key];
+      if (!val) continue;
+      html += `<div class="pprd-qual-item">
+        <div class="pprd-qual-label">${esc(item.label)}</div>
+        <div class="pprd-qual-text">${renderSynValue(val)}</div>
+      </div>`;
+    }
+  }
+  return html ? `<div class="pprd-qual-grid">${html}</div>` : '';
+}
+
 function renderPersonaPanelReviewSummary(personaId, funnelKey) {
   const panelReviews = _getPersonaPanelReviews(personaId);
   if (!panelReviews.length) return '';
 
   const cards = panelReviews.map((review, index) => {
-    const avg = _computePersonaFunnelAvg(review, funnelKey);
+    const avg = _computeOverallAvg(review);
     const avgDisplay = avg > 0 ? avg.toFixed(1) : '—';
-    const qualHtml = renderFunnelQualSummary(review, funnelKey);
-    if (!qualHtml && avg <= 0) return '';
-    return `<article class="persona-panel-review-card">
-      <div class="persona-panel-review-head">
-        <span class="persona-panel-review-id">${esc(review.panel_id || `패널 ${index + 1}`)}</span>
-        <span class="persona-panel-review-score">${avgDisplay}/5</span>
-      </div>
-      ${qualHtml || '<div class="persona-panel-review-empty">정성 코멘트 없음</div>'}
-    </article>`;
-  }).filter(Boolean).join('');
+    const cls = _scoreClass(avg);
+    const emoji = recEmoji(review.recommendation || '');
+    const qualHtml = _renderAllQualItems(review);
 
-  if (!cards) return '';
+    return `<div class="pprd-card">
+      <div class="pprd-head">
+        <span class="pprd-emoji">${emoji}</span>
+        <span class="pprd-id">${esc(review.panel_id || `패널 ${index + 1}`)}</span>
+        <span class="score-badge ${cls}">${avgDisplay}/5</span>
+        ${review.recommendation ? `<span class="rec-text">${esc(review.recommendation)}</span>` : ''}
+      </div>
+      ${qualHtml}
+    </div>`;
+  }).join('');
+
+  const drillId = `funnel-${funnelKey}-${personaId}`;
   return `<div class="persona-panel-review-section">
-    <div class="persona-panel-review-title">개별 패널 리뷰</div>
-    <div class="persona-panel-review-list">${cards}</div>
+    <div class="drill-down-header" id="drill-header-${drillId}" onclick="toggleDrillDown('${drillId}')">
+      📋 개별 패널 리뷰 (${panelReviews.length}건) ▶
+    </div>
+    <div class="drill-down-body" id="drill-${drillId}">
+      <div class="pprd-list">${cards}</div>
+    </div>
   </div>`;
 }
 

@@ -4756,6 +4756,103 @@ tr:nth-child(3) .pst-rank { color: var(--primary); opacity: 0.5; }
   font-size: 0.84rem;
 }
 
+/* ── Individual panel review drill-down (funnel tab) ── */
+.pprd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+.pprd-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.pprd-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.pprd-emoji { font-size: 1rem; line-height: 1; }
+.pprd-id {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.pprd-quant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.pprd-quant-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pprd-quant-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  width: 78px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pprd-quant-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.pprd-quant-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--surface-3);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.pprd-quant-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+.pprd-quant-val {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--text);
+  min-width: 24px;
+  text-align: right;
+}
+.pprd-qual-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.pprd-qual-item {
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-xs, 4px);
+  border: 1px solid var(--border);
+}
+.pprd-qual-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.pprd-qual-text {
+  font-size: 0.83rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
 @media (max-width: 640px) {
   .foc-kpi-row { flex-direction: column; }
   .l2-stage-section-head {
