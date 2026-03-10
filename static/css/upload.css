@@ -29,8 +29,8 @@
 
 .intro-step {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   flex: 1;
   background: var(--surface);
   border-radius: var(--radius-md);
@@ -43,6 +43,12 @@
 .intro-step:hover {
   border-color: rgba(135,118,105,.2);
   box-shadow: var(--shadow-sm);
+}
+
+.intro-step-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .intro-step-num {
@@ -58,7 +64,6 @@
   font-size: var(--fs-xs);
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(135,118,105,.30);
-  margin-top: 1px;
 }
 
 .intro-step strong {
@@ -66,7 +71,6 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 3px;
   line-height: 1.3;
 }
 
