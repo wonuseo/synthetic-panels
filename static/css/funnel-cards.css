@@ -1121,3 +1121,11 @@ tr:nth-child(3) .pst-rank { color: var(--primary); opacity: 0.5; }
   color: var(--text);
   line-height: 1.55;
 }
+
+/* LLM 생성 그룹 인사이트 강조 변형 */
+.grp-outlier-insight--llm {
+  border-left-color: var(--success, #00b894);
+}
+.grp-outlier-insight--llm .grp-outlier-insight-label {
+  color: var(--success, #00b894);
+}
