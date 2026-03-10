@@ -30,6 +30,44 @@ def shutdown_active_executors():
         logger.info("Shutdown: cancelled %d active thread pools", len(executors))
 
 
+# 팀별 합성 정량 지표 정의: metric_key → 평균을 낼 source field 목록
+_SYNTHESIS_QUANT_METRICS: dict[str, dict[str, list[str]]] = {
+    "marketing": {
+        "avg_brand_attitude":       ["brand_favorability", "brand_trust"],
+        "avg_brand_fit":            ["brand_fit"],
+        "avg_ad_effectiveness":     ["message_clarity", "attention_grabbing"],
+        "overall_score":            ["appeal"],
+        "avg_perceived_value":      ["value_for_money", "price_fairness"],
+        "avg_purchase_intention":   ["purchase_likelihood", "purchase_consideration", "purchase_willingness"],
+        "avg_purchase_probability": ["repurchase_intent", "purchase_urgency"],
+    },
+    "commerce": {
+        "avg_product_appeal":       ["product_uniqueness", "product_trust"],
+        "avg_brand_presence":       ["brand_premium"],
+        "avg_product_presentation": ["visual_appeal", "story_appeal"],
+        "overall_score":            ["price_value"],
+        "avg_perceived_value":      ["quality_expectation", "gift_suitability"],
+        "avg_purchase_intention":   ["purchase_likelihood", "purchase_consideration", "purchase_willingness"],
+        "avg_purchase_probability": ["repurchase_intent", "purchase_urgency"],
+    },
+}
+
+
+def _compute_synthesis_quant_metrics(persona_summaries: list, team: str = "marketing") -> dict:
+    """페르소나 정량 평균으로부터 합성 정량 지표를 코드로 계산 (LLM 대신)."""
+    metrics_def = _SYNTHESIS_QUANT_METRICS.get(team, _SYNTHESIS_QUANT_METRICS["marketing"])
+    result: dict = {}
+    for metric_key, source_keys in metrics_def.items():
+        values = []
+        for s in persona_summaries:
+            for sk in source_keys:
+                v = s.quant_averages.get(sk, 0.0)
+                if v > 0:
+                    values.append(v)
+        result[metric_key] = round(sum(values) / len(values), 1) if values else 0.0
+    return result
+
+
 def _compute_cross_persona_quant_groups(persona_summaries: list, team: str = "marketing") -> dict:
     """모든 페르소나의 funnel_quant_groups를 다시 평균하여 반환."""
     funnel_quant_groups = get_funnel_quant_groups(team)
@@ -233,6 +271,9 @@ def build_event_generator(
                 entry.update(s.qual_fields)
                 synthesis_input.append(entry)
 
+            # 정량 지표를 코드로 미리 계산 (LLM 대신)
+            synthesis_quant_metrics = _compute_synthesis_quant_metrics(persona_summaries, team=team)
+
             synthesis_raw = ""
             if synthesis_input:
                 def do_synthesize():
@@ -243,6 +284,11 @@ def build_event_generator(
                 synthesis_raw = await loop.run_in_executor(None, do_synthesize)
 
             synthesis = extract_json_or_none(synthesis_raw)
+
+            # 코드로 계산한 정량 지표를 합성 결과에 주입 (LLM 출력값 덮어쓰기)
+            if synthesis is None:
+                synthesis = {}
+            synthesis.update(synthesis_quant_metrics)
 
             yield {
                 "event": "done",

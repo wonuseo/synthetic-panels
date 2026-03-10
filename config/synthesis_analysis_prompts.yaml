@@ -30,11 +30,11 @@ synthesis:
     Please synthesize these reviews into a consolidated analysis. Respond as a single FLAT JSON object.
 
     STRICT FORMAT RULES:
-    1. Float fields: use plain numbers with 1 decimal place (e.g., 3.2). NOT strings, NOT integers.
-    2. String fields: use plain strings. NOT arrays.
-    3. List fields (marked "list of exactly 3 strings"): use JSON arrays of EXACTLY 3 strings (e.g., ["항목1", "항목2", "항목3"]). No more, no fewer.
-    4. EVERY field listed below is REQUIRED — do NOT omit any field.
-    5. Output ONLY the JSON object. No markdown code blocks (```), no commentary.
+    1. String fields: use plain strings. NOT arrays.
+    2. List fields (marked "list of exactly 3 strings"): use JSON arrays of EXACTLY 3 strings (e.g., ["항목1", "항목2", "항목3"]). No more, no fewer.
+    3. EVERY field listed below is REQUIRED — do NOT omit any field.
+    4. Output ONLY the JSON object. No markdown code blocks (```), no commentary.
+    5. NOTE: Quantitative score averages (avg_brand_attitude, avg_brand_fit, avg_ad_effectiveness, overall_score, avg_perceived_value, avg_purchase_intention, avg_purchase_probability) are pre-computed by the system and do NOT need to be included in your response.
 
     --- [Overall] 종합 평가 ---
     - "executive_summary": string, 2-3문장의 핵심 요약 (한국어)
@@ -47,9 +47,6 @@ synthesis:
 
     --- [Brand Funnel] 브랜드 인식 지표 ---
     Source fields for this section: perceived_message, emotional_response, brand_association from individual panel reviews.
-    - "avg_brand_attitude": float (브랜드 호감도·신뢰도 평균 — brand_favorability, brand_trust — 전체 평균, 1 decimal place)
-    - "avg_brand_fit": float (브랜드 적합성 — brand_fit — 전체 평균, 1 decimal place)
-    - "avg_ad_effectiveness": float (광고 효과성 2항목 — message_clarity, attention_grabbing — 전체 평균, 1 decimal place)
     SYNTHESIS WRITING RULE — CRITICAL: Each string field must be a TRUE cross-persona synthesis, NOT a per-persona list. Do NOT write "A세그먼트는 X, B세그먼트는 Y, C세그먼트는 Z". Instead, identify the structural pattern, root cause, or strategic implication that emerges when you look at ALL responses together. Ask yourself: "What does this tell us about the promotion as a whole?" then write that answer.
 
     - "message_gap_analysis": string, 전체 패널의 perceived_message 코멘트를 종합 분석 — 프로모션의 메시지 전달 구조에서 발견된 핵심 갭. "어떤 메시지가 어느 세그먼트에 전달됐다"는 나열이 아니라, 메시지 전략 자체의 구조적 문제와 그 함의를 서술 (한국어, 2-3문장)
@@ -59,8 +56,6 @@ synthesis:
     --- [Demand & Acquisition Funnel] 수요 창출 지표 ---
     Source fields for this section: key_positives, key_concerns, competitive_comparison, information_gap from individual panel reviews.
     SYNTHESIS WRITING RULE: Same as above — write structural findings, not per-persona lists.
-    - "overall_score": float (average appeal score, 1 decimal place)
-    - "avg_perceived_value": float (지각된 가치 2항목 — value_for_money, price_fairness — 전체 평균, 1 decimal place)
     - "demand_trigger_summary": string, 전체 패널의 key_positives·competitive_comparison 코멘트를 종합 분석 — 이 프로모션에서 수요를 발생시키는 요소의 구조. 어떤 조건이 갖춰졌을 때 관심이 생기는지, 그 조건이 현재 소재에서 얼마나 충족되는지 서술 (한국어, 2-3문장)
     - "consideration_barrier_summary": string, 전체 패널의 key_concerns·information_gap 코멘트를 종합 분석 — 고려 단계 장벽의 구조. 소재 수정으로 해소 가능한 장벽과 구조적으로 해소 불가한 장벽을 구분하여 서술 (한국어, 2-3문장)
     - "wom_potential": string, 전체 패널의 recommendation·key_positives 코멘트를 종합 분석 — 이 프로모션의 구전 가능성 구조. 자발적 공유가 발생하는 조건과 공유되지 않는 조건, 그리고 전략적 함의 서술 (한국어, 2-3문장)
@@ -68,8 +63,6 @@ synthesis:
     --- [Sales & Conversion Funnel] 전환·매출 지표 ---
     Source fields for this section: purchase_trigger, purchase_barrier, price_perception from individual panel reviews.
     SYNTHESIS WRITING RULE: Same as above — write structural findings, not per-persona lists.
-    - "avg_purchase_intention": float (구매 의향 3개 항목 — purchase_likelihood, purchase_consideration, purchase_willingness — 전체 평균, 1 decimal place)
-    - "avg_purchase_probability": float (구매 확률 2항목 — repurchase_intent, purchase_urgency — 전체 평균, 1 decimal place)
     - "estimated_conversion_range": string, 구매 의향 점수 기반 예상 전환율 범위 (예: "2-5%") + 산출 근거 (한국어)
     - "key_conversion_barriers": list of exactly 3 strings, 전체 패널의 purchase_barrier 코멘트에서 추출 — 구매 직전 단계를 막는 핵심 장벽 유형 3가지. 각 항목은 특정 페르소나 이름이 아닌 장벽의 본질(예: "가치 증거 부재", "가격 수용 한계 초과", "철학적 소비 충돌")로 표현 (한국어)
     - "conversion_driver_analysis": string, 전체 패널의 purchase_trigger 코멘트를 종합 분석 — 전환을 결정짓는 조건의 구조. 단일 오퍼로 커버 가능한지, 아니면 세그먼트별 별도 오퍼가 필요한 구조인지 그 함의를 서술 (한국어, 2-3문장)
