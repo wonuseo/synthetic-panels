@@ -30,7 +30,7 @@
 .intro-step {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   flex: 1;
   background: var(--surface);
   border-radius: var(--radius-md);
