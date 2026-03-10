@@ -1099,3 +1099,25 @@ tr:nth-child(3) .pst-rank { color: var(--primary); opacity: 0.5; }
 }
 .pqg-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
 
+
+/* ── Group card: quantitative outlier insight ── */
+.grp-outlier-insight {
+  margin: 14px 0 2px;
+  padding: 10px 14px;
+  background: var(--accent-dim, #f0f4ff);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+}
+.grp-outlier-insight-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.grp-outlier-insight-text {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  line-height: 1.55;
+}

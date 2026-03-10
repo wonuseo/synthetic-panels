@@ -191,9 +191,9 @@ function _computeOverallAvg(review) {
   return count > 0 ? sum / count : 0;
 }
 
-function _renderAllQualItems(review) {
+function _renderFunnelQualItems(review, funnelKey) {
   let html = '';
-  for (const key of ['overall', 'upper', 'mid', 'lower']) {
+  for (const key of ['overall', funnelKey]) {
     const funnel = window.funnelConfig?.[key];
     if (!funnel) continue;
     for (const item of funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical')) {
@@ -217,7 +217,7 @@ function renderPersonaPanelReviewSummary(personaId, funnelKey) {
     const avgDisplay = avg > 0 ? avg.toFixed(1) : '—';
     const cls = _scoreClass(avg);
     const emoji = recEmoji(review.recommendation || '');
-    const qualHtml = _renderAllQualItems(review);
+    const qualHtml = _renderFunnelQualItems(review, funnelKey);
 
     return `<div class="pprd-card">
       <div class="pprd-head">
@@ -511,8 +511,55 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
     html += `</div>`;
   }
 
+  // ── 03 정성 코멘트 요약: 정량 특이값 또는 overall 인사이트 ──
+  const outlierInsightHtml = _renderGroupOutlierInsight(itemStats, grpAvg, grpDef.label);
+  if (outlierInsightHtml) html += outlierInsightHtml;
+
   html += `</div>`;
   return html;
+}
+
+/* ── 그룹 카드 내 정량 특이값 인사이트 ── */
+function _renderGroupOutlierInsight(itemStats, grpAvg, grpLabel) {
+  if (!itemStats.length) return '';
+
+  const HIGH_THR = 4.0;
+  const LOW_THR = 2.8;
+  const SPREAD_THR = 0.5; // 그룹 평균과의 차이 임계값
+
+  const highs = itemStats.filter(s => s.avg >= HIGH_THR && s.avg - grpAvg >= SPREAD_THR);
+  const lows  = itemStats.filter(s => s.avg <= LOW_THR  && grpAvg - s.avg >= SPREAD_THR);
+
+  let insightText = '';
+
+  if (highs.length || lows.length) {
+    const parts = [];
+    if (highs.length) {
+      const labels = highs.map(s => `<strong>${esc(s.label)}</strong>(${s.avg.toFixed(1)})`).join(', ');
+      parts.push(`${labels}${highs.length > 1 ? ' 지표들이' : ' 지표가'} 그룹 평균(${grpAvg.toFixed(1)})보다 특이하게 높게 나타났습니다. 해당 항목이 이 단계에서 핵심 강점으로 작용하고 있을 가능성이 있습니다.`);
+    }
+    if (lows.length) {
+      const labels = lows.map(s => `<strong>${esc(s.label)}</strong>(${s.avg.toFixed(1)})`).join(', ');
+      parts.push(`${labels}${lows.length > 1 ? ' 지표들이' : ' 지표가'} 그룹 평균(${grpAvg.toFixed(1)})보다 특이하게 낮게 나타났습니다. 이 항목이 ${esc(grpLabel)} 단계의 병목 지점이 되고 있는지 주목할 필요가 있습니다.`);
+    }
+    insightText = parts.join(' ');
+  } else {
+    // 지표들이 유사한 경우: overall 수준 기반 인사이트
+    const level = grpAvg >= 4.0 ? '높은' : grpAvg >= 3.0 ? '중간 수준의' : '낮은';
+    const avgStr = grpAvg.toFixed(1);
+    if (grpAvg >= 4.0) {
+      insightText = `이 단계의 ${itemStats.length}개 지표가 모두 고르게 <strong>${level}</strong> 점수(평균 ${avgStr}/5)를 기록했습니다. 특정 약점 없이 전반적으로 긍정적인 반응이 형성된 단계로, 현재 강점을 유지하는 전략이 유효합니다.`;
+    } else if (grpAvg >= 3.0) {
+      insightText = `이 단계의 지표들이 ${level} 점수(평균 ${avgStr}/5)에 고르게 분포되어 있습니다. 특출난 강점이나 뚜렷한 약점 없이 전반적으로 보통의 반응을 보이고 있어, 어느 항목을 집중 개선할지 우선순위 결정이 필요합니다.`;
+    } else {
+      insightText = `이 단계의 지표들이 전반적으로 <strong>${level}</strong> 점수(평균 ${avgStr}/5)를 보이고 있습니다. 특정 지표에 국한된 문제가 아닌 이 단계 전체에 걸친 개선이 필요할 수 있습니다.`;
+    }
+  }
+
+  return `<div class="grp-outlier-insight">
+    <div class="grp-outlier-insight-label">💡 정량 지표 코멘트</div>
+    <div class="grp-outlier-insight-text">${insightText}</div>
+  </div>`;
 }
 
 /* ── Section 3 Step 01: 페르소나 요약 테이블 ── */
