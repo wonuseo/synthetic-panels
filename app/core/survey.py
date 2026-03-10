@@ -8,10 +8,7 @@ import yaml
 _SCALE_SPEC_RE = re.compile(r"integer\s+(\d+)\s*-\s*(\d+)", re.IGNORECASE)
 _RECOMMENDATION_OPTIONS = ["매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"]
 
-_TEAM_SURVEY_PATHS = {
-    "marketing": Path(__file__).parent.parent.parent / "config" / "survey_questions.yaml",
-    "commerce": Path(__file__).parent.parent.parent / "config" / "commerce_survey_questions.yaml",
-}
+_DEFINITIONS_DIR = Path(__file__).parent.parent.parent / "config" / "definitions"
 
 
 def _to_question_type(field_key: str, spec: str) -> str:
@@ -32,7 +29,7 @@ def _parse_scale(spec: str) -> Optional[dict]:
 
 @lru_cache(maxsize=4)
 def load_survey_template(team: str = "marketing") -> list[dict]:
-    path = _TEAM_SURVEY_PATHS.get(team, _TEAM_SURVEY_PATHS["marketing"])
+    path = _DEFINITIONS_DIR / f"{team}_survey.yaml"
     with open(path, encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
 

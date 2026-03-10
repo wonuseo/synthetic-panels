@@ -5,12 +5,7 @@ from functools import lru_cache
 
 import yaml
 
-_CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
-
-_TEAM_CONFIG_FILES = {
-    "marketing": "funnel_config.yaml",
-    "commerce": "commerce_funnel_config.yaml",
-}
+_DEFINITIONS_DIR = Path(__file__).parent.parent.parent / "config" / "definitions"
 
 # Funnel ordering: upper → mid → lower
 _FUNNEL_ORDER = ["upper", "mid", "lower"]
@@ -30,8 +25,7 @@ QA_COMPUTED = [
 @lru_cache(maxsize=4)
 def load_funnel_config(team: str = "marketing") -> dict:
     """YAML 로드 후 dict 반환 (팀별 캐시)"""
-    filename = _TEAM_CONFIG_FILES.get(team, "funnel_config.yaml")
-    config_path = _CONFIG_DIR / filename
+    config_path = _DEFINITIONS_DIR / f"{team}_funnel.yaml"
     with open(config_path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -212,7 +206,7 @@ _FIELD_SCALES_CACHE: dict[str, dict[str, tuple[int, int]]] = {}
 
 def _init_scales_cache():
     global _FIELD_SCALES_CACHE
-    for team in _TEAM_CONFIG_FILES:
+    for team in ("marketing", "commerce"):
         try:
             _FIELD_SCALES_CACHE[team] = get_field_scales(team)
         except Exception:

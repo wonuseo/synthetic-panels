@@ -3,20 +3,14 @@ from pathlib import Path
 from typing import Optional
 import yaml
 
-_config_dir = Path(__file__).parent.parent.parent / "config"
-
-_TEAM_PERSONA_FILES = {
-    "marketing": "personas.yaml",
-    "commerce": "commerce_personas.yaml",
-}
+_definitions_dir = Path(__file__).parent.parent.parent / "config" / "definitions"
 
 _persona_config_cache: dict[str, dict] = {}
 
 
 def _load_persona_config(team: str = "marketing") -> dict:
     if team not in _persona_config_cache:
-        filename = _TEAM_PERSONA_FILES.get(team, "personas.yaml")
-        with open(_config_dir / filename, encoding="utf-8") as f:
+        with open(_definitions_dir / f"{team}_personas.yaml", encoding="utf-8") as f:
             _persona_config_cache[team] = yaml.safe_load(f)
     return _persona_config_cache[team]
 

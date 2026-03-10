@@ -44,10 +44,18 @@ app/
   services/            # review_pipeline.py, review_serializer.py, usage.py
   sheets/              # client.py, personas.py, results.py
 config/                # YAML data files only (no Python)
-  funnel_config.yaml   # Upper/Mid/Lower funnel field definitions
-  synthetic_panels_prompts.yaml
-  synthesis_analysis_prompts.yaml
-  personas.yaml        # Persona profile template
+  prompts/             # LLM-facing prompt templates
+    marketing_review.yaml
+    marketing_synthesis.yaml
+    commerce_review.yaml
+    commerce_synthesis.yaml
+  definitions/         # Field definitions & structural configs
+    marketing_funnel.yaml   # Upper/Mid/Lower funnel field definitions
+    marketing_survey.yaml
+    marketing_personas.yaml # Persona profile template
+    commerce_funnel.yaml
+    commerce_survey.yaml
+    commerce_personas.yaml
 static/                # index.html, app.css, js/
 ```
 
@@ -62,7 +70,7 @@ static/                # index.html, app.css, js/
 
 ### Key Design Decisions
 
-**Funnel structure** — all quantitative/qualitative fields belong to one of three funnels (Upper/Mid/Lower). `config/funnel_config.yaml` is the single source of truth; `app/core/funnel.py` exposes helpers (`get_funnel_groups()`, `get_field_scales()`, etc.) and is cached for performance.
+**Funnel structure** — all quantitative/qualitative fields belong to one of three funnels (Upper/Mid/Lower). `config/definitions/{team}_funnel.yaml` is the single source of truth per team; `app/core/funnel.py` exposes helpers (`get_funnel_groups()`, `get_field_scales()`, etc.) and is cached for performance.
 
 **LLM abstraction** — `claude.py` and `openai_client.py` expose identical signatures: `call_*(persona, file_bytes, filename, model, text_content, qa_mode)` and `synthesize_*(reviews_data, model)`. Both apply exponential backoff with jitter (5 retries) for rate-limit and server errors.
 

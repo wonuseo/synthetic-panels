@@ -1,15 +1,12 @@
+import statistics
 from pathlib import Path
 from typing import List, Optional
 import yaml
 
 from app.models.persona import Persona
 
-_config_dir = Path(__file__).parent.parent.parent / "config"
-
-_TEAM_PROMPT_FILES = {
-    "marketing": ("synthetic_panels_prompts.yaml", "synthesis_analysis_prompts.yaml", "survey_questions.yaml"),
-    "commerce": ("commerce_synthetic_panels_prompts.yaml", "commerce_synthesis_analysis_prompts.yaml", "commerce_survey_questions.yaml"),
-}
+_prompts_dir = Path(__file__).parent.parent.parent / "config" / "prompts"
+_definitions_dir = Path(__file__).parent.parent.parent / "config" / "definitions"
 
 # Lazy cache: team -> loaded config dicts
 _prompt_cache: dict[str, dict] = {}
@@ -17,29 +14,26 @@ _synthesis_cache: dict[str, dict] = {}
 _survey_cache: dict[str, dict] = {}
 
 
-def _load_yaml(filename: str) -> dict:
-    with open(_config_dir / filename, encoding="utf-8") as f:
+def _load_yaml(path: Path) -> dict:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def _get_prompt_config(team: str = "marketing") -> dict:
     if team not in _prompt_cache:
-        files = _TEAM_PROMPT_FILES.get(team, _TEAM_PROMPT_FILES["marketing"])
-        _prompt_cache[team] = _load_yaml(files[0])
+        _prompt_cache[team] = _load_yaml(_prompts_dir / f"{team}_review.yaml")
     return _prompt_cache[team]
 
 
 def _get_synthesis_config(team: str = "marketing") -> dict:
     if team not in _synthesis_cache:
-        files = _TEAM_PROMPT_FILES.get(team, _TEAM_PROMPT_FILES["marketing"])
-        _synthesis_cache[team] = _load_yaml(files[1])
+        _synthesis_cache[team] = _load_yaml(_prompts_dir / f"{team}_synthesis.yaml")
     return _synthesis_cache[team]
 
 
 def _get_survey_config(team: str = "marketing") -> dict:
     if team not in _survey_cache:
-        files = _TEAM_PROMPT_FILES.get(team, _TEAM_PROMPT_FILES["marketing"])
-        _survey_cache[team] = _load_yaml(files[2])
+        _survey_cache[team] = _load_yaml(_definitions_dir / f"{team}_survey.yaml")
     return _survey_cache[team]
 
 
@@ -213,6 +207,41 @@ def _build_item_stats_block(funnel_item_stats: dict) -> str:
     return "\n".join(lines)
 
 
+def _build_comparison_table(reviews_data: list, team: str = "marketing") -> str:
+    """페르소나×정량지표 크로스 비교 마크다운 테이블."""
+    sections = _get_survey_config(team)["sections"]
+    quant_fields = []
+    for section in sections:
+        for f in section["fields"]:
+            if "integer" in f["spec"]:
+                quant_fields.append((f["key"], f["label"]))
+    if not quant_fields or len(reviews_data) < 2:
+        return ""
+
+    persona_names = [r.get("persona_name", "?") for r in reviews_data]
+    header = "| 지표 | " + " | ".join(persona_names) + " | 평균 | σ | 상태 |"
+    sep = "|" + "|".join(["---"] * (len(persona_names) + 4)) + "|"
+    rows = [header, sep]
+
+    for key, label in quant_fields:
+        vals = [r.get(key, 0) for r in reviews_data]
+        nums = [v for v in vals if isinstance(v, (int, float)) and v > 0]
+        avg = round(sum(nums) / len(nums), 1) if nums else 0
+        std = round(statistics.stdev(nums), 1) if len(nums) >= 2 else 0
+        if std >= 1.0:
+            flag = "양극화"
+        elif std < 0.5 and avg >= 3.5:
+            flag = "합의↑"
+        elif std < 0.5 and avg < 2.5:
+            flag = "합의↓"
+        else:
+            flag = ""
+        val_strs = [str(r.get(key, "-")) for r in reviews_data]
+        rows.append(f"| {label} | " + " | ".join(val_strs) + f" | {avg} | {std} | {flag} |")
+
+    return "\n".join(rows)
+
+
 def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing", funnel_group_stats: Optional[dict] = None, funnel_item_stats: Optional[dict] = None) -> str:
     synthesis_cfg = _get_synthesis_config(team)
     appeal_field = _get_appeal_field(team)
@@ -225,6 +254,12 @@ def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing", fu
         parts.append(header + _build_review_text_block(r, team))
     reviews_text = "\n".join(parts)
     prompt = synthesis_cfg["synthesis"]["user_template"].format(count=len(reviews_data), reviews_text=reviews_text)
+
+    comparison_table = _build_comparison_table(reviews_data, team)
+    if comparison_table:
+        prompt += "\n\n--- [Cross-Persona Comparison Table] ---\n"
+        prompt += "다음은 모든 페르소나의 정량 점수를 한눈에 비교한 표입니다. σ(표준편차)가 높으면 의견이 갈린 것이고, 낮으면 합의된 것입니다.\n\n"
+        prompt += comparison_table + "\n"
 
     if funnel_group_stats or funnel_item_stats:
         group_block = _build_group_stats_block(funnel_group_stats) if funnel_group_stats else ""

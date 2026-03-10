@@ -215,67 +215,88 @@ def build_event_generator(
 
             total_personas = len(persona_summaries)
 
-            # ═══ Phase 3: 페르소나별 정성 요약 LLM 호출 ═══
-            yield {"event": "status", "data": json.dumps({"message": "페르소나별 정성 요약 생성 중..."})}
-            phase3_start = time.time()
+            # ═══ Phase 3: 페르소나별 정성 요약 ═══
+            all_single_panel = all(s.panel_count == 1 for s in persona_summaries)
 
-            def run_persona_synthesis(summary):
-                reviews_data = list(summary.panel_reviews)
-                if provider == "Claude":
-                    return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model, team=team)
-                return summary.persona_id, synthesize_persona_openai(summary.persona_name, reviews_data, summary_model, team=team)
-
-            p3_futures = {executor.submit(run_persona_synthesis, s): s for s in persona_summaries}
-            p3_completed = 0
-
-            while p3_futures:
-                if await request.is_disconnected():
-                    logger.info("SSE disconnected during persona synthesis; cancelling %d tasks", len(p3_futures))
-                    _cancel_futures(p3_futures)
-                    return
-
-                done = [f for f in list(p3_futures.keys()) if f.done()]
-                if not done:
-                    await asyncio.sleep(0.3)
-                    continue
-
-                for f in done:
-                    summary = p3_futures.pop(f)
-                    persona_id = summary.persona_id
-                    raw_result = ""
-                    try:
-                        persona_id_result, raw_result = f.result()
-                        if persona_id_result:
-                            persona_id = persona_id_result
-                    except Exception as e:
-                        logger.exception(
-                            "Persona synthesis future failed [persona=%s]: %s",
-                            summary.persona_name, e,
-                        )
-                        raw_result = json.dumps({"error": str(e)})
-
-                    p3_completed += 1
-
-                    parsed = extract_json_or_none(raw_result)
-                    if parsed:
-                        for s in persona_summaries:
-                            if s.persona_id == persona_id:
-                                s.fill_qualitative(parsed, team=team)
-                                break
-
-                    elapsed = time.time() - phase3_start
+            if all_single_panel:
+                # 단일 패널 최적화: LLM 호출 없이 패널 리뷰에서 직접 추출
+                yield {"event": "status", "data": json.dumps({"message": "페르소나별 정성 요약 추출 중..."})}
+                for s in persona_summaries:
+                    if s.panel_reviews:
+                        s.fill_qualitative(s.panel_reviews[0], team=team)
+                for i, s in enumerate(persona_summaries):
                     yield {
                         "event": "progress",
                         "data": json.dumps({
                             "phase": "persona_synthesis",
-                            "completed": p3_completed,
+                            "completed": i + 1,
                             "total": total_personas,
-                            "persona_name": next(
-                                (s.persona_name for s in persona_summaries if s.persona_id == persona_id), ""
-                            ),
-                            "elapsed_seconds": round(elapsed, 1),
+                            "persona_name": s.persona_name,
+                            "elapsed_seconds": 0.0,
                         }),
                     }
+            else:
+                # 멀티 패널: LLM으로 페르소나별 정성 요약 생성
+                yield {"event": "status", "data": json.dumps({"message": "페르소나별 정성 요약 생성 중..."})}
+                phase3_start = time.time()
+
+                def run_persona_synthesis(summary):
+                    reviews_data = list(summary.panel_reviews)
+                    if provider == "Claude":
+                        return summary.persona_id, synthesize_persona_claude(summary.persona_name, reviews_data, summary_model, team=team)
+                    return summary.persona_id, synthesize_persona_openai(summary.persona_name, reviews_data, summary_model, team=team)
+
+                p3_futures = {executor.submit(run_persona_synthesis, s): s for s in persona_summaries}
+                p3_completed = 0
+
+                while p3_futures:
+                    if await request.is_disconnected():
+                        logger.info("SSE disconnected during persona synthesis; cancelling %d tasks", len(p3_futures))
+                        _cancel_futures(p3_futures)
+                        return
+
+                    done = [f for f in list(p3_futures.keys()) if f.done()]
+                    if not done:
+                        await asyncio.sleep(0.3)
+                        continue
+
+                    for f in done:
+                        summary = p3_futures.pop(f)
+                        persona_id = summary.persona_id
+                        raw_result = ""
+                        try:
+                            persona_id_result, raw_result = f.result()
+                            if persona_id_result:
+                                persona_id = persona_id_result
+                        except Exception as e:
+                            logger.exception(
+                                "Persona synthesis future failed [persona=%s]: %s",
+                                summary.persona_name, e,
+                            )
+                            raw_result = json.dumps({"error": str(e)})
+
+                        p3_completed += 1
+
+                        parsed = extract_json_or_none(raw_result)
+                        if parsed:
+                            for s in persona_summaries:
+                                if s.persona_id == persona_id:
+                                    s.fill_qualitative(parsed, team=team)
+                                    break
+
+                        elapsed = time.time() - phase3_start
+                        yield {
+                            "event": "progress",
+                            "data": json.dumps({
+                                "phase": "persona_synthesis",
+                                "completed": p3_completed,
+                                "total": total_personas,
+                                "persona_name": next(
+                                    (s.persona_name for s in persona_summaries if s.persona_id == persona_id), ""
+                                ),
+                                "elapsed_seconds": round(elapsed, 1),
+                            }),
+                        }
 
             if await request.is_disconnected():
                 logger.info("SSE disconnected before synthesis")
