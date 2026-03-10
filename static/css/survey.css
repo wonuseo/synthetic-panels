@@ -7,6 +7,19 @@
   padding: 18px 20px;
   margin-bottom: 14px;
 }
+.survey-tab-intro-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+.survey-tab-intro-header h2 {
+  margin-bottom: 0;
+}
+.survey-demo-team-toggle .team-toggle {
+  margin-top: 0;
+}
 .survey-tab-intro h2,
 .panel-stats-intro h2 {
   font-size: 1.1rem;

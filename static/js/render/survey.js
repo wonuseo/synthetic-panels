@@ -127,9 +127,23 @@ export function renderSurveyTab(surveyTemplate, funnelConfig = window.funnelConf
     </section>`;
   }).join('');
 
+  const demoConfigs = window._demoFunnelConfigs;
+  const demoTeamToggleHtml = demoConfigs ? (() => {
+    const cur = window._currentDemoSurveyTeam || 'marketing';
+    return `<div class="survey-demo-team-toggle">
+      <div class="team-toggle">
+        <button class="team-btn${cur === 'marketing' ? ' active' : ''}" onclick="switchDemoSurveyTeam('marketing')">마케팅팀</button>
+        <button class="team-btn${cur === 'commerce' ? ' active' : ''}" onclick="switchDemoSurveyTeam('commerce')">커머스비즈니스팀</button>
+      </div>
+    </div>`;
+  })() : '';
+
   target.innerHTML = `
     <div class="survey-tab-intro">
-      <h2>📝 설문지 미리보기</h2>
+      <div class="survey-tab-intro-header">
+        <h2>📝 설문지 미리보기</h2>
+        ${demoTeamToggleHtml}
+      </div>
       <p>총 <strong>${allFields.length}문항</strong>을 퍼널 섹션으로 구분해 보여줍니다. 각 섹션 내부는 좌측 척도형, 우측 서술형 구조입니다.</p>
     </div>
     <div class="survey-funnel-sections">${sectionsHtml}</div>

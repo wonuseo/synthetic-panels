@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { loadSavedTheme } from './themes.js';
 loadSavedTheme();
-import { DEMO_FUNNEL_CONFIG, DEMO_PERSONA_SUMMARIES, DEMO_PANEL_REVIEWS, DEMO_SYNTHESIS } from './demo/index.js';
+import { DEMO_FUNNEL_CONFIG, DEMO_COMMERCE_FUNNEL_CONFIG, DEMO_PERSONA_SUMMARIES, DEMO_PANEL_REVIEWS, DEMO_SYNTHESIS } from './demo/index.js';
 import { loadFunnelConfig, loadSurveyTemplate } from './api.js';
 import { $, updateRunBtn, handleFile, initModelSelectors } from './ui.js';
 import { renderOverviewTab } from './render/overview.js';
@@ -105,6 +105,8 @@ function showResults(payload) {
 /* ── Demo mode ── */
 async function loadDemo() {
   window.funnelConfig = DEMO_FUNNEL_CONFIG;
+  window._demoFunnelConfigs = { marketing: DEMO_FUNNEL_CONFIG, commerce: DEMO_COMMERCE_FUNNEL_CONFIG };
+  window._currentDemoSurveyTeam = 'marketing';
   await ensureSurveyTemplate();
   showResults({
     persona_summaries: DEMO_PERSONA_SUMMARIES,
@@ -115,6 +117,13 @@ async function loadDemo() {
 }
 if ($.btnDemo) $.btnDemo.addEventListener('click', () => loadDemo());
 window.loadDemo = loadDemo;
+
+function switchDemoSurveyTeam(team) {
+  if (!window._demoFunnelConfigs) return;
+  window._currentDemoSurveyTeam = team;
+  renderSurveyTab([], window._demoFunnelConfigs[team]);
+}
+window.switchDemoSurveyTeam = switchDemoSurveyTeam;
 
 /* ── Metrics summary ── */
 const _TEAM_METRICS = {
