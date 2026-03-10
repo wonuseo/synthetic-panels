@@ -162,6 +162,26 @@
   line-height: 1.4;
 }
 
+.qa-field-qa-q {
+  font-size: var(--fs-xs);
+  color: var(--text);
+  margin-top: 4px;
+  padding: 3px 8px;
+  background: var(--accent-dim, #f0f4ff);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+
+.qa-field-orig-q {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 3px;
+  padding: 3px 8px;
+  background: var(--surface-2, #f8f9fa);
+  border-left: 2px solid var(--border);
+  border-radius: 0 4px 4px 0;
+}
+
 /* ── QA Explainer ── */
 .qa-explainer {
   background: var(--surface);

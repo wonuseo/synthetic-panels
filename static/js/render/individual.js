@@ -157,6 +157,7 @@ function renderPersonaSummaryCard(summary, idx) {
   const panelReviews = summary.panel_reviews || [];
   let drillHtml = '';
   if (panelReviews.length) {
+    const CHANNEL_LABELS = { overall: '공통', upper: '브랜드 자산', mid: '수요 창출', lower: '전환·매출' };
     drillHtml = `
       <div class="drill-down-header" id="drill-header-${summary.persona_id}" onclick="toggleDrillDown('${summary.persona_id}')">
         📋 개별 패널 리뷰 (${panelReviews.length}건) ▶
@@ -166,6 +167,23 @@ function renderPersonaSummaryCard(summary, idx) {
           const prScore = pr.appeal || 0;
           const prCls = prScore >= 4 ? 'high' : prScore >= 3 ? 'mid' : 'low';
           const prEmoji = recEmoji(pr.recommendation || '');
+
+          // Build per-channel qual summary
+          let channelHtml = '';
+          for (const chKey of ['overall', 'upper', 'mid', 'lower']) {
+            const funnel = window.funnelConfig?.[chKey];
+            if (!funnel) continue;
+            const qualItems = funnel.individual_items.filter(i => i.type === 'qualitative' || i.type === 'categorical');
+            const rows = qualItems.map(item => ({ label: item.label, val: pr[item.key] })).filter(x => x.val);
+            if (!rows.length) continue;
+            channelHtml += `<div class="psc-channel">
+              <div class="psc-channel-label">${esc(CHANNEL_LABELS[chKey] || chKey)}</div>
+              <div class="psc-channel-items">
+                ${rows.map(row => `<div class="psc-qual-row"><span class="psc-qual-key">${esc(row.label)}</span><span class="psc-qual-val">${esc(String(row.val))}</span></div>`).join('')}
+              </div>
+            </div>`;
+          }
+
           return `<div class="panel-sub-card">
             <div class="panel-sub-header">
               <span class="emoji">${prEmoji}</span>
@@ -174,7 +192,7 @@ function renderPersonaSummaryCard(summary, idx) {
               <span class="rec-text">${esc(pr.recommendation || '')}</span>
             </div>
             ${pr.emotional_response ? `<div class="panel-sub-comment">"${esc(pr.emotional_response)}"</div>` : ''}
-            ${pr.review_summary ? `<div class="panel-sub-summary">${esc(pr.review_summary)}</div>` : ''}
+            ${channelHtml ? `<div class="psc-channels">${channelHtml}</div>` : (pr.review_summary ? `<div class="panel-sub-summary">${esc(pr.review_summary)}</div>` : '')}
           </div>`;
         }).join('')}
       </div>`;

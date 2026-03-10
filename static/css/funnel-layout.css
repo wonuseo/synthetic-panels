@@ -201,6 +201,22 @@
   font-size: 0.84rem;
 }
 
+/* ── Panel sub card channel breakdown (개별 응답) ── */
+.psc-channels { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.psc-channel { background: var(--surface-2, #f8f9fa); border-radius: 6px; padding: 8px 10px; }
+.psc-channel-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+.psc-channel-items { display: flex; flex-direction: column; gap: 4px; }
+.psc-qual-row { display: flex; gap: 8px; font-size: 0.82rem; }
+.psc-qual-key { color: var(--text-muted); min-width: 90px; flex-shrink: 0; }
+.psc-qual-val { color: var(--text); }
+
 /* ── Panel count badge ── */
 .panel-count-badge {
   background: var(--accent-dim);

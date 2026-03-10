@@ -28,7 +28,9 @@ function renderQAExplainer() {
               <span class="qa-field-human">브랜드 호감도 재측정</span>
               <code>qa_rep_brand_attitude</code>
             </div>
-            <div class="qa-field-compare">↔ 본 응답 <code>brand_favorability</code> 와 점수 차이 비교</div>
+            <div class="qa-field-qa-q">QA 질문: "이 프로모션에 대한 전반적인 호감도" (1–5)</div>
+            <div class="qa-field-orig-q">본 설문 질문 (<code>brand_favorability</code>): "이 브랜드/프로모션에 대한 호감도 (1=매우 비호감 ~ 5=매우 호감)"</div>
+            <div class="qa-field-compare">→ 두 질문은 동일한 개념(브랜드 호감도)을 다른 문구로 물음. 점수 차이가 1 이상이면 일관성 감점.</div>
           </li>
         </ul>
       </div>
@@ -40,7 +42,8 @@ function renderQAExplainer() {
               <span class="qa-field-human">예산 민감도</span>
               <code>qa_trap_budget_sensitivity</code>
             </div>
-            <div class="qa-field-compare">페르소나 지출 성향(고지출/중간/절약형)에서 예측한 기대 범위와 응답값 비교</div>
+            <div class="qa-field-qa-q">질문: "가격이 나의 예산에 부담이 된다" (1=전혀 부담 없음 ~ 5=매우 부담)</div>
+            <div class="qa-field-compare">→ 페르소나 지출 성향(고지출형 → 낮은 점수 기대 / 절약형 → 높은 점수 기대)으로 예측한 기대 범위 밖이면 페르소나 불일치 판정.</div>
           </li>
         </ul>
       </div>
@@ -55,32 +58,39 @@ function renderQAExplainer() {
         <ul class="qa-mode-list">
           <li>
             <div class="qa-field-row"><span class="qa-field-human">브랜드 호감도 재측정</span><code>qa_rep_brand_attitude</code></div>
-            <div class="qa-field-compare">↔ 본 응답 <code>brand_favorability</code></div>
+            <div class="qa-field-qa-q">QA 질문: "이 프로모션에 대한 전반적인 호감도" (1–5)</div>
+            <div class="qa-field-orig-q">본 설문 (<code>brand_favorability</code>): "이 브랜드/프로모션에 대한 호감도 (1=매우 비호감 ~ 5=매우 호감)"</div>
           </li>
           <li>
             <div class="qa-field-row"><span class="qa-field-human">가치 인식 재측정</span><code>qa_rep_value_perception</code></div>
-            <div class="qa-field-compare">↔ 본 응답 <code>value_for_money</code></div>
+            <div class="qa-field-qa-q">QA 질문: "이 프로모션의 가격 대비 만족도" (1–5)</div>
+            <div class="qa-field-orig-q">본 설문 (<code>value_for_money</code>): "가격 대비 가치가 있는 정도 (1=전혀 ~ 5=매우)"</div>
           </li>
           <li>
             <div class="qa-field-row"><span class="qa-field-human">구매 의향 재측정</span><code>qa_rep_purchase_intent</code></div>
-            <div class="qa-field-compare">↔ 본 응답 <code>purchase_likelihood</code></div>
+            <div class="qa-field-qa-q">QA 질문: "이 프로모션을 실제로 이용할 가능성" (1–5)</div>
+            <div class="qa-field-orig-q">본 설문 (<code>purchase_likelihood</code>): "이 프로모션을 구매할 가능성 (1=전혀 ~ 5=매우 높음)"</div>
           </li>
         </ul>
+        <div class="qa-field-compare" style="margin-top:6px">→ 재측정값과 본 응답값의 차이를 1 − diff/4로 정규화. 차이가 없으면 1.0, 4점 차이면 0.0.</div>
       </div>
       <div class="qa-mode-section">
         <div class="qa-mode-section-label">트랩 항목 (Trap) × 3</div>
         <ul class="qa-mode-list">
           <li>
             <div class="qa-field-row"><span class="qa-field-human">예산 민감도</span><code>qa_trap_budget_sensitivity</code></div>
-            <div class="qa-field-compare">페르소나 지출 성향(고지출/중간/절약형) 기반 기대 범위와 비교</div>
+            <div class="qa-field-qa-q">질문: "가격이 나의 예산에 부담이 된다" (1–5)</div>
+            <div class="qa-field-compare">→ 지출 성향(고지출형: 1–2 기대 / 절약형: 4–5 기대) 기반 범위 이탈 시 실패.</div>
           </li>
           <li>
             <div class="qa-field-row"><span class="qa-field-human">경쟁사 충성도</span><code>qa_trap_competitor_loyalty</code></div>
-            <div class="qa-field-compare">경쟁 브랜드 선호 여부 기반 기대 범위와 비교</div>
+            <div class="qa-field-qa-q">질문: "경쟁 브랜드보다 이 프로모션이 더 매력적이다" (1–5)</div>
+            <div class="qa-field-compare">→ 경쟁 브랜드 강한 선호 페르소나는 낮은 점수가 기대됨. 반대면 페르소나 불일치.</div>
           </li>
           <li>
             <div class="qa-field-row"><span class="qa-field-human">회의주의 수준</span><code>qa_trap_skepticism_check</code></div>
-            <div class="qa-field-compare">페르소나 회의주의 성향(높음/중간/낮음) 기반 기대 범위와 비교</div>
+            <div class="qa-field-qa-q">질문: "이 프로모션의 혜택이 과장되지 않고 신뢰할 수 있다" (1–5)</div>
+            <div class="qa-field-compare">→ 회의주의 높은 페르소나는 낮은 점수가 기대됨. 높은 점수면 페르소나 불일치.</div>
           </li>
         </ul>
       </div>
