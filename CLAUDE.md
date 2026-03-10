@@ -36,17 +36,19 @@ No test suite exists yet.
 ```
 server.py              # FastAPI entrypoint
 app/
-  core/                # Env vars (__init__.py) + funnel config loader (funnel.py)
-  llm/                 # claude.py, openai_client.py, prompt.py, parse.py
+  api/                 # Route handlers (personas.py, review.py, save.py)
+  core/                # Env vars (__init__.py) + funnel config (funnel.py) + survey (survey.py)
+  llm/                 # claude.py, openai_client.py, prompt.py, parse.py, retry.py
   media/               # processor.py — PDF/image → base64 for LLM
-  models/              # persona.py, review.py, qa.py
+  models/              # persona.py, persona_summary.py, review.py, qa.py
+  services/            # review_pipeline.py, review_serializer.py, usage.py
   sheets/              # client.py, personas.py, results.py
 config/                # YAML data files only (no Python)
   funnel_config.yaml   # Upper/Mid/Lower funnel field definitions
   synthetic_panels_prompts.yaml
   synthesis_analysis_prompts.yaml
   personas.yaml        # Persona profile template
-static/                # index.html, app.js, app.css
+static/                # index.html, app.css, js/
 ```
 
 ### Data Flow
@@ -71,7 +73,7 @@ static/                # index.html, app.js, app.css
 ### External Dependencies
 - **Google Sheets**: `gspread` with service account JSON (path in `GOOGLE_SERVICE_ACCOUNT_JSON` env var). Personas are read from a configurable worksheet; results and synthesis are written to separate worksheets (auto-created if missing).
 - **Media**: PDFs are converted to images via `pdf2image` (150 DPI) for OpenAI; sent as document blocks for Claude.
-- **Version**: `VERSION` file → displayed in UI header; `CHANGELOG.md` updated by release script.
+- **Version**: displayed in UI header (hardcoded or env var).
 
 ### Environment Variables (`.env`)
 ```

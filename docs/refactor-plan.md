@@ -27,7 +27,7 @@
 - ~~`static/app.css` 4,799 lines~~ → 분리 완료: `static/app.css` (17줄 entry) + `static/css/*.css` (14개 파일)
 - ~~`server.py` 722 lines~~ → 분리 완료: `server.py` **86줄** + `app/api/` + `app/services/` + `app/core/survey.py`
 - ~~`static/js/main.js` 801 lines~~ → 분리 완료: `main.js` **228줄** + 5개 전용 모듈
-- `static/app.js` **1,079 lines** — 레거시 번들, 퇴역 미완료
+- ~~`static/app.js` 1,079 lines~~ → 삭제 완료 ✓ 2026-03-10
 - `static/js/render/overview.js` **880 lines** — 수정 금지(CLAUDE.md), 분리 보류
 - `static/js/render/funnel-tab.js` **661 lines**
 - ~~`static/js/demo.js`~~ → `static/js/demo/index.js` **521 lines** (격리 완료, 내용 정리 미완료)
@@ -54,7 +54,7 @@
 - [x] 데모/레거시 경로가 production 편집 컨텍스트를 오염시키지 않게 분리 ✓ 2026-03-10
   - `static/js/demo.js` → `static/js/demo/index.js` 이동
   - `static/js/main.js` import 경로 `'./demo/index.js'`로 갱신
-  - 미완료: `static/app.js` 레거시 번들 + `static/demo.html` 모듈 기반 통일 → P2 이관
+  - ~~미완료: `static/app.js` 레거시 번들 + `static/demo.html` 모듈 기반 통일~~ → 삭제 완료 ✓ 2026-03-10
 
 ## 2) 책임 분리 / edit locality
 
@@ -92,14 +92,8 @@
   - 리팩토링 씨앗 (승인 후):
     - `overview-metrics.js`, `overview-radar.js`, `overview-synthesis.js`
 
-- [ ] 레거시 `static/app.js` 경로를 퇴역시키거나 모듈 엔트리로 통합
-  - 관련 코드:
-    - [`static/app.js`](../static/app.js) — 1,079줄 레거시 번들
-    - [`static/demo.html`](../static/demo.html) — 레거시 `<script src="./app.js">` + 숨김 DOM stub에 의존
-  - 메모: 실제 앱은 모듈 기반(`static/js/main.js`)인데, 데모 전용 페이지는 별도 레거시 번들에 의존. 검색과 수정 후보가 두 벌로 갈라져 AI 작업 효율을 떨어뜨린다.
-  - 리팩토링 씨앗:
-    - `demo.html`도 모듈 엔트리 기반으로 통일
-    - `static/app.js` 삭제 전 기능 parity 체크리스트 작성
+- [x] 레거시 `static/app.js` 경로를 퇴역 ✓ 2026-03-10
+  - `static/app.js` (1,079줄), `static/demo.html`, `static/js/demo.js` 삭제
 
 ## 3) 전역 상태 / 암묵적 결합
 
@@ -192,12 +186,10 @@
 - [ ] 데모 스키마 중복 및 레거시 키셋 제거
   - 관련 코드:
     - [`static/js/demo/index.js`](../static/js/demo/index.js) — 현행 키셋을 하드코딩으로 복제
-    - [`static/app.js`](../static/app.js) — `appeal_score`, `competitive_preference`, `purchase_trigger_barrier` 등 구 필드 유지
     - [`config/funnel_config.yaml`](../config/funnel_config.yaml)
-  - 메모: `demo/index.js`는 현행 키셋을 복제하고, `static/app.js`는 구 필드를 유지한다.
+  - 메모: `demo/index.js`는 현행 키셋을 복제한다. (`static/app.js` 레거시 번들은 삭제 완료)
   - 리팩토링 씨앗:
     - 데모도 `/api/funnel-config` 또는 YAML generated artifact를 사용
-    - 구 필드는 제거하거나 명시적 migration map으로 분리
 
 ## 5) 렌더러 / 프론트 유틸 중복
 
@@ -335,7 +327,7 @@
 | ~~`server.py` route / service / pipeline 분리~~ | ✓ 2026-03-10 (722줄 → 86줄, 7개 파일) |
 | ~~`static/js/main.js` 화면 orchestration 분리~~ | ✓ 2026-03-10 (801줄 → 228줄, 5개 모듈) |
 | ~~데모 fixture 격리 (`demo.js` → `demo/index.js`)~~ | ✓ 2026-03-10 |
-| `static/app.js` + `demo.html` 레거시 번들 퇴역 | 미완료 → P2 이관 |
+| ~~`static/app.js` + `demo.html` 레거시 번들 퇴역~~ | ✓ 2026-03-10 |
 
 ### P1 — 암묵적 결합 제거로 수정 범위를 국소화하는 것
 
@@ -354,7 +346,7 @@
 | radar SVG / score card renderer 공통화 | 축 계산·polygon 생성이 3곳에 중복 — 한 곳 수정 시 나머지를 놓칠 수 있음 |
 | provider dispatch 분기 제거 (`get_provider()` 패턴) | `review_pipeline.py` 내 3개 phase에 `if provider == "Claude"` 반복 |
 | SSE phase polling loop 공통화 | `review_pipeline.py` 내 phase 1·3이 동일한 future polling 패턴 반복 |
-| `static/app.js` + `demo.html` 레거시 번들 퇴역 | 검색 결과에 구 필드·레거시 loadDemo가 여전히 섞임 |
+| ~~`static/app.js` + `demo.html` 레거시 번들 퇴역~~ | ✓ 2026-03-10 |
 
 ### P3 — 운영·안전 품질 (기능에는 영향 없음)
 
@@ -382,7 +374,7 @@
    - renderer 번들 분리 (`funnel-tab`)
    - radar SVG / score card renderer 공통화
    - provider dispatch / SSE polling 공통화 (`review_pipeline.py` 내)
-   - `static/app.js` + `demo.html` 레거시 퇴역
+   - ~~`static/app.js` + `demo.html` 레거시 퇴역~~ ✓ 2026-03-10
 4. **안전망 확보** (P3)
    - parser / SSE / renderer 최소 회귀 테스트
    - typed exception + 구조화 로그
