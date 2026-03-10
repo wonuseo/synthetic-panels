@@ -139,19 +139,19 @@ def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model
         return f'{{"error": "{e}"}}'
 
 
-def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o", team: str = "marketing") -> str:
+def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o", team: str = "marketing", funnel_group_stats: Optional[dict] = None) -> str:
     client = _get_client()
 
     try:
         response = _call_with_retry(
             lambda: client.chat.completions.create(
                 model=model,
-                max_tokens=2048,
+                max_tokens=3000,
                 temperature=0.3,
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": get_synthesis_system_prompt(team)},
-                    {"role": "user", "content": build_synthesis_prompt(reviews_data, team)},
+                    {"role": "user", "content": build_synthesis_prompt(reviews_data, team, funnel_group_stats=funnel_group_stats)},
                 ],
             ),
         )

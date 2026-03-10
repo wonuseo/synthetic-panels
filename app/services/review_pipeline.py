@@ -274,12 +274,15 @@ def build_event_generator(
             # 정량 지표를 코드로 미리 계산 (LLM 대신)
             synthesis_quant_metrics = _compute_synthesis_quant_metrics(persona_summaries, team=team)
 
+            # 퍼널 그룹 평균 사전 계산 (synthesis 프롬프트 컨텍스트 + done 이벤트 공용)
+            funnel_group_stats = _compute_cross_persona_quant_groups(persona_summaries, team=team)
+
             synthesis_raw = ""
             if synthesis_input:
                 def do_synthesize():
                     if provider == "Claude":
-                        return synthesize_claude(synthesis_input, synthesis_model, team=team)
-                    return synthesize_openai(synthesis_input, synthesis_model, team=team)
+                        return synthesize_claude(synthesis_input, synthesis_model, team=team, funnel_group_stats=funnel_group_stats)
+                    return synthesize_openai(synthesis_input, synthesis_model, team=team, funnel_group_stats=funnel_group_stats)
 
                 synthesis_raw = await loop.run_in_executor(None, do_synthesize)
 
@@ -299,7 +302,7 @@ def build_event_generator(
                     "synthesis_raw": synthesis_raw,
                     "panel_size": selected_panel_size,
                     "sampling_seed": selected_seed,
-                    "funnel_quant_group_averages": _compute_cross_persona_quant_groups(persona_summaries, team=team),
+                    "funnel_quant_group_averages": funnel_group_stats,
                 }),
             }
 

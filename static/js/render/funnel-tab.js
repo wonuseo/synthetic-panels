@@ -360,7 +360,7 @@ function renderGroupQualSummary(funnel) {
 }
 
 function renderL2Section(funnelKey, funnel, valid, groups) {
-  const cards = groups.map(grp => renderGroupSection(funnelKey, funnel, valid, grp)).filter(Boolean).join('');
+  const cards = groups.map((grp, idx) => renderGroupSection(funnelKey, funnel, valid, grp, idx)).filter(Boolean).join('');
   if (!cards) return '';
 
   let html = `<div class="card l2-stage-section">`;
@@ -378,7 +378,7 @@ function renderL2Section(funnelKey, funnel, valid, groups) {
 }
 
 /* ── Section 2: 그룹별 분석 카드 ── */
-function renderGroupSection(funnelKey, funnel, valid, grpDef) {
+function renderGroupSection(funnelKey, funnel, valid, grpDef, groupIndex = 0) {
   const color = _FUNNEL_COLORS[funnelKey] || '#DA291C';
   const surveyFieldMap = _getSurveyFieldMap();
   const groups = _getQuantGroups(funnelKey);
@@ -511,8 +511,10 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
     html += `</div>`;
   }
 
-  // ── 03 정성 코멘트 요약: 정량 특이값 또는 overall 인사이트 ──
-  const outlierInsightHtml = _renderGroupOutlierInsight(itemStats, grpAvg, grpDef.label);
+  // ── 03 정성 코멘트 요약: LLM 인사이트 우선, 없으면 규칙 기반 fallback ──
+  const llmInsights = state.lastSynthesis?.[funnelKey + '_group_insights'];
+  const llmInsight = Array.isArray(llmInsights) ? (llmInsights[groupIndex] || '') : '';
+  const outlierInsightHtml = _renderGroupOutlierInsight(itemStats, grpAvg, grpDef.label, llmInsight);
   if (outlierInsightHtml) html += outlierInsightHtml;
 
   html += `</div>`;
@@ -520,18 +522,26 @@ function renderGroupSection(funnelKey, funnel, valid, grpDef) {
 }
 
 /* ── 그룹 카드 내 정량 특이값 인사이트 ── */
-function _renderGroupOutlierInsight(itemStats, grpAvg, grpLabel) {
+function _renderGroupOutlierInsight(itemStats, grpAvg, grpLabel, llmInsight = '') {
   if (!itemStats.length) return '';
 
+  // LLM 인사이트가 있으면 최우선으로 표시
+  if (llmInsight && llmInsight.trim()) {
+    return `<div class="grp-outlier-insight grp-outlier-insight--llm">
+      <div class="grp-outlier-insight-label">💡 그룹 인사이트</div>
+      <div class="grp-outlier-insight-text">${esc(llmInsight.trim())}</div>
+    </div>`;
+  }
+
+  // LLM 인사이트 없을 때: 규칙 기반 fallback
   const HIGH_THR = 4.0;
   const LOW_THR = 2.8;
-  const SPREAD_THR = 0.5; // 그룹 평균과의 차이 임계값
+  const SPREAD_THR = 0.5;
 
   const highs = itemStats.filter(s => s.avg >= HIGH_THR && s.avg - grpAvg >= SPREAD_THR);
   const lows  = itemStats.filter(s => s.avg <= LOW_THR  && grpAvg - s.avg >= SPREAD_THR);
 
   let insightText = '';
-
   if (highs.length || lows.length) {
     const parts = [];
     if (highs.length) {
@@ -544,7 +554,6 @@ function _renderGroupOutlierInsight(itemStats, grpAvg, grpLabel) {
     }
     insightText = parts.join(' ');
   } else {
-    // 지표들이 유사한 경우: overall 수준 기반 인사이트
     const level = grpAvg >= 4.0 ? '높은' : grpAvg >= 3.0 ? '중간 수준의' : '낮은';
     const avgStr = grpAvg.toFixed(1);
     if (grpAvg >= 4.0) {

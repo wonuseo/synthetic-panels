@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import yaml
 
 from app.models.persona import Persona
@@ -176,7 +176,29 @@ def build_persona_synthesis_prompt(persona_name: str, reviews_data: List[dict], 
     )
 
 
-def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing") -> str:
+_FUNNEL_LABEL_MAP = {
+    "upper": "Brand Funnel",
+    "mid": "Demand & Acquisition Funnel",
+    "lower": "Sales & Conversion Funnel",
+}
+
+
+def _build_group_stats_block(funnel_group_stats: dict) -> str:
+    """퍼널별 quant group 평균 → LLM 프롬프트 컨텍스트 블록."""
+    lines = []
+    for funnel_key in ["upper", "mid", "lower"]:
+        groups = funnel_group_stats.get(funnel_key, [])
+        if not groups:
+            continue
+        lines.append(f"\n{_FUNNEL_LABEL_MAP.get(funnel_key, funnel_key)}:")
+        for i, grp in enumerate(groups):
+            avg = grp.get("avg", 0)
+            pct = grp.get("pct", 0)
+            lines.append(f"  Group {i + 1}. {grp['label']}: 평균 {avg}/5 ({pct}%)")
+    return "\n".join(lines)
+
+
+def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing", funnel_group_stats: Optional[dict] = None) -> str:
     synthesis_cfg = _get_synthesis_config(team)
     appeal_field = _get_appeal_field(team)
     parts = []
@@ -187,4 +209,20 @@ def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing") ->
         )
         parts.append(header + _build_review_text_block(r, team))
     reviews_text = "\n".join(parts)
-    return synthesis_cfg["synthesis"]["user_template"].format(count=len(reviews_data), reviews_text=reviews_text)
+    prompt = synthesis_cfg["synthesis"]["user_template"].format(count=len(reviews_data), reviews_text=reviews_text)
+
+    if funnel_group_stats:
+        stats_block = _build_group_stats_block(funnel_group_stats)
+        if stats_block:
+            prompt += f"""
+
+--- [퍼널 단계별 그룹 지표 — 그룹 인사이트 생성용] ---
+다음은 퍼널별 정량 그룹의 사전 계산된 평균 점수입니다. 위 패널 응답의 정성 코멘트를 근거로 각 그룹이 이 점수를 기록한 원인을 해석해 주세요.
+{stats_block}
+
+위 그룹 순서에 맞춰 다음 필드도 JSON에 반드시 포함하세요 (기존 필드에 추가):
+- "upper_group_insights": Brand Funnel 그룹 순서대로 각 그룹 점수의 원인을 해석한 문자열 배열. 각 항목은 2-3문장 한국어. 그룹 내 지표 간 편차가 크면(특이하게 높거나 낮은 지표 있으면) 그 원인을 패널 코멘트 기반으로 설명. 지표들이 고른 경우 전체 점수 수준의 이유를 설명.
+- "mid_group_insights": Demand & Acquisition Funnel 그룹 순서대로, 동일 형식.
+- "lower_group_insights": Sales & Conversion Funnel 그룹 순서대로, 동일 형식.
+"""
+    return prompt
