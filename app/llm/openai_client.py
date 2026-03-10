@@ -139,7 +139,7 @@ def synthesize_persona_openai(persona_name: str, reviews_data: List[dict], model
         return f'{{"error": "{e}"}}'
 
 
-def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o", team: str = "marketing", funnel_group_stats: Optional[dict] = None) -> str:
+def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o", team: str = "marketing", funnel_group_stats: Optional[dict] = None, funnel_item_stats: Optional[dict] = None) -> str:
     client = _get_client()
 
     try:
@@ -151,7 +151,7 @@ def synthesize_openai(reviews_data: List[dict], model: str = "gpt-4o", team: str
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": get_synthesis_system_prompt(team)},
-                    {"role": "user", "content": build_synthesis_prompt(reviews_data, team, funnel_group_stats=funnel_group_stats)},
+                    {"role": "user", "content": build_synthesis_prompt(reviews_data, team, funnel_group_stats=funnel_group_stats, funnel_item_stats=funnel_item_stats)},
                 ],
             ),
         )

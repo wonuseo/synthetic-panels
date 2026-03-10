@@ -177,6 +177,17 @@ def get_field_scales_cached(team: str = "marketing") -> dict[str, tuple[int, int
     return _FIELD_SCALES_CACHE.get(team) or get_field_scales(team)
 
 
+def get_funnel_quant_items(team: str = "marketing") -> dict:
+    """퍼널별 정량 지표 항목 정의 반환: {funnel_key: [{key, label}, ...]}"""
+    cfg = load_funnel_config(team)
+    result: dict = {}
+    for funnel_name in _FUNNEL_ORDER:
+        funnel = cfg["funnels"].get(funnel_name, {})
+        items = funnel.get("individual_items", {}).get("quantitative", [])
+        result[funnel_name] = [{"key": item["key"], "label": item["label"]} for item in items]
+    return result
+
+
 def get_funnel_quant_groups(team: str = "marketing") -> dict:
     """YAML에서 퍼널별 정량 그룹 정의를 로드하여 반환."""
     cfg = load_funnel_config(team)

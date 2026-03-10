@@ -7,7 +7,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from app.core import MAX_CONCURRENT_CALLS
-from app.core.funnel import get_funnel_quant_groups
+from app.core.funnel import get_funnel_quant_groups, get_funnel_quant_items
 from app.llm.claude import call_claude, synthesize_claude, synthesize_persona_claude
 from app.llm.openai_client import call_openai, synthesize_openai, synthesize_persona_openai
 from app.llm.parse import extract_json_or_none
@@ -65,6 +65,29 @@ def _compute_synthesis_quant_metrics(persona_summaries: list, team: str = "marke
                 if v > 0:
                     values.append(v)
         result[metric_key] = round(sum(values) / len(values), 1) if values else 0.0
+    return result
+
+
+def _compute_cross_persona_quant_items(persona_summaries: list, team: str = "marketing") -> dict:
+    """퍼널별 개별 정량 지표의 전체 페르소나 평균을 계산."""
+    funnel_quant_items = get_funnel_quant_items(team)
+    result: dict = {}
+    for funnel_key, items in funnel_quant_items.items():
+        result[funnel_key] = []
+        for item_def in items:
+            key = item_def["key"]
+            vals = [
+                s.quant_averages.get(key, 0.0)
+                for s in persona_summaries
+                if s.quant_averages.get(key, 0.0) > 0
+            ]
+            avg = round(sum(vals) / len(vals), 1) if vals else 0.0
+            result[funnel_key].append({
+                "key": key,
+                "label": item_def["label"],
+                "avg": avg,
+                "pct": round((avg / 5) * 100),
+            })
     return result
 
 
@@ -276,13 +299,15 @@ def build_event_generator(
 
             # 퍼널 그룹 평균 사전 계산 (synthesis 프롬프트 컨텍스트 + done 이벤트 공용)
             funnel_group_stats = _compute_cross_persona_quant_groups(persona_summaries, team=team)
+            # 퍼널별 개별 지표 평균 (LLM 정량 해석용)
+            funnel_item_stats = _compute_cross_persona_quant_items(persona_summaries, team=team)
 
             synthesis_raw = ""
             if synthesis_input:
                 def do_synthesize():
                     if provider == "Claude":
-                        return synthesize_claude(synthesis_input, synthesis_model, team=team, funnel_group_stats=funnel_group_stats)
-                    return synthesize_openai(synthesis_input, synthesis_model, team=team, funnel_group_stats=funnel_group_stats)
+                        return synthesize_claude(synthesis_input, synthesis_model, team=team, funnel_group_stats=funnel_group_stats, funnel_item_stats=funnel_item_stats)
+                    return synthesize_openai(synthesis_input, synthesis_model, team=team, funnel_group_stats=funnel_group_stats, funnel_item_stats=funnel_item_stats)
 
                 synthesis_raw = await loop.run_in_executor(None, do_synthesize)
 

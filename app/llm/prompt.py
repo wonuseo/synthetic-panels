@@ -198,7 +198,22 @@ def _build_group_stats_block(funnel_group_stats: dict) -> str:
     return "\n".join(lines)
 
 
-def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing", funnel_group_stats: Optional[dict] = None) -> str:
+def _build_item_stats_block(funnel_item_stats: dict) -> str:
+    """퍼널별 개별 지표 평균 → LLM 프롬프트 컨텍스트 블록."""
+    lines = []
+    for funnel_key in ["upper", "mid", "lower"]:
+        items = funnel_item_stats.get(funnel_key, [])
+        if not items:
+            continue
+        lines.append(f"\n{_FUNNEL_LABEL_MAP.get(funnel_key, funnel_key)} 개별 지표:")
+        for item in items:
+            avg = item.get("avg", 0.0)
+            pct = item.get("pct", 0)
+            lines.append(f"  - {item['label']}: {avg}/5 ({pct}%)")
+    return "\n".join(lines)
+
+
+def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing", funnel_group_stats: Optional[dict] = None, funnel_item_stats: Optional[dict] = None) -> str:
     synthesis_cfg = _get_synthesis_config(team)
     appeal_field = _get_appeal_field(team)
     parts = []
@@ -211,18 +226,33 @@ def build_synthesis_prompt(reviews_data: List[dict], team: str = "marketing", fu
     reviews_text = "\n".join(parts)
     prompt = synthesis_cfg["synthesis"]["user_template"].format(count=len(reviews_data), reviews_text=reviews_text)
 
-    if funnel_group_stats:
-        stats_block = _build_group_stats_block(funnel_group_stats)
-        if stats_block:
+    if funnel_group_stats or funnel_item_stats:
+        group_block = _build_group_stats_block(funnel_group_stats) if funnel_group_stats else ""
+        item_block = _build_item_stats_block(funnel_item_stats) if funnel_item_stats else ""
+        if group_block or item_block:
             prompt += f"""
 
---- [퍼널 단계별 그룹 지표 — 그룹 인사이트 생성용] ---
-다음은 퍼널별 정량 그룹의 사전 계산된 평균 점수입니다. 위 패널 응답의 정성 코멘트를 근거로 각 그룹이 이 점수를 기록한 원인을 해석해 주세요.
-{stats_block}
-
-위 그룹 순서에 맞춰 다음 필드도 JSON에 반드시 포함하세요 (기존 필드에 추가):
+--- [퍼널 단계별 정량 지표 — 인사이트 생성용] ---
+다음은 시스템이 사전 계산한 퍼널별 정량 점수입니다. 위 패널 응답의 정성 코멘트를 근거로 각 점수가 나온 원인을 해석해 주세요.
+"""
+        if item_block:
+            prompt += f"""
+[퍼널별 개별 지표 평균]
+{item_block}
+"""
+        if group_block:
+            prompt += f"""
+[퍼널별 그룹 집계 평균]
+{group_block}
+"""
+        if group_block or item_block:
+            prompt += """
+위 데이터를 바탕으로 다음 필드도 JSON에 반드시 포함하세요 (기존 필드에 추가):
 - "upper_group_insights": Brand Funnel 그룹 순서대로 각 그룹 점수의 원인을 해석한 문자열 배열. 각 항목은 2-3문장 한국어. 그룹 내 지표 간 편차가 크면(특이하게 높거나 낮은 지표 있으면) 그 원인을 패널 코멘트 기반으로 설명. 지표들이 고른 경우 전체 점수 수준의 이유를 설명.
 - "mid_group_insights": Demand & Acquisition Funnel 그룹 순서대로, 동일 형식.
 - "lower_group_insights": Sales & Conversion Funnel 그룹 순서대로, 동일 형식.
+- "upper_quant_insight": string, Brand Funnel 전체 정량 지표 해석. 위 개별 지표 평균값을 직접 인용하여 — 가장 높은 지표·가장 낮은 지표·지표 간 편차가 큰 경우 — 왜 그 점수가 나왔는지를 패널의 정성 코멘트를 근거로 2-3문장 한국어로 설명. 숫자 없는 추상적 서술 금지.
+- "mid_quant_insight": string, Demand & Acquisition Funnel 전체 정량 지표 해석. 동일 형식.
+- "lower_quant_insight": string, Sales & Conversion Funnel 전체 정량 지표 해석. 동일 형식.
 """
     return prompt

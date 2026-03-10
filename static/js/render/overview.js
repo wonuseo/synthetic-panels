@@ -591,6 +591,53 @@ function renderFunnelColCardRadar(valid, funnelKey) {
   </div>`;
 }
 
+function renderFunnelColCardQuantInsight(key, funnel, synthesis, valid) {
+  if (!valid.length) return '';
+  const quantItems = funnel.individual_items.filter(i => i.type === 'quantitative');
+  if (!quantItems.length) return '';
+
+  // LLM 인사이트 우선
+  const llmInsight = synthesis?.[key + '_quant_insight'];
+  if (llmInsight && llmInsight.trim()) {
+    return `<div class="fcc-quant-insight fcc-quant-insight--llm">
+      <div class="fcc-quant-insight-title">💡 정량 지표 해석</div>
+      <div class="fcc-quant-insight-text">${esc(llmInsight.trim())}</div>
+    </div>`;
+  }
+
+  // 규칙 기반 fallback
+  const itemStats = quantItems.map(item => {
+    const scores = valid.map(r => { const v = r[item.key]; return typeof v === 'number' ? v : parseFloat(v) || 0; }).filter(v => v > 0);
+    if (!scores.length) return null;
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const spread = Math.max(...scores) - Math.min(...scores);
+    return { label: item.label, avg, spread };
+  }).filter(Boolean);
+
+  if (!itemStats.length) return '';
+
+  const funnelAvg = itemStats.reduce((s, i) => s + i.avg, 0) / itemStats.length;
+  const sorted = [...itemStats].sort((a, b) => b.avg - a.avg);
+  const top = sorted[0];
+  const bottom = sorted[sorted.length - 1];
+  const highSpread = itemStats.filter(i => i.spread >= 1.5);
+
+  const parts = [];
+  const overallLevel = funnelAvg >= 4.0 ? '전반적으로 긍정적인' : funnelAvg >= 3.0 ? '전반적으로 보통 수준의' : '전반적으로 낮은';
+  parts.push(`${overallLevel} 반응 (평균 ${funnelAvg.toFixed(1)}/5).`);
+  if (itemStats.length > 1 && top.avg - bottom.avg >= 0.5) {
+    parts.push(`<strong>${esc(top.label)}</strong>(${top.avg.toFixed(1)})이 가장 높고, <strong>${esc(bottom.label)}</strong>(${bottom.avg.toFixed(1)})이 가장 낮아 지표 간 격차가 있음.`);
+  }
+  if (highSpread.length) {
+    parts.push(`<strong>${esc(highSpread[0].label)}</strong> 등 ${highSpread.length}개 지표에서 페르소나 간 편차가 커 세그먼트별 대응이 필요함.`);
+  }
+
+  return `<div class="fcc-quant-insight">
+    <div class="fcc-quant-insight-title">💡 정량 지표 해석</div>
+    <div class="fcc-quant-insight-text">${parts.join(' ')}</div>
+  </div>`;
+}
+
 function renderFunnelColCard(key, funnel, synthesis, fa, valid) {
   const colorMap = { upper: 'var(--upper)', mid: 'var(--mid)', lower: 'var(--lower)' };
   const color = colorMap[key] || 'var(--accent)';
@@ -627,6 +674,7 @@ function renderFunnelColCard(key, funnel, synthesis, fa, valid) {
 
   html += `<div class="fcc-body">`;
   html += renderFunnelColCardRadar(valid, key);
+  html += renderFunnelColCardQuantInsight(key, funnel, synthesis, valid);
   if (synQual.length) {
     html += `<ul class="fcc-qual-list">`;
     for (const item of synQual.slice(0, 3)) {

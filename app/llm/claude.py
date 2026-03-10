@@ -133,7 +133,7 @@ def synthesize_persona_claude(persona_name: str, reviews_data: List[dict], model
         return f'{{"error": "{e}"}}'
 
 
-def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20250514", team: str = "marketing", funnel_group_stats: Optional[dict] = None) -> str:
+def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20250514", team: str = "marketing", funnel_group_stats: Optional[dict] = None, funnel_item_stats: Optional[dict] = None) -> str:
     client = _get_client()
 
     try:
@@ -143,7 +143,7 @@ def synthesize_claude(reviews_data: List[dict], model: str = "claude-sonnet-4-20
                 max_tokens=3000,
                 temperature=0.3,
                 system=get_synthesis_system_prompt(team),
-                messages=[{"role": "user", "content": build_synthesis_prompt(reviews_data, team, funnel_group_stats=funnel_group_stats)}],
+                messages=[{"role": "user", "content": build_synthesis_prompt(reviews_data, team, funnel_group_stats=funnel_group_stats, funnel_item_stats=funnel_item_stats)}],
             ),
         )
         return response.content[0].text
