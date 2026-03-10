@@ -1,3 +1,134 @@
+export const DEMO_COMMERCE_FUNNEL_CONFIG = {
+  overall: {
+    label: 'Overall (상품 종합)', desc_who: '전체 평가 대상', desc_goal: 'MD 상품의 전반적인 매력도와 퀄리티를 종합 평가', desc_metrics: '상품 매력도, 상품 퀄리티',
+    individual_items: [
+      { key: 'product_appeal',     label: '상품 매력도', scale: '1-5', type: 'quantitative' },
+      { key: 'product_quality',    label: '상품 퀄리티', scale: '1-5', type: 'quantitative' },
+      { key: 'overall_impression', label: '종합 첫인상',                type: 'qualitative' },
+      { key: 'review_summary',     label: '종합 평가',                  type: 'qualitative' },
+    ],
+    synthesis_items: [
+      { key: 'executive_summary',          label: '핵심 요약',              type: 'qualitative' },
+      { key: 'go_nogo_recommendation',     label: 'Go/No-Go 의사결정',      type: 'qualitative' },
+      { key: 'improvement_priority',       label: '최우선 개선 영역',       type: 'qualitative' },
+      { key: 'actionable_recommendations', label: '상품 개선 제안',         type: 'qualitative' },
+      { key: 'usage_strategy',             label: '활용 방안 제안',         type: 'qualitative' },
+      { key: 'segment_insights',           label: '세그먼트 인사이트',      type: 'qualitative' },
+      { key: 'target_segment_priority',    label: '타겟 세그먼트 우선순위', type: 'qualitative' },
+    ],
+    qa_items: [],
+  },
+  upper: {
+    label: 'Product (상품 매력)', desc_who: '잠재 소비자', desc_goal: '상품의 차별성·브랜드 프리미엄·신뢰도·비주얼·스토리 매력을 인지하는 단계', desc_metrics: '차별성, 브랜드 프리미엄, 신뢰도, 비주얼 매력, 스토리 매력',
+    individual_items: [
+      { key: 'product_uniqueness', label: '상품 차별성',    definition: '경쟁 상품 대비 이 상품만이 가진 독특한 가치와 차별화 요소', scale: '1-5', type: 'quantitative' },
+      { key: 'brand_premium',      label: '브랜드 프리미엄', definition: '브랜드 이미지와 신뢰도가 상품 가치를 높이는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'product_trust',      label: '상품 신뢰도',    definition: '상품의 품질과 성능을 믿을 수 있다고 느끼는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'visual_appeal',      label: '비주얼 매력도',  definition: '상품 이미지와 디자인이 시각적으로 끌리는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'story_appeal',       label: '스토리 매력도',  definition: '상품의 스토리와 콘셉트가 감성적으로 공감되는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'product_impression', label: '상품 첫인상',    type: 'qualitative' },
+      { key: 'emotional_response', label: '감정적 반응',    type: 'qualitative' },
+      { key: 'brand_association',  label: '브랜드 연상',    type: 'qualitative' },
+    ],
+    synthesis_items: [
+      { key: 'avg_product_appeal',        label: '평균 상품 매력도',   type: 'quantitative' },
+      { key: 'avg_brand_presence',        label: '평균 브랜드 존재감', type: 'quantitative' },
+      { key: 'avg_product_presentation',  label: '평균 상품 표현력',   type: 'quantitative' },
+      { key: 'product_message_analysis',  label: '상품 메시지 분석',   type: 'qualitative' },
+      { key: 'emotional_appeal_summary',  label: '감성 소구 요약',     type: 'qualitative' },
+      { key: 'brand_premium_summary',     label: '브랜드 프리미엄 종합', type: 'qualitative' },
+    ],
+    qa_items: [{ key: 'qa_rep_brand_attitude', type: 'replication' }, { key: 'qa_trap_skepticism_check', type: 'trap' }],
+    quant_groups: [
+      {
+        label: '상품 매력도',
+        definition: '상품의 차별성, 브랜드 프리미엄, 신뢰도를 묶어 평가하는 그룹',
+        keys: ['product_uniqueness', 'brand_premium', 'product_trust'],
+        sublabels: ['상품 차별성', '브랜드 프리미엄', '상품 신뢰도'],
+      },
+      {
+        label: '비주얼·스토리',
+        definition: '시각적 매력과 스토리텔링의 감성 소구를 함께 평가하는 그룹',
+        keys: ['visual_appeal', 'story_appeal'],
+        sublabels: ['비주얼 매력도', '스토리 매력도'],
+      },
+    ],
+  },
+  mid: {
+    label: 'Value (가치 인식)', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '상품의 가격 대비 가치·품질 기대감·선물 적합성을 인식하는 단계', desc_metrics: '가격 대비 가치, 품질 기대감, 선물 적합성, 정보 충분성, 추천 의향',
+    individual_items: [
+      { key: 'price_value',          label: '가격 대비 가치', definition: '가격을 고려했을 때 이 상품이 그 가치를 충분히 하는지', scale: '1-5', type: 'quantitative' },
+      { key: 'quality_expectation',  label: '품질 기대감',    definition: '상품 사용 후 기대되는 품질 수준', scale: '1-5', type: 'quantitative' },
+      { key: 'gift_suitability',     label: '선물 적합성',    definition: '다른 사람에게 선물로 주기 적합한 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'info_sufficiency',     label: '정보 충분성',    definition: '구매 판단에 필요한 정보가 충분히 제공되었는지', scale: '1-5', type: 'quantitative' },
+      { key: 'recommendation_intent',label: '추천 의향',      definition: '타인에게 권할 만큼 긍정적이라고 느끼는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'key_positives',        label: '긍정 요소',                  type: 'qualitative' },
+      { key: 'key_concerns',         label: '우려 사항',                  type: 'qualitative' },
+      { key: 'competitive_comparison',label: '경쟁 상품 비교',            type: 'qualitative' },
+      { key: 'information_gap',      label: '정보 부족 사항',             type: 'qualitative' },
+      { key: 'recommendation',       label: '관심도',                     type: 'categorical' },
+    ],
+    synthesis_items: [
+      { key: 'overall_score',                   label: '종합 매력도',     type: 'quantitative' },
+      { key: 'avg_perceived_value',             label: '평균 지각된 가치', type: 'quantitative' },
+      { key: 'demand_trigger_summary',           label: '수요 발생 요인',  type: 'qualitative' },
+      { key: 'consideration_barrier_summary',    label: '고려 단계 장벽',  type: 'qualitative' },
+      { key: 'wom_potential',                   label: '구전 잠재력',     type: 'qualitative' },
+    ],
+    qa_items: [{ key: 'qa_rep_value_perception', type: 'replication' }, { key: 'qa_trap_budget_sensitivity', type: 'trap' }],
+    quant_groups: [
+      {
+        label: '가치 인식',
+        definition: '가격 대비 가치, 품질 기대감, 선물 적합성을 함께 평가하는 그룹',
+        keys: ['price_value', 'quality_expectation', 'gift_suitability'],
+        sublabels: ['가격 대비 가치', '품질 기대감', '선물 적합성'],
+      },
+      {
+        label: '구전·정보',
+        definition: '의사결정에 필요한 정보 제공 수준과 추천 의향을 평가하는 그룹',
+        keys: ['info_sufficiency', 'recommendation_intent'],
+        sublabels: ['정보 충분성', '추천 의향'],
+      },
+    ],
+  },
+  lower: {
+    label: 'Purchase (구매 전환)', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 구매 전환과 재구매로 이어지는 단계', desc_metrics: '구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성',
+    individual_items: [
+      { key: 'purchase_likelihood',    label: '구매 가능성', definition: '실제로 구매로 이어질 가능성을 직접적으로 묻는 지표', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_consideration', label: '고려 확률',    definition: '구매 후보군 안에 넣고 진지하게 검토할 가능성', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_willingness',   label: '구매 의향',    definition: '현재 시점에서 구매하겠다는 의지가 얼마나 강한지', scale: '1-5', type: 'quantitative' },
+      { key: 'repurchase_intent',      label: '재구매 의향',  definition: '한 번 구매 후 다시 선택할 가능성', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_urgency',       label: '구매 시급성',  definition: '구매를 미루지 않고 빠르게 실행할 필요성을 느끼는 정도', scale: '1-5', type: 'quantitative' },
+      { key: 'purchase_trigger',       label: '구매 촉진 요소', type: 'qualitative' },
+      { key: 'purchase_barrier',       label: '구매 장벽',      type: 'qualitative' },
+      { key: 'price_perception',       label: '가격 인식',      type: 'qualitative' },
+    ],
+    synthesis_items: [
+      { key: 'avg_purchase_intention',   label: '평균 구매 의향',   type: 'quantitative' },
+      { key: 'avg_purchase_probability', label: '평균 구매 확률',   type: 'quantitative' },
+      { key: 'estimated_conversion_range', label: '예상 전환율',    type: 'quantitative' },
+      { key: 'key_conversion_barriers',  label: '핵심 전환 장벽',   type: 'qualitative' },
+      { key: 'conversion_driver_analysis', label: '전환 촉진 요소 분석', type: 'qualitative' },
+      { key: 'price_perception_summary', label: '가격 인식 종합',   type: 'qualitative' },
+    ],
+    qa_items: [{ key: 'qa_rep_purchase_intent', type: 'replication' }],
+    quant_groups: [
+      {
+        label: '구매 의향',
+        definition: '구매 가능성, 고려 가능성, 실제 구매 의향을 묶어 전환 직전의 반응을 평가하는 그룹',
+        keys: ['purchase_likelihood', 'purchase_consideration', 'purchase_willingness'],
+        sublabels: ['구매 가능성', '고려 확률', '구매 의향'],
+      },
+      {
+        label: '재구매·시급성',
+        definition: '재구매 의향과 현재 구매 긴급도를 함께 평가하는 그룹',
+        keys: ['repurchase_intent', 'purchase_urgency'],
+        sublabels: ['재구매 의향', '구매 시급성'],
+      },
+    ],
+  },
+};
+
 export const DEMO_FUNNEL_CONFIG = {
   overall: {
     label: 'Overall (프로모션 종합)', desc_who: '전체 평가 대상', desc_goal: '프로모션의 전반적인 매력도와 퀄리티를 종합 평가', desc_metrics: '매력도, 퀄리티',
