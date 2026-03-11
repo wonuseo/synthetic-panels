@@ -11,6 +11,7 @@ export const state = {
   surveyTemplate: [],
   funnelQuantGroupAverages: {},
   team: 'marketing',
+  passwordVerified: false,
 };
 
 export const OPENAI_MODELS = ['gpt-4o-mini', 'gpt-4o'];

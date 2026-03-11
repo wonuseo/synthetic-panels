@@ -1,6 +1,6 @@
-import { $ } from './ui.js';
+import { $, updateRunBtn } from './ui.js';
 import { state } from './state.js';
-import { checkReviewLimit, runReview } from './api.js';
+import { verifyPassword, runReview } from './api.js';
 import { esc } from './render/helpers.js';
 
 export function fmtTime(sec) {
@@ -71,10 +71,61 @@ export function renderPanelSizeEstimateGuide() {
   `;
 }
 
-export function initReviewRunner(showResults, refreshUsageBadge) {
+function setAuthStatus(type, text) {
+  if (!$.authStatus) return;
+  $.authStatus.className = 'auth-status' + (type ? ' ' + type : '');
+  $.authStatus.textContent = text;
+}
+
+function resetAuth() {
+  state.passwordVerified = false;
+  setAuthStatus('', '');
+  if ($.btnVerify) $.btnVerify.disabled = false;
+  updateRunBtn();
+}
+
+export function initReviewRunner(showResults) {
+  // Verify button
+  if ($.btnVerify && $.runPassword) {
+    $.runPassword.addEventListener('input', resetAuth);
+
+    $.btnVerify.addEventListener('click', async () => {
+      const pw = $.runPassword.value.trim();
+      if (!pw) {
+        setAuthStatus('error', '비밀번호를 입력해주세요.');
+        return;
+      }
+      $.btnVerify.disabled = true;
+      setAuthStatus('', '확인 중...');
+      try {
+        const result = await verifyPassword(pw);
+        if (result.ok) {
+          state.passwordVerified = true;
+          setAuthStatus('ok', '인증되었습니다.');
+          updateRunBtn();
+        } else {
+          state.passwordVerified = false;
+          setAuthStatus('error', result.error || '비밀번호가 올바르지 않습니다.');
+          $.btnVerify.disabled = false;
+          updateRunBtn();
+        }
+      } catch {
+        state.passwordVerified = false;
+        setAuthStatus('error', '확인 중 오류가 발생했습니다.');
+        $.btnVerify.disabled = false;
+        updateRunBtn();
+      }
+    });
+
+    $.runPassword.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $.btnVerify.click();
+    });
+  }
+
+  // Run button
   $.btnRun.addEventListener('click', async () => {
     const textVal = $.textContent.value.trim();
-    if ((!state.selectedFile && !textVal) || !state.personasLoaded) return;
+    if ((!state.selectedFile && !textVal) || !state.personasLoaded || !state.passwordVerified) return;
 
     const password = $.runPassword ? $.runPassword.value.trim() : null;
 
@@ -132,15 +183,11 @@ export function initReviewRunner(showResults, refreshUsageBadge) {
       );
       if (donePayload) showResults(donePayload);
     } catch (e) {
-      if (e.needsPassword) {
-        alert(e.message);
-      } else {
-        alert('리뷰 실행 중 오류: ' + e.message);
-      }
+      alert('리뷰 실행 중 오류: ' + (e.message || e));
     }
 
     $.progress.classList.add('hidden');
-    $.btnRun.disabled = false;
-    refreshUsageBadge();
+    // Reset auth after run so next run requires re-verification
+    resetAuth();
   });
 }

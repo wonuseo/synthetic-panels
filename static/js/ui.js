@@ -25,12 +25,13 @@ export const $ = {
   btnBack:      document.getElementById('btn-back'),
   btnSave:      document.getElementById('btn-save'),
   textContent:  document.getElementById('text-content'),
-  usageBadge:   document.getElementById('usage-badge'),
   runPassword:  document.getElementById('run-password'),
+  btnVerify:    document.getElementById('btn-verify-password'),
+  authStatus:   document.getElementById('auth-status'),
 };
 
 export function updateRunBtn() {
-  $.btnRun.disabled = !((state.selectedFile || $.textContent.value.trim()) && state.personasLoaded);
+  $.btnRun.disabled = !((state.selectedFile || $.textContent.value.trim()) && state.personasLoaded && state.passwordVerified);
 }
 
 export function handleFile(file) {
