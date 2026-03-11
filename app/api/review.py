@@ -31,11 +31,11 @@ async def api_review(
     if not SHEETS_URL:
         return JSONResponse(status_code=400, content={"ok": False, "error": "SHEETS_URL 환경변수가 설정되지 않았습니다."})
 
-    if REVIEW_PASSWORD and get_today_count() >= DAILY_REVIEW_LIMIT:
+    if REVIEW_PASSWORD:
         if not password or password != REVIEW_PASSWORD:
             return JSONResponse(status_code=403, content={
                 "ok": False,
-                "error": f"오늘 {DAILY_REVIEW_LIMIT}회 이상 실행했습니다. 비밀번호를 입력해주세요.",
+                "error": "비밀번호가 올바르지 않습니다.",
                 "needs_password": True,
             })
 
