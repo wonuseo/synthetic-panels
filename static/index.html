@@ -95,9 +95,13 @@
           <div class="progress-time" id="progress-time"></div>
         </div>
 
-        <div id="usage-badge" class="usage-badge hidden"></div>
-        <div class="run-password-wrap">
-          <input type="password" id="run-password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" />
+        <div class="auth-section">
+          <div class="auth-section-label">실행 인증</div>
+          <div class="auth-input-row">
+            <input type="password" id="run-password" placeholder="비밀번호를 입력하세요" autocomplete="current-password" />
+            <button class="btn-verify" id="btn-verify-password" type="button">확인</button>
+          </div>
+          <div class="auth-status" id="auth-status"></div>
         </div>
         <button class="btn-primary" id="btn-run" disabled>🚀 Run Panel Review</button>
       </div>

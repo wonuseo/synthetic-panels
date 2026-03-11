@@ -4,10 +4,11 @@ from typing import Optional
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from app.core import DAILY_REVIEW_LIMIT, REVIEW_PASSWORD, SHEETS_URL
+from fastapi import Form
+
+from app.core import REVIEW_PASSWORD, SHEETS_URL
 from app.core.funnel import get_funnel_groups
 from app.core.survey import load_survey_template
-from app.services.usage import get_today_count
 from app.sheets.client import open_spreadsheet_by_url
 from app.sheets.personas import sample_panels_for_size
 
@@ -43,11 +44,12 @@ async def api_survey_template(team: str = "marketing"):
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
 
 
-@router.get("/api/review-limit")
-async def api_review_limit():
-    count = get_today_count()
-    needs_password = bool(REVIEW_PASSWORD and count >= DAILY_REVIEW_LIMIT)
-    return {"ok": True, "today_count": count, "limit": DAILY_REVIEW_LIMIT, "needs_password": needs_password}
+@router.post("/api/verify-password")
+async def api_verify_password(password: Optional[str] = Form(None)):
+    if REVIEW_PASSWORD:
+        if not password or password != REVIEW_PASSWORD:
+            return JSONResponse(status_code=403, content={"ok": False, "error": "비밀번호가 올바르지 않습니다."})
+    return {"ok": True}
 
 
 @router.post("/api/personas")

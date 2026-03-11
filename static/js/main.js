@@ -306,9 +306,8 @@ $.provider.addEventListener('change', () => {
 /* ── Initialize ── */
 initTabController();
 initPersonaLoader();
-initReviewRunner(showResults, refreshUsageBadge);
+initReviewRunner(showResults);
 initModelSelectors();
 renderPanelSizeEstimateGuide();
 loadFunnelConfig(state.team);
 ensureSurveyTemplate();
-refreshUsageBadge();

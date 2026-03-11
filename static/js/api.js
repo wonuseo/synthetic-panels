@@ -44,8 +44,10 @@ export async function loadPersonas(panelSize = 10, samplingSeed = null, team = '
   }
 }
 
-export async function checkReviewLimit() {
-  const res = await fetch('/api/review-limit');
+export async function verifyPassword(password) {
+  const fd = new FormData();
+  fd.append('password', password || '');
+  const res = await fetch('/api/verify-password', { method: 'POST', body: fd });
   return await res.json();
 }
 
