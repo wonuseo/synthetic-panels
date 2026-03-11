@@ -43,6 +43,28 @@
   box-shadow: none;
 }
 
+/* ── Run password field ── */
+.run-password-wrap {
+  margin-top: 14px;
+}
+.run-password-wrap input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-family: var(--font-body);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.run-password-wrap input[type="password"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(135,118,105,.15);
+}
+
 .usage-badge {
   margin-top: 14px;
   padding: 8px 14px;

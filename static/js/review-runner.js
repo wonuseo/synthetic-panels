@@ -76,14 +76,7 @@ export function initReviewRunner(showResults, refreshUsageBadge) {
     const textVal = $.textContent.value.trim();
     if ((!state.selectedFile && !textVal) || !state.personasLoaded) return;
 
-    let password = null;
-    try {
-      const limitInfo = await checkReviewLimit();
-      if (limitInfo.needs_password) {
-        password = prompt(`오늘 ${limitInfo.today_count}/${limitInfo.limit}회 사용했습니다. 비밀번호를 입력해주세요:`);
-        if (!password) return;
-      }
-    } catch {}
+    const password = $.runPassword ? $.runPassword.value.trim() : null;
 
     $.btnRun.disabled = true;
     $.progress.classList.remove('hidden');

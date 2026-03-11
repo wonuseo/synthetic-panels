@@ -26,6 +26,7 @@ export const $ = {
   btnSave:      document.getElementById('btn-save'),
   textContent:  document.getElementById('text-content'),
   usageBadge:   document.getElementById('usage-badge'),
+  runPassword:  document.getElementById('run-password'),
 };
 
 export function updateRunBtn() {
