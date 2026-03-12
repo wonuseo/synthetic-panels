@@ -26,7 +26,7 @@ sections:
         question: "종합 평가를 간단한 문단으로 (한국어)"
 
   - id: upper
-    label: "[Upper Funnel] 브랜드 자산"
+    label: "브랜드 인지도"
     fields:
       - key: brand_favorability
         spec: "integer 1-5"
@@ -62,7 +62,7 @@ sections:
         question: "이 프로모션으로 인해 브랜드에 대해 어떤 이미지가 떠오르는가? (한국어)"
 
   - id: mid
-    label: "[Mid Funnel] 수요 창출"
+    label: "고객 획득"
     fields:
       - key: appeal
         spec: "integer 1-5"
@@ -106,7 +106,7 @@ sections:
         question: '반드시 다음 중 정확히 하나: "매우 관심 있음", "다소 관심 있음", "보통", "관심 없음", "전혀 관심 없음"'
 
   - id: lower
-    label: "[Lower Funnel] 전환·매출"
+    label: "전환 및 매출"
     fields:
       - key: purchase_likelihood
         spec: "integer 1-5"

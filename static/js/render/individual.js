@@ -157,7 +157,7 @@ function renderPersonaSummaryCard(summary, idx) {
   const panelReviews = summary.panel_reviews || [];
   let drillHtml = '';
   if (panelReviews.length) {
-    const CHANNEL_LABELS = { overall: '공통', upper: '브랜드 자산', mid: '수요 창출', lower: '전환·매출' };
+    const CHANNEL_LABELS = { overall: '공통', upper: '브랜드 인지도', mid: '고객 획득', lower: '전환 및 매출' };
     drillHtml = `
       <div class="drill-down-header" id="drill-header-${summary.persona_id}" onclick="toggleDrillDown('${summary.persona_id}')">
         📋 개별 패널 리뷰 (${panelReviews.length}건) ▶

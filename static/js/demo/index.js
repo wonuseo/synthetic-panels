@@ -19,7 +19,7 @@ export const DEMO_COMMERCE_FUNNEL_CONFIG = {
     qa_items: [],
   },
   upper: {
-    label: 'Product (상품 매력)', desc_who: '잠재 소비자', desc_goal: '상품의 차별성·브랜드 프리미엄·신뢰도·비주얼·스토리 매력을 인지하는 단계', desc_metrics: '차별성, 브랜드 프리미엄, 신뢰도, 비주얼 매력, 스토리 매력',
+    label: '브랜드 인지도', desc_who: '잠재 소비자', desc_goal: '상품의 차별성·브랜드 프리미엄·신뢰도·비주얼·스토리 매력을 인지하는 단계', desc_metrics: '차별성, 브랜드 프리미엄, 신뢰도, 비주얼 매력, 스토리 매력',
     individual_items: [
       { key: 'product_uniqueness', label: '상품 차별성',    definition: '경쟁 상품 대비 이 상품만이 가진 독특한 가치와 차별화 요소', scale: '1-5', type: 'quantitative' },
       { key: 'brand_premium',      label: '브랜드 프리미엄', definition: '브랜드 이미지와 신뢰도가 상품 가치를 높이는 정도', scale: '1-5', type: 'quantitative' },
@@ -55,7 +55,7 @@ export const DEMO_COMMERCE_FUNNEL_CONFIG = {
     ],
   },
   mid: {
-    label: 'Value (가치 인식)', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '상품의 가격 대비 가치·품질 기대감·선물 적합성을 인식하는 단계', desc_metrics: '가격 대비 가치, 품질 기대감, 선물 적합성, 정보 충분성, 추천 의향',
+    label: '고객 획득', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '상품의 가격 대비 가치·품질 기대감·선물 적합성을 인식하는 단계', desc_metrics: '가격 대비 가치, 품질 기대감, 선물 적합성, 정보 충분성, 추천 의향',
     individual_items: [
       { key: 'price_value',          label: '가격 대비 가치', definition: '가격을 고려했을 때 이 상품이 그 가치를 충분히 하는지', scale: '1-5', type: 'quantitative' },
       { key: 'quality_expectation',  label: '품질 기대감',    definition: '상품 사용 후 기대되는 품질 수준', scale: '1-5', type: 'quantitative' },
@@ -92,7 +92,7 @@ export const DEMO_COMMERCE_FUNNEL_CONFIG = {
     ],
   },
   lower: {
-    label: 'Purchase (구매 전환)', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 구매 전환과 재구매로 이어지는 단계', desc_metrics: '구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성',
+    label: '전환 및 매출', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 구매 전환과 재구매로 이어지는 단계', desc_metrics: '구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성',
     individual_items: [
       { key: 'purchase_likelihood',    label: '구매 가능성', definition: '실제로 구매로 이어질 가능성을 직접적으로 묻는 지표', scale: '1-5', type: 'quantitative' },
       { key: 'purchase_consideration', label: '고려 확률',    definition: '구매 후보군 안에 넣고 진지하게 검토할 가능성', scale: '1-5', type: 'quantitative' },

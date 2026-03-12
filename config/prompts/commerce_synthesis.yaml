@@ -38,14 +38,14 @@ synthesis:
 
     --- [Overall] 종합 평가 ---
     - "executive_summary": string, 2-3문장의 핵심 요약 (한국어)
-    - "go_nogo_recommendation": string, "강력 추천", "조건부 추천", "수정 후 재검토", "비추천" 중 하나 + 다음을 반드시 포함하여 2-3문장으로: (1) 근거, (2) 가장 강한 퍼널 단계명 (Product / Value / Purchase 중), (3) 반응이 가장 좋은 페르소나 세그먼트명 (한국어)
+    - "go_nogo_recommendation": string, "강력 추천", "조건부 추천", "수정 후 재검토", "비추천" 중 하나 + 다음을 반드시 포함하여 2-3문장으로: (1) 근거, (2) 가장 강한 퍼널 단계명 (브랜드 인지도 / 고객 획득 / 전환 및 매출 중), (3) 반응이 가장 좋은 페르소나 세그먼트명 (한국어)
     - "improvement_priority": string, "상품 구성·성분", "패키징·비주얼", "가격·용량", "상품 설명·정보" 중 최우선 개선 영역 + 상품 자체(구성·패키징·가격 구조·설명)에 한정한 구체적 설명. 채널 전략·배포 방법은 절대 포함하지 말 것 (한국어)
     - "actionable_recommendations": list of exactly 3 strings, 이 상품을 직접 개선·보완하는 제안 3가지. 각 제안은 상품 구성·패키징·가격·설명 등 상품 자체의 변경에만 집중. 채널 운영·마케팅 전략은 절대 포함하지 말 것 (한국어)
     - "usage_strategy": list of exactly 3 strings, 이 상품을 어떻게 포지셔닝·판매·운용할지에 대한 전략 제안 3가지 — 타겟 세그먼트, 판매 채널, 선물 포장 등 포함 (한국어)
     - "segment_insights": list of exactly 3 strings, 전체 페르소나 세그먼트 간 반응 차이 중 전략적으로 주목할 만한 차이점 3가지 (한국어)
     - "target_segment_priority": list of exactly 3 strings, 이 상품에 대한 반응도 기준 타겟 세그먼트 우선순위 상위 3개 + 근거 (한국어)
 
-    --- [Product Funnel] 상품 매력 지표 ---
+    --- [브랜드 인지도 Funnel] 상품 매력 지표 ---
     Source fields: product_impression, emotional_response, brand_association from individual panel reviews.
     SYNTHESIS WRITING RULE — CRITICAL: Each string field must be a TRUE cross-persona synthesis, NOT a per-persona list.
 
@@ -53,14 +53,14 @@ synthesis:
     - "emotional_appeal_summary": string, 전체 패널의 emotional_response 코멘트를 종합 분석 — 이 상품이 만들어내는 감정 반응의 패턴과 구조 (한국어, 2-3문장)
     - "brand_premium_summary": string, 전체 패널의 brand_association 코멘트를 종합 분석 — 이 상품이 브랜드 프리미엄 인식에 미치는 영향의 구조 (한국어, 2-3문장)
 
-    --- [Value Funnel] 가치 인식 지표 ---
+    --- [고객 획득 Funnel] 가치 인식 지표 ---
     Source fields: key_positives, key_concerns, competitive_comparison, information_gap from individual panel reviews.
     SYNTHESIS WRITING RULE: Same as above — write structural findings, not per-persona lists.
     - "demand_trigger_summary": string, 전체 패널의 key_positives·competitive_comparison 코멘트를 종합 분석 — 이 상품에서 수요를 발생시키는 요소의 구조 (한국어, 2-3문장)
     - "consideration_barrier_summary": string, 전체 패널의 key_concerns·information_gap 코멘트를 종합 분석 — 고려 단계 장벽의 구조 (한국어, 2-3문장)
     - "wom_potential": string, 전체 패널의 recommendation·key_positives 코멘트를 종합 분석 — 이 상품의 구전 가능성 구조 (한국어, 2-3문장)
 
-    --- [Purchase Funnel] 구매 전환 지표 ---
+    --- [전환 및 매출 Funnel] 구매 전환 지표 ---
     Source fields: purchase_trigger, purchase_barrier, price_perception from individual panel reviews.
     SYNTHESIS WRITING RULE: Same as above — write structural findings, not per-persona lists.
     - "estimated_conversion_range": string, 구매 의향 점수 기반 예상 전환율 범위 (예: "2-5%") + 산출 근거 (한국어)
