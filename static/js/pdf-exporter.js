@@ -4,9 +4,9 @@ export function openPdfPrintWindow() {
 
   const sections = [
     { key: 'overview', title: '개요' },
-    { key: 'upper', title: '브랜드 자산' },
-    { key: 'mid', title: '수요 창출' },
-    { key: 'lower', title: '전환·매출' },
+    { key: 'upper', title: '브랜드 인지도' },
+    { key: 'mid', title: '고객 획득' },
+    { key: 'lower', title: '전환 및 매출' },
     { key: 'survey', title: '설문지' },
     { key: 'panel-stats', title: '패널 통계' },
     { key: 'qa', title: '품질 검증' },

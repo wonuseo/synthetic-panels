@@ -54,9 +54,9 @@ function prettyKeyLabel(key) {
     risks: '리스크',
     weakness: '약점',
     weaknesses: '약점',
-    upper: '브랜드 자산',
-    mid: '수요 창출',
-    lower: '전환·매출',
+    upper: '브랜드 인지도',
+    mid: '고객 획득',
+    lower: '전환 및 매출',
   };
   if (map[k]) return map[k];
   return String(key)

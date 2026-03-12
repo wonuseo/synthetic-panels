@@ -150,7 +150,7 @@ export const DEMO_FUNNEL_CONFIG = {
     qa_items: [],
   },
   upper: {
-    label: 'Brand (브랜드 자산)', desc_who: '잠재 고객', desc_goal: '브랜드를 처음 인지하고 태도·이미지를 형성하는 단계', desc_metrics: '호감도, 적합성, 명확성, 주목도, 신뢰도',
+    label: '브랜드 인지도', desc_who: '잠재 고객', desc_goal: '브랜드를 처음 인지하고 태도·이미지를 형성하는 단계', desc_metrics: '호감도, 적합성, 명확성, 주목도, 신뢰도',
     individual_items: [
       { key: 'brand_favorability', label: '브랜드 호감도', definition: '브랜드나 프로모션에 대해 전반적으로 느끼는 호의 수준', scale: '1-5', type: 'quantitative' },
       { key: 'brand_fit',          label: '브랜드 적합성', definition: '프로모션이 기존 브랜드 이미지와 얼마나 자연스럽게 연결되는지', scale: '1-5', type: 'quantitative' },
@@ -186,7 +186,7 @@ export const DEMO_FUNNEL_CONFIG = {
     ],
   },
   mid: {
-    label: 'Demand & Acquisition (수요 창출)', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '수요를 확보하고 신규 고객을 획득하는 단계', desc_metrics: '매력도, 가성비, 가격 적정성, 정보 충분성, 추천 의향',
+    label: '고객 획득', desc_who: '관심을 보인 잠재·신규 고객', desc_goal: '수요를 확보하고 신규 고객을 획득하는 단계', desc_metrics: '매력도, 가성비, 가격 적정성, 정보 충분성, 추천 의향',
     individual_items: [
       { key: 'appeal',                label: '매력도',         definition: '제안 자체가 소비자에게 얼마나 끌리는지 보여주는 지표', scale: '1-5', type: 'quantitative' },
       { key: 'value_for_money',       label: '가성비',         definition: '지불 가격 대비 얻는 가치가 충분하다고 느끼는 정도', scale: '1-5', type: 'quantitative' },
@@ -223,7 +223,7 @@ export const DEMO_FUNNEL_CONFIG = {
     ],
   },
   lower: {
-    label: 'Sales & Conversion (전환·매출)', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 전환과 매출로 이어지는 단계', desc_metrics: '구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성',
+    label: '전환 및 매출', desc_who: '구매를 고려 중인 고객', desc_goal: '최종 전환과 매출로 이어지는 단계', desc_metrics: '구매 가능성, 고려 확률, 구매 의향, 재구매 의향, 구매 시급성',
     individual_items: [
       { key: 'purchase_likelihood',    label: '구매 가능성', definition: '실제로 구매로 이어질 가능성을 직접적으로 묻는 지표', scale: '1-5', type: 'quantitative' },
       { key: 'purchase_consideration', label: '고려 확률',    definition: '구매 후보군 안에 넣고 진지하게 검토할 가능성', scale: '1-5', type: 'quantitative' },

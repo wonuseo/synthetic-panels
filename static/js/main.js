@@ -129,19 +129,19 @@ window.switchDemoSurveyTeam = switchDemoSurveyTeam;
 const _TEAM_METRICS = {
   marketing: {
     upper: {
-      label: 'Brand (브랜드 자산)',
+      label: '브랜드 인지도',
       desc: '잠재 고객 대상 · 브랜드 인지 및 태도 형성 단계',
       quant: ['브랜드 호감도', '브랜드 적합성', '메시지 명확성', '주목도', '브랜드 신뢰도'],
       qual:  ['지각된 메시지', '감정적 반응', '브랜드 연상'],
     },
     mid: {
-      label: 'Demand & Acquisition (수요 창출)',
+      label: '고객 획득',
       desc: '잠재·신규 고객 대상 · 수요 확보 및 고객 획득 단계',
       quant: ['매력도', '가성비', '가격 적정성', '정보 충분성', '추천 의향'],
       qual:  ['긍정 요소', '우려 사항', '경쟁 대안 비교', '정보 부족 사항'],
     },
     lower: {
-      label: 'Sales & Conversion (전환·매출)',
+      label: '전환 및 매출',
       desc: '구매 고려 고객 대상 · 최종 전환과 매출 단계',
       quant: ['구매 가능성', '고려 확률', '구매 의향', '재구매 의향', '구매 시급성'],
       qual:  ['구매 촉진 요소', '구매 장벽', '가격 인식'],
